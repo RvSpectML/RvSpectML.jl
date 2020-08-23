@@ -1,17 +1,17 @@
 """ Return interpolator for fluxes in spectra. """
-function make_interpolator_linear_flux(spectra::Union{AS,AC}) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectra}
+function make_interpolator_linear_flux(spectra::Union{AS,AC}) where { AS<:AbstractSpectra, AC<:AbstractChunkOfSpectra}
     LinearInterpolation(spectra.λ, spectra.flux)
 end
 
 """ Return interpolator for variances in spectra. """
-function make_interpolator_linear_var(spectra::Union{AS,AC}) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectra}
+function make_interpolator_linear_var(spectra::Union{AS,AC}) where { AS<:AbstractSpectra, AC<:AbstractChunkOfSpectra}
     LinearInterpolation(spectra.λ, spectra.var)
 end
 
 #=
 using Stheno
 
-function make_interpolator_gp(spectra::Union{AS,AC}; length_scale::Real = 0.1, σ_scale::Real = 1.0) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectra}
+function make_interpolator_gp(spectra::Union{AS,AC}; length_scale::Real = 0.1, σ_scale::Real = 1.0) where { AS<:AbstractSpectra, AC<:AbstractChunkOfSpectra}
     xobs = spectra.λ
     yobs = copy(spectra.flux)
     obs_var = spectra.var
@@ -28,7 +28,7 @@ function make_interpolator_gp(spectra::Union{AS,AC}; length_scale::Real = 0.1, �
     f_posterior = f | Obs(fx, yobs)
 end
 
-function interp_to_grid(spectra::Union{AS,AC}, grid::AR) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectra, AR<:AbstractRange}
+function interp_to_grid(spectra::Union{AS,AC}, grid::AR) where { AS<:AbstractSpectra, AC<:AbstractChunkOfSpectra, AR<:AbstractRange}
    #grid = chunk_grids[c]
    #make_interpolator_linear(spectra).(grid)
    f_posterior = make_interpolator_gp(spectra,length_scale=6e-5*mean(spectra.λ))
@@ -36,7 +36,7 @@ function interp_to_grid(spectra::Union{AS,AC}, grid::AR) where { AS<:AbstractSpe
 end
 
 
-function pack_chunks_into_matrix(timeseries::ACLT, chunk_grids::AR) where { ACLT<:AbstractChunckListTimeseries, RT<:AbstractRange, AR<:AbstractArray{RT,1} }
+function pack_chunks_into_matrix(timeseries::ACLT, chunk_grids::AR) where { ACLT<:AbstractChunkListTimeseries, RT<:AbstractRange, AR<:AbstractArray{RT,1} }
    num_obs = length(timeseries)
    num_λ = sum(length.(chunk_grids))
    flux_matrix = Array{Float64,2}(undef,num_λ,num_obs)
@@ -48,7 +48,7 @@ function pack_chunks_into_matrix(timeseries::ACLT, chunk_grids::AR) where { ACLT
         idx_start = 0
         for c in 1:length(chunk_grids)
             if length(chunk_grids[c]) <= 512
-                gp_interp = make_interpolator_gp(timeseries.chuck_list[t].data[c],length_scale=1e-4*mean(chunk_grids[c]))
+                gp_interp = make_interpolator_gp(timeseries.chunk_list[t].data[c],length_scale=1e-4*mean(chunk_grids[c]))
                 idx = (idx_start+1):(idx_start+length(chunk_grids[c]))
                 flux_matrix[idx,t] .= mean(gp_interp(chunk_grids[c]))
                 var_matrix[idx,t] .= var.(marginals(gp_interp(chunk_grids[c])))
@@ -62,8 +62,8 @@ function pack_chunks_into_matrix(timeseries::ACLT, chunk_grids::AR) where { ACLT
                 end
                 idx_start += length(chunk_grids[c])
             else
-                lin_interp_flux = make_interpolator_linear_flux(timeseries.chuck_list[t].data[c])
-                lin_interp_var = make_interpolator_linear_var(timeseries.chuck_list[t].data[c])
+                lin_interp_flux = make_interpolator_linear_flux(timeseries.chunk_list[t].data[c])
+                lin_interp_var = make_interpolator_linear_var(timeseries.chunk_list[t].data[c])
                 idx = (idx_start+1):(idx_start+length(chunk_grids[c]))
                 flux_matrix[idx,t] .= lin_interp_flux.(chunk_grids[c])
                 var_matrix[idx,t] .= lin_interp_var.(chunk_grids[c])

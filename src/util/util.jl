@@ -133,22 +133,22 @@ end
 # Manipulation data in chunks of spectrua
 
 #=
-function make_chunck_list(spectra::AS, line_list::AA; Δ::Real=Δλoλ_fit_line_default) where { AS<:AbstractSpectra, R<:Real, AA<:AbstractArray{R,1} }
-   ChunckList(map(l->ChunkOfSpectra(spectra,find_line_best(l,spectra,Δ=Δ)), line_list) )
+function make_chunk_list(spectra::AS, line_list::AA; Δ::Real=Δλoλ_fit_line_default) where { AS<:AbstractSpectra, R<:Real, AA<:AbstractArray{R,1} }
+   ChunkList(map(l->ChunkOfSpectra(spectra,find_line_best(l,spectra,Δ=Δ)), line_list) )
 end
 =#
 
-""" Return a ChuckList of best regions of spectrum with lines in line_line.
+""" Return a ChunkList of best regions of spectrum with lines in line_line.
     line_list is a DataFrame containing :lambda_lo and :lambda_hi.
     Pads edges by Δ.
 """
-function make_chunck_list(spectra::AS, line_list::DataFrame; Δ::Real=Δλoλ_edge_pad_default) where { AS<:AbstractSpectra }
+function make_chunk_list(spectra::AS, line_list::DataFrame; Δ::Real=Δλoλ_edge_pad_default) where { AS<:AbstractSpectra }
     @assert haskey(line_list,:lambda_lo)
     @assert haskey(line_list,:lambda_hi)
-    ChunckList(map(row->ChunkOfSpectra(spectra,find_line_best(row.lambda_lo,row.lambda_hi,spectra,Δ=Δ)), eachrow(line_list) ))
+    ChunkList(map(row->ChunkOfSpectra(spectra,find_line_best(row.lambda_lo,row.lambda_hi,spectra,Δ=Δ)), eachrow(line_list) ))
 end
 
-""" Return a ChuckList with a region of spectrum from each order in orders_to_use.
+""" Return a ChunkList with a region of spectrum from each order in orders_to_use.
     inst:  Instrument trait
     orders_to_use: Range or Array (orders_to_use(inst))
     pixels_to_use: Array of Ranges (each from min_col to max_col)
@@ -179,7 +179,7 @@ function make_orders_into_chunks(spectra::AS, inst::AbstractSpectra;
     @assert all( min_order(inst) .<= orders_to_use .<= max_order(inst) )
     @assert minimum(pixels_to_use) >= min_pixel_in_order(inst)
     @assert maximum(pixels_to_use) <= max_pixel_in_order(inst)
-    ChunckList( map(order->
+    ChunkList( map(order->
                     ChunkOfSpectra(spectra,(pixels=pixels_to_use[order],order=order)),
                     orders_to_use ))
 end
@@ -189,15 +189,15 @@ end
     line_linst:  DataFrame w/ lambda_lo, lambda_hi
     verbose: print debugging info (false)
 """
-function filter_bad_chunks(chunk_list_timeseries::ACLT, line_list::DataFrame; verbose::Union{Int,Bool} = false) where { ACLT<:AbstractChunckListTimeseries }
+function filter_bad_chunks(chunk_list_timeseries::ACLT, line_list::DataFrame; verbose::Union{Int,Bool} = false) where { ACLT<:AbstractChunkListTimeseries }
     @assert(length(chunk_list_timeseries)>=1)
     @assert(haskey(line_list,:lambda_lo))
     @assert(haskey(line_list,:lambda_hi))
     idx_keep = trues(num_chunks(chunk_list_timeseries))
     for t in 1:length(chunk_list_timeseries)
-        idx_bad_λ = findall(c->any(isnan.(chunk_list_timeseries.chuck_list[t].data[c].λ)),1:num_chunks(chunk_list_timeseries))
-        idx_bad_flux = findall(c->any(isnan.(chunk_list_timeseries.chuck_list[t].data[c].flux)),1:num_chunks(chunk_list_timeseries))
-        idx_bad_var = findall(c->any(isnan.(chunk_list_timeseries.chuck_list[t].data[c].var)),1:num_chunks(chunk_list_timeseries))
+        idx_bad_λ = findall(c->any(isnan.(chunk_list_timeseries.chunk_list[t].data[c].λ)),1:num_chunks(chunk_list_timeseries))
+        idx_bad_flux = findall(c->any(isnan.(chunk_list_timeseries.chunk_list[t].data[c].flux)),1:num_chunks(chunk_list_timeseries))
+        idx_bad_var = findall(c->any(isnan.(chunk_list_timeseries.chunk_list[t].data[c].var)),1:num_chunks(chunk_list_timeseries))
         idx_keep[idx_bad_λ] .= false
         idx_keep[idx_bad_flux] .= false
         idx_keep[idx_bad_var] .= false
@@ -214,8 +214,8 @@ function filter_bad_chunks(chunk_list_timeseries::ACLT, line_list::DataFrame; ve
         println("# Removing ", length(chunks_to_remove), " chunks due to NaNs.")
         map(c->println("# ",c,": ",line_list.lambda_lo[c]," - ",line_list.lambda_hi[c]),chunks_to_remove)
         new_line_list = line_list[findall(idx_keep),:]
-        new_chunk_list_timeseries = [ChunckList(chunk_list_timeseries.chuck_list[t].data[idx_keep]) for t in 1:length(chunk_list_timeseries) ]
-        return (chunk_timeseries=ChunckListTimeseries(chunk_list_timeseries.times,new_chunk_list_timeseries), line_list=new_line_list)
+        new_chunk_list_timeseries = [ChunkList(chunk_list_timeseries.chunk_list[t].data[idx_keep]) for t in 1:length(chunk_list_timeseries) ]
+        return (chunk_timeseries=ChunkListTimeseries(chunk_list_timeseries.times,new_chunk_list_timeseries), line_list=new_line_list)
     end
 end
 
@@ -224,16 +224,16 @@ end
     chunk index:
     oversample_factor: (1)
 """
-function make_grid_for_chunck(timeseries::ACLT, c::Integer; oversample_factor::Real = 1.0 ) where { ACLT<:AbstractChunckListTimeseries }
-    num_obs = length(timeseries.chuck_list)
+function make_grid_for_chunk(timeseries::ACLT, c::Integer; oversample_factor::Real = 1.0 ) where { ACLT<:AbstractChunkListTimeseries }
+    num_obs = length(timeseries.chunk_list)
     @assert num_obs >= 1
-    @assert 1<= c <= length(first(timeseries.chuck_list).data) # WARN: only tests first chunk_list
-    λ_min = maximum(minimum(timeseries.chuck_list[t].data[c].λ) for t in 1:num_obs)
-    λ_max = minimum(maximum(timeseries.chuck_list[t].data[c].λ) for t in 1:num_obs)
-    Δλ_grid_obs = median((timeseries.chuck_list[t].data[c].λ[end]-
-            timeseries.chuck_list[t].data[c].λ[1])/
-              (length(timeseries.chuck_list[t].data[c].λ)-1) for t in 1:num_obs)
-    num_pixels_obs = mean(length(timeseries.chuck_list[t].data[c].λ) for t in 1:num_obs)
+    @assert 1<= c <= length(first(timeseries.chunk_list).data) # WARN: only tests first chunk_list
+    λ_min = maximum(minimum(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
+    λ_max = minimum(maximum(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
+    Δλ_grid_obs = median((timeseries.chunk_list[t].data[c].λ[end]-
+            timeseries.chunk_list[t].data[c].λ[1])/
+              (length(timeseries.chunk_list[t].data[c].λ)-1) for t in 1:num_obs)
+    num_pixels_obs = mean(length(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
     num_pixels_gen = (num_pixels_obs-1) * oversample_factor + 1
     Δλ_grid_gen = (λ_max-λ_min)/ (num_pixels_gen-1)
     range(λ_min,stop=λ_max,step=Δλ_grid_gen)
@@ -275,7 +275,7 @@ end
 
 # Manipulate spectra
 """ Calc normalization of spectra based on average flux in a ChunkList. """
-function calc_normalization(chunk_list::ACL) where { ACL<:AbstractChunckList}
+function calc_normalization(chunk_list::ACL) where { ACL<:AbstractChunkList}
     total_flux = sum(sum(Float64.(chunk_list.data[c].flux))
                         for c in 1:length(chunk_list) )
     num_pixels = sum( length(chunk_list.data[c].flux) for c in 1:length(chunk_list) )
@@ -292,10 +292,10 @@ function normalize_spectrum!(spectrum::ST, scale_fac::Real) where { ST<:Abstract
 end
 
 """ Normalize each spectrum based on sum of fluxes in chunk_timeseries region of each spectrum. """
-function normalize_spectra!(chunk_timeseries::ACLT, spectra::AS) where { ACLT<:AbstractChunckListTimeseries, ST<:AbstractSpectra, AS<:AbstractArray{ST} }
+function normalize_spectra!(chunk_timeseries::ACLT, spectra::AS) where { ACLT<:AbstractChunkListTimeseries, ST<:AbstractSpectra, AS<:AbstractArray{ST} }
     @assert length(chunk_timeseries) == length(spectra)
     for t in 1:length(chunk_timeseries)
-        scale_fac = calc_normalization(chunk_timeseries.chuck_list[t])
+        scale_fac = calc_normalization(chunk_timeseries.chunk_list[t])
         println("# t= ",t, " scale_fac= ", scale_fac)
         normalize_spectrum!(spectra[t], scale_fac)
     end

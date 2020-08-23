@@ -12,7 +12,7 @@ line_list_df = vald_df |>
   DataFrame;
 size(line_list_df)
 
-#@time chuck_list = make_chuck_list(solar_data[1],line_list_df)
+#@time chunk_list = make_chunk_list(solar_data[1],line_list_df)
 # Adjust width of chunks
 line_list_df[:lambda_mid] = sqrt.(line_list_df.lambda_lo.*line_list_df.lambda_hi)
 chunk_size_factor = 3       # TODO: Figure out what value to use
@@ -39,13 +39,13 @@ size(chunk_list_df)
 
 solar_data[1].λ[:,1:90]
 
-#@time time_series_of_chunk_lists = map(spec->make_chunck_list(spec,line_list_df),solar_data)
-@time time_series_of_chunk_lists = map(spec->make_chunck_list(spec,chunk_list_df),solar_data)
-chunk_list_timeseries = ChunckListTimeseries(df_files_use.bjd,time_series_of_chunk_lists)
+#@time time_series_of_chunk_lists = map(spec->make_chunk_list(spec,line_list_df),solar_data)
+@time time_series_of_chunk_lists = map(spec->make_chunk_list(spec,chunk_list_df),solar_data)
+chunk_list_timeseries = ChunkListTimeseries(df_files_use.bjd,time_series_of_chunk_lists)
 
-chunk_list_timeseries.chuck_list[5].data[10].flux
+chunk_list_timeseries.chunk_list[5].data[10].flux
 
-#chunk_list_timeseries.chuck_list[2].data[10].flux
+#chunk_list_timeseries.chunk_list[2].data[10].flux
 #solar_data[5].flux ./= 100
 
 # If want to keep orders as one big chunk
@@ -61,7 +61,7 @@ end
 
 @time time_series_of_order_lists = map( spec->make_orders_into_chunks(spec,
                 orders_to_use=neid_orders_to_use, pixels_to_use=pixels_to_use_neid) ,solar_data)
-order_list_timeseries = ChunckListTimeseries(df_files_use.bjd,time_series_of_order_lists)
+order_list_timeseries = ChunkListTimeseries(df_files_use.bjd,time_series_of_order_lists)
 
 # Check that no NaN's included
 map(t->any(map(o->any(isnan.(solar_data[t].λ[pixels_to_use_neid[o],o])),1:60)),length(solar_data))
@@ -83,11 +83,11 @@ chunk_list_df[1,:]
 normalize_spectra!(order_list_timeseries,solar_data);
 
 solar_data[5].flux[4000:6000]
-chunk_list_timeseries.chuck_list[5].data[100].flux
+chunk_list_timeseries.chunk_list[5].data[100].flux
 
 using Plots
 
-#chunk_list_timeseries.chuck_list[1].data[1].λ
+#chunk_list_timeseries.chunk_list[1].data[1].λ
 
 order_idx = 20:22
 xmin = Inf # minimum(order_list_df.lambda_lo[chunk_idx])
@@ -95,9 +95,9 @@ xmax = 0   # maximum(order_list_df.lambda_hi[chunk_idx])
 plt = plot(legend=:none)
 for c in order_idx
     t = 1
-    plot!(plt,order_list_timeseries.chuck_list[t].data[c].λ ,order_list_timeseries.chuck_list[t].data[c].flux)
-    xmin = min(xmin,minimum(order_list_timeseries.chuck_list[t].data[c].λ))
-    xmax = max(xmax,maximum(order_list_timeseries.chuck_list[t].data[c].λ))
+    plot!(plt,order_list_timeseries.chunk_list[t].data[c].λ ,order_list_timeseries.chunk_list[t].data[c].flux)
+    xmin = min(xmin,minimum(order_list_timeseries.chunk_list[t].data[c].λ))
+    xmax = max(xmax,maximum(order_list_timeseries.chunk_list[t].data[c].λ))
 end
 #xlims!(xmin,xmax)
 display(plt)
@@ -114,7 +114,7 @@ for c in chunk_idx
     λ_mid = 0# sqrt(chunk_list_df.lambda_hi[c]*chunk_list_df.lambda_lo[c])
     println("c= ",c , " λs= ",chunk_list_df.line_λs[c]," depths= ",chunk_list_df.line_depths[c])
     #println("  λlo= ",chunk_list_df.lambda_lo[c]," λhi= ",chunk_list_df.lambda_hi[c], " Δλ= ",chunk_list_df.lambda_hi[c]-chunk_list_df.lambda_lo[c])
-    plot!(plt,chunk_list_timeseries.chuck_list[t].data[c].λ.-λ_mid,chunk_list_timeseries.chuck_list[t].data[c].flux)
+    plot!(plt,chunk_list_timeseries.chunk_list[t].data[c].λ.-λ_mid,chunk_list_timeseries.chunk_list[t].data[c].flux)
 end
 #plot!(plt,solar_data[1].λ,solar_data[1].flux)
 #xlims!(4560,4565)
@@ -122,10 +122,10 @@ display(plt)
 
 
 
-chunk_grids = map(c->make_grid_for_chunck(chunk_list_timeseries,c), 1:num_chunks(chunk_list_timeseries) )
+chunk_grids = map(c->make_grid_for_chunk(chunk_list_timeseries,c), 1:num_chunks(chunk_list_timeseries) )
 
 # Doesn't work because looking up lambda_min and lambda_max, but haven't been updated since splitting order into segments
-#chunk_grids = map(c->make_grid_for_chunck(order_list_timeseries,c), 1:num_chunks(order_list_timeseries) )
+#chunk_grids = map(c->make_grid_for_chunk(order_list_timeseries,c), 1:num_chunks(order_list_timeseries) )
 
 
 mean(chunk_grids[1])
@@ -219,11 +219,11 @@ if false
    ts = chunk_list_timeseries
    t = 1
    c = 1
-   interp = LinearInterpolation(ts.chuck_list[t].data[c].λ, ts.chuck_list[t].data[c].flux)
+   interp = LinearInterpolation(ts.chunk_list[t].data[c].λ, ts.chunk_list[t].data[c].flux)
 
-    xobs = (ts.chuck_list[t].data[c].λ)
-    yobs = copy(ts.chuck_list[t].data[c].flux)
-    obs_var = (ts.chuck_list[t].data[c].var)
+    xobs = (ts.chunk_list[t].data[c].λ)
+    yobs = copy(ts.chunk_list[t].data[c].flux)
+    obs_var = (ts.chunk_list[t].data[c].var)
     med_y = median(yobs)
 
     # Choose the length-scale and variance of the process.
@@ -243,9 +243,9 @@ if false
    plt1 = plot(grid,mean(f_posterior(grid)))
    plot!(plt1,grid,interp.(grid))
    #plot!(grid,mean(f_posterior(grid)))
-   scatter!(plt1,ts.chuck_list[t].data[c].λ, ts.chuck_list[t].data[c].flux)
-   plt2 = scatter(ts.chuck_list[t].data[c].λ, mean(f_posterior(ts.chuck_list[t].data[c].λ)).-ts.chuck_list[t].data[c].flux)
-   #scatter!(plt2,ts.chuck_list[t].data[c].λ, interp.(ts.chuck_list[t].data[c].λ).-ts.chuck_list[t].data[c].flux)
+   scatter!(plt1,ts.chunk_list[t].data[c].λ, ts.chunk_list[t].data[c].flux)
+   plt2 = scatter(ts.chunk_list[t].data[c].λ, mean(f_posterior(ts.chunk_list[t].data[c].λ)).-ts.chunk_list[t].data[c].flux)
+   #scatter!(plt2,ts.chunk_list[t].data[c].λ, interp.(ts.chunk_list[t].data[c].λ).-ts.chunk_list[t].data[c].flux)
    plot(plt1,plt2,layout=(2,1)) #display(plot)
 
 end
@@ -253,10 +253,10 @@ end
 
 if false
 
-    map(c->allequal(map(t->length(chunk_list_timeseries.chuck_list[t].data[c].λ),1:length(chunk_list_timeseries))),1:10)
+    map(c->allequal(map(t->length(chunk_list_timeseries.chunk_list[t].data[c].λ),1:length(chunk_list_timeseries))),1:10)
 
     c=2
-    println(map(t->length(chunk_list_timeseries.chuck_list[t].data[c].λ),1:length(chunk_list_timeseries)))
+    println(map(t->length(chunk_list_timeseries.chunk_list[t].data[c].λ),1:length(chunk_list_timeseries)))
 end
 
 

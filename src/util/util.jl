@@ -3,7 +3,7 @@ const speed_of_light_mps = 299792458.0 # TODO: Update value
 calc_doppler_factor(rv::Real) = one(rv) + rv/speed_of_light_mps
 
 """Compute Doppler boost factor (relativistic) for rv and v_perp in km/s"""
-calc_doppler_factor(rv::Real, v_perp::Real) = one(rv) + rv/speed_of_light_mps/(one(rv) - (rv^2+v_perp^2)/speed_of_light_mps)^2)
+calc_doppler_factor(rv::Real, v_perp::Real) = (one(rv) + rv/speed_of_light_mps)/(one(rv) - (rv^2+v_perp^2)/speed_of_light_mps^2)
 
 """Estimate line width based on stellar Teff (K) and optionally v_rot (km/s).  Output in km/s."""
 function predict_line_width(Teff::Real; v_rot::Real=zero(Teff))

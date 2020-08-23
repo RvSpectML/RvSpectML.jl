@@ -8,5 +8,5 @@ CurrentModule = RvSpectML
 ```
 
 ```@autodocs
-Modules = [RvSpectML]
+Modules = [RvSpectML,RvSpectML.NEID ]
 ```

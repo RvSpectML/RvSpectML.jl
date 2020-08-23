@@ -1,3 +1,4 @@
+#=
 const min_orders_in_spectra = 1
 const max_orders_in_spectra = 128
 const min_pixels_in_order = 1
@@ -5,6 +6,7 @@ const max_pixels_in_order = 9128
 const min_pixels_in_spectra = min_orders_in_spectra*min_pixels_in_order
 const max_pixels_in_spectra = max_orders_in_spectra*max_pixels_in_order
 min_usable_pixels_in_order = 128
+=#
 
 abstract type AbstractSpectra end
 abstract type AbstractSpectra1D <: AbstractSpectra end

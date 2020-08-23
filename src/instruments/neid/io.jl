@@ -32,7 +32,7 @@ function read_header(fn::String)
 end
 
 """ Read NEID (non-solar) data from FITS file, and return in a Spectra2DBasic object."""
-function read_data(fn::String)
+function read_data
 end
 
 function read_data(fn::String, metadata::Dict{Symbol,Any} )

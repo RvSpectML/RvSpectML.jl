@@ -1,7 +1,7 @@
 abstract type AbstractInstrument end
-
 abstract type AbstractInstrument1D <: AbstractInstrument end
 abstract type AbstractInstrument2D <: AbstractInstrument end
+export AbstractInstrument, AbstractInstrument1D, AbstractInstrument2D
 
 #=
 For each instrument/data file type, need to create a sub-type of either AbstractInstrument2D or AbstractInstrument1D and

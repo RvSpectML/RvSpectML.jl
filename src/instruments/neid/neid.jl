@@ -1,8 +1,10 @@
 module NEID
+using RvSpectML
+using DataFrames, FITSIO
 
 #type NEID <: AbstractInstrument end
-type NEID1D <: AbstractInstrument1D end
-type NEID2D <: AbstractInstrument2D end
+struct NEID1D <: AbstractInstrument1D end
+struct NEID2D <: AbstractInstrument2D end
 AnyNEID = Union{NEID1D,NEID2D}
 
 min_order(::NEID2D) = 1

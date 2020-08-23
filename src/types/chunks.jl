@@ -43,10 +43,11 @@ mutable struct ChunckList{CT<:AbstractChuckOfSpectra, AT<:AbstractArray{CT,1} } 
       data::AT
 end
 
+#=
 function ChunckList(in::AT) where {CT<:AbstractChuckOfSpectra, AT<:AbstractArray{CT,1} }
     ChunckList{CT,AT}(in)
 end
-
+=#
 
 abstract type AbstractChunckListTimeseries end
 mutable struct ChunckListTimeseries{CLT<:AbstractChunckList, ACLT<:AbstractArray{CLT,1}, TT<:Real, AT<:AbstractArray{TT,1} } <: AbstractChunckListTimeseries
@@ -54,9 +55,11 @@ mutable struct ChunckListTimeseries{CLT<:AbstractChunckList, ACLT<:AbstractArray
     chuck_list::ACLT
 end
 
+#=
 function ChunckListTimeseries(t::AT, cl::ACLT) where {CLT<:AbstractChunckList, ACLT<:AbstractArray{CLT,1}, TT<:Real, AT<:AbstractArray{TT,1} }
     ChunckListTimeseries{CLT,ACLT,TT,AT}(t,cl)
 end
+=#
 
 import Base.length
 length(cl::CLT) where {CLT<:AbstractChunckList} = length(cl.data)

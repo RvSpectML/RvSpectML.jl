@@ -29,7 +29,16 @@ df_files_use = df_files |>
 if true
     drift_corrections = CSV.read("SolarRV20190918_JD_SciRV_CalRV.txt", header=["bjd", "sci_drift", "cal_drift"]);
 
+    drift_interp = LinearInterpolation(drift_corrections[:bjd],drift_corrections[:cal_drift])
+    df_files_use[!,:drift] = drift_interp.(df_files_use.bjd)
+    if ! "doppler_factor" in names(df)
+        df_files_use[!,:doppler_factor] = calc_doppler_factor.(df_files_use[:drift])
+    else
+        df_files_use[!,:doppler_factor] .*= calc_doppler_factor.(df_files_use[:drift])
+    end
+
     # TODO: WARNING: NEED TO CHECK SIGN OF DRIFT CORRECTION!!!
+#=
 function apply_drift_correction!(spectra::S,time::Real,drift_cor::DataFrame; rv_field::Symbol=:cal_drift) where {S<:AbstractSpectra}
     @assert any(isequal(:bjd),propertynames(drift_cor))
     @assert any(isequal(rv_field),propertynames(drift_cor))
@@ -45,9 +54,10 @@ function apply_drift_correction!(spectra::S,time::Real,drift_cor::DataFrame; rv_
     end
     return spectra
 end
-
 @time map(x->apply_drift_correction!(x[1],x[2],drift_corrections), zip(solar_data,df_files_use.bjd));
 drift_corrections[:cal_drift].-mean(drift_corrections[:cal_drift])
+=#
+
 end
 
 if true

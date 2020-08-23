@@ -5,6 +5,18 @@ calc_doppler_factor(rv::Real) = one(rv) + rv/speed_of_light_mps
 """Compute Doppler boost factor (relativistic) for rv and v_perp in km/s"""
 calc_doppler_factor(rv::Real, v_perp::Real) = (one(rv) + rv/speed_of_light_mps)/(one(rv) - (rv^2+v_perp^2)/speed_of_light_mps^2)
 
+"""Multiply spectra's λs by doppler_factor and update spectra metadata, so doppler_factor knows how to undo the transform."""
+function apply_doppler_factor!(spectra::S,doppler_factor::Real) where {S<:AbstractSpectra}
+    spectra.λ .*= doppler_factor
+    if haskey(spectra.metadata,:doppler_factor)
+        spectra.metadata[:doppler_factor] /= doppler_factor
+    else
+        spectra.metadata[:doppler_factor] = 1/doppler_factor
+    end
+    return spectra
+end
+
+
 """Estimate line width based on stellar Teff (K) and optionally v_rot (km/s).  Output in km/s."""
 function predict_line_width(Teff::Real; v_rot::Real=zero(Teff))
     @assert 3000 < Teff < 10000 # K

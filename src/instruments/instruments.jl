@@ -34,5 +34,8 @@ export read_manifest, read_metadata_from_fits
 include("neid/neid.jl")
 export NEID1D, NEID2D, AnyNEID
 
-#include("expres/expres.jl")
-#include("neid/harps-n.jl")
+include("expres/expres.jl")
+export EXPRES1D, EXPRES2D, AnyEXPRES
+
+include("harps-n/harps-n.jl")
+export HARPSN1D, HARPSN2D, AnyHARPSN

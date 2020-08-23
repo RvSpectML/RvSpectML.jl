@@ -238,6 +238,7 @@ function make_interpolator_linear_var(spectra::Union{AS,AC}) where { AS<:Abstrac
     LinearInterpolation(spectra.λ, spectra.var)
 end
 
+#=
 using Stheno
 
 function make_interpolator_gp(spectra::Union{AS,AC}; length_scale::Real = 0.1, σ_scale::Real = 1.0) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectra}
@@ -312,6 +313,8 @@ function pack_chunks_into_matrix(timeseries::ACLT, chunk_grids::AR) where { ACLT
     #return flux_matrix
     return (flux=flux_matrix, var=var_matrix, λ=λ_vec, chunk_map=chunk_map)
 end
+
+=#
 
 function calc_deriv(flux::AbstractArray{T1,1}, λ::AbstractArray{T2,1}) where { T1<:Real, T2<:Real }
     @assert size(flux) == size(λ)

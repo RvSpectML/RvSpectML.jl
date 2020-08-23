@@ -1,3 +1,5 @@
+using RvSpectML
+
 # 2458745.1296134139 to 2458745.4284185418. Out of those, I usually also require the JD to be less than 2458745.283
 data_path = "20190918"   # TODO:  Update with path to data on your local machine
 num_spectra_to_use = 20

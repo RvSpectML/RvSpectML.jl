@@ -47,3 +47,17 @@ function read_metadata_from_fits(fn::String; fields::Array{Symbol,1}, fields_str
     df = Dict{Symbol,Any}(zip(fields,values))
     return df
 end
+
+""" Read mask in ESPRESSO csv format.
+   ESPRESSO format: two columns, lambda and weight.
+"""
+function read_mask_espresso(fn::String)
+    CSV.read(fn,header=["lambda","weight"])
+end
+
+""" Read mask in VALD csv format.
+   VALD format: lambda_lo, lambdaa_hi and weight.
+ """
+function read_mask_vald(fn::String)
+    CSV.read(fn,header=["lambda_lo","lambda_hi","depth"])
+end

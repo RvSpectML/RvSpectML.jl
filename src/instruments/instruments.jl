@@ -1,7 +1,20 @@
-abstract type AbstractInstrument end
-abstract type AbstractInstrument1D <: AbstractInstrument end
-abstract type AbstractInstrument2D <: AbstractInstrument end
-export AbstractInstrument, AbstractInstrument1D, AbstractInstrument2D
+export min_order, max_order, min_pixel_in_order, max_pixel_in_order, min_col_default, max_col_default
+export orders_all, pixels_all, max_pixels_in_spectra       # generic implementations avaliable
+export metadata_symbols_default, metadata_strings_default  # need to specialize
+
+include("common.jl")
+export read_manifest, read_header, read_metadata_from_fits
+export read_mask_espresso, read_mask_vald
+
+include("neid/neid.jl")
+export NEID1D, NEID2D, AnyNEID
+
+include("expres/expres.jl")
+export EXPRES1D, EXPRES2D, AnyEXPRES
+
+include("harps-n/harps-n.jl")
+export HARPSN1D, HARPSN2D, AnyHARPSN
+
 
 #=
 For each instrument/data file type, need to create a sub-type of either AbstractInstrument2D or AbstractInstrument1D and
@@ -23,19 +36,3 @@ and
     min_col_default(::NEID1D) = 451
     max_col_default(::NEID1D) = 9216 - min_col_default(NEID1D())
 =#
-
-export min_order, max_order, min_pixel_in_order, max_pixel_in_order, min_col_default, max_col_default
-export orders_all, pixels_all, max_pixels_in_spectra       # generic implementations avaliable
-export metadata_symbols_default, metadata_strings_default  # need to specialize
-
-include("common.jl")
-export read_manifest, read_header, read_metadata_from_fits
-
-include("neid/neid.jl")
-export NEID1D, NEID2D, AnyNEID
-
-include("expres/expres.jl")
-export EXPRES1D, EXPRES2D, AnyEXPRES
-
-include("harps-n/harps-n.jl")
-export HARPSN1D, HARPSN2D, AnyHARPSN

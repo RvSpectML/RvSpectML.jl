@@ -1,9 +1,12 @@
 """
    Functions & traits for the NEID spectrograph
    https://neid.psu.edu/
+Author: Eric Ford and collaborators
+Created: August 2020
 """
+
 module NEID
-using RvSpectML
+using ..RvSpectML 
 using DataFrames, FITSIO
 
 #type NEID <: AbstractInstrument end

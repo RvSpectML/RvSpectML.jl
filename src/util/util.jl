@@ -1,3 +1,9 @@
+"""
+Author: Eric Ford
+Created: August 2020
+Contact: https://github.com/eford/
+"""
+
 # Constants
 const speed_of_light_mps = 299792458.0 # TODO: Update value
 
@@ -134,7 +140,7 @@ end
 
 #=
 function make_chunk_list(spectra::AS, line_list::AA; Δ::Real=Δλoλ_fit_line_default) where { AS<:AbstractSpectra, R<:Real, AA<:AbstractArray{R,1} }
-   ChunkList(map(l->ChunkOfSpectra(spectra,find_line_best(l,spectra,Δ=Δ)), line_list) )
+   ChunkList(map(l->ChuckOfSpectrum(spectra,find_line_best(l,spectra,Δ=Δ)), line_list) )
 end
 =#
 
@@ -145,14 +151,14 @@ end
 function make_chunk_list(spectra::AS, line_list::DataFrame; Δ::Real=Δλoλ_edge_pad_default) where { AS<:AbstractSpectra }
     @assert haskey(line_list,:lambda_lo)
     @assert haskey(line_list,:lambda_hi)
-    ChunkList(map(row->ChunkOfSpectra(spectra,find_line_best(row.lambda_lo,row.lambda_hi,spectra,Δ=Δ)), eachrow(line_list) ))
+    ChunkList(map(row->ChuckOfSpectrum(spectra,find_line_best(row.lambda_lo,row.lambda_hi,spectra,Δ=Δ)), eachrow(line_list) ))
 end
 
 """ Return a ChunkList with a region of spectrum from each order in orders_to_use.
-    inst:  Instrument trait
+    inst:  Instrument trait that provides orders_to_use and pixels_to_use.
+    or
     orders_to_use: Range or Array (orders_to_use(inst))
     pixels_to_use: Array of Ranges (each from min_col to max_col)
-    If pixels_to_use is not provided:
     min_col: (min_col_default(inst))
     max_col: (max_col_default(inst))
 """
@@ -162,8 +168,8 @@ end
 function make_orders_into_chunks(spectra::AS, inst::AbstractSpectra,
         min_col::Integer = min_col_default(inst), # min_col_neid_default,
         max_col::Integer = max_col_default(inst); #max_col_neid_default ,
-        orders_to_use = orders_to_use(inst), # 1:size(spectra.flux,2),
-        ) where {AS<:AbstractSpectra, }
+        orders_to_use = orders_to_use(inst) # 1:size(spectra.flux,2),
+        ) where {AS<:AbstractSpectra }
     @assert eltype(orders_to_use) <: Integer
     @assert all( min_order(inst) .<= orders_to_use .<= max_order(inst) )
     @assert min_col >= min_pixel_in_order(inst)
@@ -172,15 +178,15 @@ function make_orders_into_chunks(spectra::AS, inst::AbstractSpectra,
     make_orders_into_chunks(spectra,inst,orders_to_use=orders_to_use, pixels_to_use=pixels_to_use)
 end
 
-function make_orders_into_chunks(spectra::AS, inst::AbstractSpectra;
-        orders_to_use = orders_to_use(inst),
-        pixels_to_use::AAR ) where {AS<:AbstractSpectra, AR<:AbstractRange, AAR<:AbstractArray{AbstractRange,1} }
+function make_orders_into_chunks(spectra::AS;
+        orders_to_use::Union{AR,AA1}, pixels_to_use::AAR ) where {
+         AS<:AbstractSpectra, AR<:AbstractRange{Int64}, AA1<:AbstractArray{Int64,1}, AAR<:AbstractArray{AR,1} }
     @assert eltype(orders_to_use) <: Integer
-    @assert all( min_order(inst) .<= orders_to_use .<= max_order(inst) )
-    @assert minimum(pixels_to_use) >= min_pixel_in_order(inst)
-    @assert maximum(pixels_to_use) <= max_pixel_in_order(inst)
+    #@assert all( min_order(inst) .<= orders_to_use .<= max_order(inst) )
+    #@assert minimum(pixels_to_use) >= min_pixel_in_order(inst)
+    #@assert maximum(pixels_to_use) <= max_pixel_in_order(inst)
     ChunkList( map(order->
-                    ChunkOfSpectra(spectra,(pixels=pixels_to_use[order],order=order)),
+                    ChuckOfSpectrum(spectra,(pixels=pixels_to_use[order],order=order)),
                     orders_to_use ))
 end
 
@@ -242,7 +248,13 @@ end
 
 
 # Maniuplation Line lists
-
+""" Return DataFrame with specifications for each chunk which will contain one or more lines.
+    Input:  line_list a DataFrame with:
+    -  lambda_lo, lambda_hi, lambda_mid, depth_vald
+    Output:  DataFrame with
+    - lambda_lo & lambda_hi: boundaries for chunk
+    - line_λs & line_depths: arrays with info about each line
+"""
 function merge_lines(line_list::DataFrame)
     chunk_list_df = DataFrame(:lambda_lo=>Float64[],:lambda_hi=>Float64[],
                                 :line_λs=>Array{Float64,1}[],:line_depths=>Array{Float64,1}[])

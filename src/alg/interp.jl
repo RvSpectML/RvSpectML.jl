@@ -1,17 +1,17 @@
 """ Return interpolator for fluxes in spectra. """
-function make_interpolator_linear_flux(spectra::Union{AS,AC}) where { AS<:AbstractSpectra, AC<:AbstractChunkOfSpectra}
+function make_interpolator_linear_flux(spectra::Union{AS,AC}) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectrum}
     LinearInterpolation(spectra.λ, spectra.flux)
 end
 
 """ Return interpolator for variances in spectra. """
-function make_interpolator_linear_var(spectra::Union{AS,AC}) where { AS<:AbstractSpectra, AC<:AbstractChunkOfSpectra}
+function make_interpolator_linear_var(spectra::Union{AS,AC}) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectrum}
     LinearInterpolation(spectra.λ, spectra.var)
 end
 
 #=
 using Stheno
 
-function make_interpolator_gp(spectra::Union{AS,AC}; length_scale::Real = 0.1, σ_scale::Real = 1.0) where { AS<:AbstractSpectra, AC<:AbstractChunkOfSpectra}
+function make_interpolator_gp(spectra::Union{AS,AC}; length_scale::Real = 0.1, σ_scale::Real = 1.0) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectrum}
     xobs = spectra.λ
     yobs = copy(spectra.flux)
     obs_var = spectra.var
@@ -28,7 +28,7 @@ function make_interpolator_gp(spectra::Union{AS,AC}; length_scale::Real = 0.1, �
     f_posterior = f | Obs(fx, yobs)
 end
 
-function interp_to_grid(spectra::Union{AS,AC}, grid::AR) where { AS<:AbstractSpectra, AC<:AbstractChunkOfSpectra, AR<:AbstractRange}
+function interp_to_grid(spectra::Union{AS,AC}, grid::AR) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectrum, AR<:AbstractRange}
    #grid = chunk_grids[c]
    #make_interpolator_linear(spectra).(grid)
    f_posterior = make_interpolator_gp(spectra,length_scale=6e-5*mean(spectra.λ))
@@ -96,13 +96,20 @@ function calc_deriv(flux::AbstractArray{T1,1}, λ::AbstractArray{T2,1}) where { 
     return dfdlogλ
 end
 
+""" Return mean flux (averaging over observations at different times, variance weighted) based on a common set of wavelengths.
+   Inputs: flux & var (2d: pixel, time)
+"""
+function calc_mean_spectrum(flux::AbstractArray{T1,2}, var::AbstractArray{T2,2} ) where { T1<:Real, T2<:Real }
+    flux_mean = sum(flux./var,dims=2)./sum(1.0./var,dims=2)
+end
+
 """ Return mean numerical derivative of fluxes based on a common set of wavelengths.
-   Inputs: flux & var (2d) and λ (1d)
+    Inputs: flux & var (2d) and λ (1d)
  """
 function calc_mean_deriv(flux::AbstractArray{T1,2}, var::AbstractArray{T1,2}, λ::AbstractArray{T3,1},
         chunk_map::AbstractArray{URT,1}) where
     { T1<:Real, T2<:Real, T3<:Real, URT<:AbstractUnitRange} #, RT<:AbstractRange }
-    flux_mean = sum(flux./vm,dims=2)./sum(1.0./vm,dims=2)
+    flux_mean = calc_mean_spectrum(flux,var)
     deriv = Array{T1,1}(undef,length(flux_mean))
     map(c->deriv[c] .= calc_deriv(flux_mean[c],λv[c]),chunk_map )
     return deriv

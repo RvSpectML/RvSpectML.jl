@@ -1,11 +1,3 @@
-using Pkg
-#=  If you need to add packages
-Pkg.add("Flux")
-Pkg.add("PDMats")
-Pkg.add("BandedMatrices")
-Pkg.add("Plots")
-=#
-
 using LinearAlgebra: dot, Symmetric
 using Statistics: mean, std
 using Flux                           # For optimization
@@ -20,13 +12,13 @@ struct PPCAGridded <: AbstractPPCA
   x::Array{Float64,2}
   lambda::StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}
 
-  function PPCAGridded(W::AA1, b::AA2, x::AA3, lambda_range::R) where { T<:Real, AA1<:AbstractArray{T,2}, AA2<:AbstractArray{T,1}, AA3<:AbstractArray{T,2}, R<:AbstractRange{T} } 
+  function PPCAGridded(W::AA1, b::AA2, x::AA3, lambda_range::R) where { T<:Real, AA1<:AbstractArray{T,2}, AA2<:AbstractArray{T,1}, AA3<:AbstractArray{T,2}, R<:AbstractRange{T} }
      @assert size(W,1) == size(b,1)
      @assert size(W,2) == size(x,1)
      @assert length(lambda_range) == size(b,1)
      new(W, b, x, lambda_range )
   end
-            
+
   function PPCAGridded(in::PPCAGridded)
      @assert size(in.W,1) == size(in.b,1)
      @assert size(in.W,2) == size(in.x,1)
@@ -39,7 +31,7 @@ end
 import Base.copy
 copy(in::PPCAGridded) = PPCAGridded(in)
 
-function PPCAGridded(in::Integer, out::Integer, nobs::Integer, lambda_range::R) where {R<:AbstractRange} 
+function PPCAGridded(in::Integer, out::Integer, nobs::Integer, lambda_range::R) where {R<:AbstractRange}
     @assert length(lambda_range) == out
     PPCAGridded(randn(out, in), randn(out), randn(in,nobs), lambda_range)
 end
@@ -51,7 +43,7 @@ get_num_param(m::PPCAGridded) = get_num_outputs(m)*(get_num_inputs(m)+1)
 Flux.@functor PPCAGridded (W,b,x)
 
 # Overload call, so the object can be used as a function
-function (m::PPCAGridded)(x::AbstractArray{T})::Array{T,2} where { T<:Real } 
+function (m::PPCAGridded)(x::AbstractArray{T})::Array{T,2} where { T<:Real }
     m.W * m.x .+ m.b
 end
 
@@ -72,7 +64,7 @@ end
 
 chisq(m::PPCAGridded, ss::SpectraSet1D) = chisq(m.x,m,ss)
 
-mutable struct Regularizer 
+mutable struct Regularizer
     covar::AbstractPDMat{Float64}
     scale_input::Float64
     scale_output::Float64
@@ -90,7 +82,7 @@ function make_covar_banded(n::Integer, b::Integer, kernel::Function; lambda::Rea
     covar_at_lag = kernel.(lags./(lambda*b))
     PDMat(Symmetric(BandedMatrix((0=>ones(n),1=>covar_at_lag[1]*ones(n-1),2=>covar_at_lag[2]*ones(n-2),3=>covar_at_lag[3]*ones(n-3),4=>covar_at_lag[4]*ones(n-4),5=>covar_at_lag[5]*ones(n-5)), (n,n), (b,b) )))
 end
-    
+
 function update_lambda!(r::Regularizer, lambda::Real)
     r.scale_input = lambda
     r.covar = make_covar_banded(size(r.covar,1), r.num_bands, r.kernel, lambda=lambda)
@@ -149,11 +141,11 @@ function regularization_basis(x::AbstractArray{T,2})  where { T<:Real }
 end
 
 function regularization(x::AbstractArray{T,2}, m::PPCAGridded) #=, ss::SpectraSet1D)=#  where { T<:Real }
-    regularization_scores(x) + regularization_basis(m.W) + regularization_mean(m.b, mu=1.0) 
+    regularization_scores(x) + regularization_basis(m.W) + regularization_mean(m.b, mu=1.0)
 end
 
 function regularization(m::PPCAGridded) #=, ss::SpectraSet1D) =# where { T<:Real }
-    regularization_scores(m.x) + regularization_basis(m.W) + regularization_mean(m.b, mu=1.0) 
+    regularization_scores(m.x) + regularization_basis(m.W) + regularization_mean(m.b, mu=1.0)
 end
 
 function loss(x::AbstractArray{T,2}, m::M, ss::SpectraSet1D)  where { T<:Real, M<:AbstractPPCA }
@@ -222,8 +214,8 @@ gp_reg = Matern52Regularizer(num_outputs, 5, lambda=0.4, sigma=0.0)
 ppca = PPCAGridded(num_inputs,num_outputs, num_obs, lambda_range) # Create a PPCA model with random initialization
 update_sigma!(gp_reg, 0.0)                               # No regularization
 num_training_itterations = 11  # First test that it's working
-dataset = Base.Iterators.repeated((ppca,spec),num_training_itterations) 
-#dataset = Base.Iterators.repeated((ppca,spec),num_training_itterations) 
+dataset = Base.Iterators.repeated((ppca,spec),num_training_itterations)
+#dataset = Base.Iterators.repeated((ppca,spec),num_training_itterations)
 opt = NADAM()          # Choose Optimization algorithm
 loss_tol = 0.01
 itterations = 0
@@ -238,12 +230,12 @@ evalcb = function ()   # Callback to show loss and stop optimization
     if itterations%10 == 1
         println( string(itterations) * ": χ^2 = ", cs, " reg = ", reg, " loss = ", l)
     end
-    num_dof = size(spec.flux,1)*size(spec.flux,2) - get_num_param(ppca) - get_num_inputs(ppca)*get_num_obs(spec) 
+    num_dof = size(spec.flux,1)*size(spec.flux,2) - get_num_param(ppca) - get_num_inputs(ppca)*get_num_obs(spec)
     #if cs < min( 0.1*num_dof, num_dof - 2.0*sqrt(num_dof) )
     if (last_loss < l+loss_tol) && ( l <= last_loss)
-        consecutive_passes += 1 
+        consecutive_passes += 1
         println( string(itterations) * ": χ^2 = ", cs, " reg = ", reg, " loss = ", l)
-        if consecutive_passes >=10 
+        if consecutive_passes >=10
             println("Hurray!")
             Flux.stop()
         end
@@ -263,7 +255,7 @@ mean(abs.(ppca.x.-x_true[1:3,:]))
 
 update_sigma!(gp_reg, 0.0)
 num_training_itterations = 10000
-dataset = Base.Iterators.repeated((ppca,spec),num_training_itterations) 
+dataset = Base.Iterators.repeated((ppca,spec),num_training_itterations)
 Flux.train!(loss, ppca_par, dataset, opt, cb = evalcb)
 
 plt1 = plot(ppca_true.lambda,ppca_true.b, label="true", title="Mean Vector")
@@ -288,7 +280,7 @@ std(ppca.b.-ppca_true.b), [std(ppca.W[:,i]./(sqrt(2)*std(ppca.W[:,i])).-ppca_tru
 ppca_par = Flux.params(ppca)    # Make x active again
 update_sigma!(gp_reg, 0.0)
 num_training_itterations = 10000
-dataset = Base.Iterators.repeated((ppca,spec),num_training_itterations) 
+dataset = Base.Iterators.repeated((ppca,spec),num_training_itterations)
 Flux.train!(loss, ppca_par, dataset, opt, cb = evalcb)
 
 std(ppca.b.-ppca_true.b), [std(ppca.W[:,i]./(sqrt(2)*std(ppca.W[:,i])).-ppca_true.W[:,i]./(sqrt(2)*std(ppca_true.W[:,i]))) for i in 1:3]
@@ -318,7 +310,7 @@ std(ppca.b.-ppca_true.b), [std(ppca.W[:,i]./(sqrt(2)*std(ppca.W[:,i])).-ppca_tru
 update_sigma!(gp_reg, 3)
 num_training_itterations = 10000
 #ppca = PPCAGridded(num_inputs,num_outputs, num_obs, lambda_range)  # Uncomment to start fresh
-dataset = Base.Iterators.repeated((ppca,spec),num_training_itterations) 
+dataset = Base.Iterators.repeated((ppca,spec),num_training_itterations)
 ppca_par = params(ppca)
 itterations = 0
 #loss_tol = 0.01
@@ -354,8 +346,8 @@ function chisq_versus_reg_const(reg_const)
     update_sigma!(gp_reg, reg_const)
     num_training_itterations = 10000
     #ppca = PPCAGridded(num_inputs,num_outputs, lambda_range)
-    #dataset = Base.Iterators.repeated((x,ppca,spec),num_training_itterations) 
-    dataset = Base.Iterators.repeated((ppca_tmp,spec),num_training_itterations) 
+    #dataset = Base.Iterators.repeated((x,ppca,spec),num_training_itterations)
+    dataset = Base.Iterators.repeated((ppca_tmp,spec),num_training_itterations)
     #ppca_par = params(ppca,x)
     ppca_par = params(ppca_tmp)
     itterations = 0
@@ -366,11 +358,11 @@ function chisq_versus_reg_const(reg_const)
     cs = chisq(ppca.x,ppca_tmp,spec)
 end
 
-reg_const_list = [0.3, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 15.0, 20. ] 
+reg_const_list = [0.3, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 15.0, 20. ]
 #update_lambda!(gp_reg, 0.2)
 chisq_list = chisq_versus_reg_const.(reg_const_list)
 reg_const_list[1] = 0.1 # kludge for log
-chisq_list 
+chisq_list
 
 plt_idx = 1:length(reg_const_list) - 0
 scatter(log10.(reg_const_list[plt_idx]),log10.(chisq_list[plt_idx]),legend=:none)
@@ -385,10 +377,10 @@ struct PPCAInterpolated <: AbstractPPCA
   x::Array{Float64,2}
 
   lambda::StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}
-  w_lo_array::Array{Float64,2}  
+  w_lo_array::Array{Float64,2}
   idx_lo_array::Array{Int64,2}
-    
-  function PPCAInterpolated(W::AA2, b::AA1, x::AA2, lambda_range::R; num_pad::Integer = 0) where { T<:Real, AA1<:AbstractArray{T,1}, AA2<:AbstractArray{T,2}, R<:AbstractRange } 
+
+  function PPCAInterpolated(W::AA2, b::AA1, x::AA2, lambda_range::R; num_pad::Integer = 0) where { T<:Real, AA1<:AbstractArray{T,1}, AA2<:AbstractArray{T,2}, R<:AbstractRange }
      @assert size(W,1) == size(b,1)
      @assert size(W,2) == size(x,1)
      @assert length(lambda_range) == size(b,1)
@@ -397,15 +389,15 @@ struct PPCAInterpolated <: AbstractPPCA
      #@assert size(w_lo_array,1) ==  size(b,1)
      #@assert size(w_lo_array,2) ==  size(b,1)
      #@assert size(idx_lo_array) == size(w_lo_array)
-     if num_pad == 0 
+     if num_pad == 0
         return new(W, b, x, lambda_range, zeros(Int64, num_out,num_obs), zeros(num_out,num_obs) )
      else
         @error "Need to write code to automatically pad PPCAInterpoalted's grid"
      end
-        
+
   end
-    
-    
+
+
   function PPCAInterpolated(in::PPCAInterpolated)
      @assert size(in.W,1) == size(in.b,1)
      @assert size(in.W,2) == size(in.x,1)
@@ -415,7 +407,7 @@ struct PPCAInterpolated <: AbstractPPCA
 end
 
 
-function PPCAInterpolated(num_in::Integer, num_out::Integer, lambda_range::R, num_obs::Integer) where {R<:AbstractRange} 
+function PPCAInterpolated(num_in::Integer, num_out::Integer, lambda_range::R, num_obs::Integer) where {R<:AbstractRange}
     @assert length(lambda_range) == num_out
     PPCAInterpolated(randn(num_out, num_in), randn(num_out), lambda_range, num_obs )
 end
@@ -463,7 +455,7 @@ function predict(m::PPCAInterpolated, x::AbstractArray{T,2}, i::Integer) where {
     btmp = w.*m.b[idx]   + (1.0.-w).*m.b[idx.+1]
     Wtmp*x[:,i].+btmp
     =#
-          w .*(m.W[idx,:]   *x[:,i].+m.b[idx]   ) + 
+          w .*(m.W[idx,:]   *x[:,i].+m.b[idx]   ) +
     (1.0.-w).*(m.W[idx.+1,:]*x[:,i].+m.b[idx.+1])
 end
 
@@ -477,18 +469,18 @@ end
 
 function chisq(x::AbstractArray{T,2}, m::PPCAInterpolated, ss::SpectraSet1D)  where { T<:Real }
     @assert get_num_obs(m) == get_num_obs(ss)
-    χ2 = zero(T)    
+    χ2 = zero(T)
     for i in 1:get_num_obs(m)
         yhat = predict(m,i)
         χ2 += sum(((ss.flux[:,i].-yhat).^2 ./ss.flux_var[:,i]))
     end
-    return χ2 
+    return χ2
 end
 
 chisq(m::PPCAInterpolated, ss::SpectraSet1D) = chisq(m.x,m,ss)
 
 function regularization(x::AbstractArray{T,2}, m::PPCAInterpolated, ss::SpectraSet1D)  where { T<:Real }
-    regularization_scores(x) + regularization_basis(m.W) + regularization_mean(m.b, mu=1.0) 
+    regularization_scores(x) + regularization_basis(m.W) + regularization_mean(m.b, mu=1.0)
 end
 
 regularization(m::PPCAInterpolated, ss::SpectraSet1D) = regularization(m.x,m,ss)
@@ -510,7 +502,7 @@ chisq(ppca.x,ppca,spec), chisq(ppca_interp.x,ppca_interp,spec)
 
 update_sigma!(gp_reg, 4.0)                               # No regularization
 num_training_itterations = 11  # First test that it's working
-dataset = Base.Iterators.repeated((ppca_interp,spec),num_training_itterations) 
+dataset = Base.Iterators.repeated((ppca_interp,spec),num_training_itterations)
 opt = NADAM()          # Choose Optimization algorithm
 loss_tol = 0.01
 itterations = 0
@@ -525,12 +517,12 @@ evalcb = function ()   # Callback to show loss and stop optimization
     if itterations%10 == 1
         println( string(itterations) * ": χ^2 = ", cs, " reg = ", reg, " loss = ", l)
     end
-    num_dof = size(spec.flux,1)*size(spec.flux,2) - get_num_param(ppca_interp) - get_num_inputs(ppca_interp)*get_num_obs(spec) 
+    num_dof = size(spec.flux,1)*size(spec.flux,2) - get_num_param(ppca_interp) - get_num_inputs(ppca_interp)*get_num_obs(spec)
     #if cs < min( 0.1*num_dof, num_dof - 2.0*sqrt(num_dof) )
     if (last_loss < l+loss_tol) && ( l <= last_loss)
-        consecutive_passes += 1 
+        consecutive_passes += 1
         println( string(itterations) * ": χ^2 = ", cs, " reg = ", reg, " loss = ", l)
-        if consecutive_passes >=10 
+        if consecutive_passes >=10
             println("Hurray!")
             Flux.stop()
         end
@@ -543,7 +535,7 @@ ppcai_par = params(ppca_interp)
 Flux.train!(loss, ppcai_par, dataset, opt, cb = evalcb)
 
 num_training_itterations = 3000
-dataset = Base.Iterators.repeated((x,ppca_interp,spec),num_training_itterations) 
+dataset = Base.Iterators.repeated((x,ppca_interp,spec),num_training_itterations)
 Flux.train!(loss, ppcai_par, dataset, opt, cb = evalcb)
 
 plt1b = plot(ppca_true.lambda,ppca_true.b, label="true", title="Mean")
@@ -562,9 +554,9 @@ plot!(plt4b,ppca_true.lambda,ppca.W[:,2]./(sqrt(2)*std(ppca.W[:,2])).-ppca_true.
 plot!(plt4b,ppca_true.lambda,ppca.W[:,3]./(sqrt(2)*std(ppca.W[:,3])).-ppca_true.W[:,3]./(sqrt(2)*std(ppca_true.W[:,3])), label="W3", color=:green)
 plot(plt3b, plt4b, layout =  @layout [a ; b ] )
 
-plt5b = plot(ppca_true.lambda,ppca_true.b, label=:none) 
+plt5b = plot(ppca_true.lambda,ppca_true.b, label=:none)
 plot!(plt5b,ppca.lambda,ppca_interp.b, label=:none)
-plt6b = plot(ppca.lambda,ppca_interp.b.-ppca_true.b, label=:none) 
+plt6b = plot(ppca.lambda,ppca_interp.b.-ppca_true.b, label=:none)
 title!(plt1b, "Mean before transform")
 title!(plt5b, "Mean after transform")
 plot(plt1b, plt2b, plt5b, plt6b, layout =  @layout [a b ; c d ] )
@@ -591,9 +583,9 @@ struct PPCAGPBasis <: AbstractPPCA
   W_prior::Array{<:Stheno.AbstractGP,1}
   b_prior::Stheno.AbstractGP
   lambda
-#=    
-  function PPCAGPBasis(W::AbstractArray{WelT,1}, b::BT, x::AA2, lambda_range::R; num_pad::Integer = 0) where { 
-        WelT<:AbsGp,1}, BT<:AbsGp, R<:AbstractRange } 
+#=
+  function PPCAGPBasis(W::AbstractArray{WelT,1}, b::BT, x::AA2, lambda_range::R; num_pad::Integer = 0) where {
+        WelT<:AbsGp,1}, BT<:AbsGp, R<:AbstractRange }
      @assert length(first(W)) == length(b)
      @assert size(W,1) == size(x,1)
      #@assert length(lambda_range) == length(b)
@@ -601,8 +593,8 @@ struct PPCAGPBasis <: AbstractPPCA
      num_obs = size(x,2)
      return new(W, b, x, lambda_range )
   end
-    
-    
+
+
   function PPCAGPBasis(in::PPCAGPBasis)
     new(in.W,in.b,in.x,in.lambda)
   end
@@ -610,7 +602,7 @@ struct PPCAGPBasis <: AbstractPPCA
 end
 
 
-function PPCAGPBasis(num_basis::Integer, lambda_range::R, num_obs::Integer) where {R<:AbstractRange} 
+function PPCAGPBasis(num_basis::Integer, lambda_range::R, num_obs::Integer) where {R<:AbstractRange}
     @assert 3 <= length(lambda_range) <= 512
     AbsGP = Stheno.AbstractG
     num_out = length(lambda_range)
@@ -633,7 +625,7 @@ function predict(m::PPCAGPBasis, x::AbstractArray{T,2}, i::Integer, lambda::Abst
     xtmp = view(x,:,i)
     Wtmp = mapreduce(j->mean(m.W[j](lambda)), hcat,1:length(m.W) )
     btmp = mean(m.b(lambda))
-    ypred = Wtmp*xtmp+btmp    
+    ypred = Wtmp*xtmp+btmp
 end
 
 function predict(m::PPCAGPBasis, i::Integer, lambda::AbstractArray{T,1} ) where {T<:Real}
@@ -646,12 +638,12 @@ end
 
 function chisq(x::AbstractArray{T,2}, m::PPCAGPBasis, ss::SpectraSet1D)  where { T<:Real }
     @assert get_num_obs(m) == get_num_obs(ss)
-    χ2 = zero(T)    
+    χ2 = zero(T)
     for i in 1:get_num_obs(m)
         yhat = predict(m,i,ss.lambda_ssb[:,i])
         χ2 += sum(((ss.flux[:,i].-yhat).^2 ./ss.flux_var[:,i]))
     end
-    return χ2 
+    return χ2
 end
 
 chisq(m::PPCAGPBasis, ss::SpectraSet1D) = chisq(m.x,m,ss)
@@ -670,11 +662,11 @@ function regularization_basis(m::PPCAGPBasis)  where { GPT<:Stheno.AbstractGP }
 end
 
 function regularization(x::AbstractArray{T,2}, m::PPCAGPBasis #=, ss::SpectraSet1D =#)  where { T<:Real }
-    regularization_scores(x) + regularization_basis(m) + regularization_mean(m, mu=1.0) 
+    regularization_scores(x) + regularization_basis(m) + regularization_mean(m, mu=1.0)
 end
 
 function regularization(m::PPCAGPBasis #=, ss::SpectraSet1D=# )  where { T<:Real }
-    regularization_scores(m.x) + regularization_basis(m) + regularization_mean(m, mu=1.0) 
+    regularization_scores(m.x) + regularization_basis(m) + regularization_mean(m, mu=1.0)
 end
 
 
@@ -682,7 +674,7 @@ ktmp = 1.0 * stretch(Matern52(), 1 /1.0)
 bGP = GP(1.0, ktmp, GPC())
 b_prior = GP(1.0, ktmp, GPC())
 W_prior = [GP(1.0, ktmp, GPC()) for j in 1:size(ppca.W,2)]
-bGPx = bGP(ppca.lambda, 0.01) 
+bGPx = bGP(ppca.lambda, 0.01)
 bGPpost = bGP | Obs( bGPx , ppca.b)
 WGPpost = [bGP | Obs( bGPx , ppca.W[:,j]) for j in 1:size(ppca.W,2)]
 #ppca_gp = PPCAGPBasis(ppca.W,ppca.b,ppca.x,ppca.lambda)
@@ -715,7 +707,7 @@ mean(ppca_gp.b(ppca_gp.lambda))
 
 #update_sigma!(gp_reg, 0.0)                               # No regularization
 num_training_itterations = 1  # First test that it's working
-dataset = Base.Iterators.repeated((ppca_gp,spec),num_training_itterations) 
+dataset = Base.Iterators.repeated((ppca_gp,spec),num_training_itterations)
 opt = NADAM()          # Choose Optimization algorithm
 loss_tol = 0.01
 itterations = 0
@@ -730,12 +722,12 @@ evalcb = function ()   # Callback to show loss and stop optimization
     if itterations%10 == 1
         println( string(itterations) * ": χ^2 = ", cs, " reg = ", reg, " loss = ", l)
     end
-    num_dof = size(spec.flux,1)*size(spec.flux,2) - get_num_param(ppca_gp) - get_num_inputs(ppca_gp)*get_num_obs(spec) 
+    num_dof = size(spec.flux,1)*size(spec.flux,2) - get_num_param(ppca_gp) - get_num_inputs(ppca_gp)*get_num_obs(spec)
     #if cs < min( 0.1*num_dof, num_dof - 2.0*sqrt(num_dof) )
     if (last_loss < l+loss_tol) && ( l <= last_loss)
-        consecutive_passes += 1 
+        consecutive_passes += 1
         println( string(itterations) * ": χ^2 = ", cs, " reg = ", reg, " loss = ", l)
-        if consecutive_passes >=10 
+        if consecutive_passes >=10
             println("Hurray!")
             Flux.stop()
         end
@@ -748,7 +740,7 @@ ppca_gp_par = params(ppca_gp)
 Flux.train!(loss, ppca_gp_par, dataset, opt, cb = evalcb)
 
 num_training_itterations = 10
-dataset = Base.Iterators.repeated((x,ppca_gp,spec),num_training_itterations) 
+dataset = Base.Iterators.repeated((x,ppca_gp,spec),num_training_itterations)
 @time Flux.train!(loss, ppca_gp_par, dataset, opt, cb = evalcb)
 
 plt1b = plot(ppca_true.lambda,ppca_true.b, label="true", title="Mean")
@@ -767,9 +759,9 @@ plot!(plt4b,ppca_true.lambda,ppca.W[:,2]./(sqrt(2)*std(ppca.W[:,2])).-ppca_true.
 plot!(plt4b,ppca_true.lambda,ppca.W[:,3]./(sqrt(2)*std(ppca.W[:,3])).-ppca_true.W[:,3]./(sqrt(2)*std(ppca_true.W[:,3])), label="W3", color=:green)
 plot(plt3b, plt4b, layout =  @layout [a ; b ] )
 
-plt5b = plot(ppca_true.lambda,ppca_true.b, label=:none) 
+plt5b = plot(ppca_true.lambda,ppca_true.b, label=:none)
 plot!(plt5b,ppca.lambda,ppca_interp.b, label=:none)
-plt6b = plot(ppca.lambda,ppca_interp.b.-ppca_true.b, label=:none) 
+plt6b = plot(ppca.lambda,ppca_interp.b.-ppca_true.b, label=:none)
 title!(plt1b, "Mean before transform")
 title!(plt5b, "Mean after transform")
 plot(plt1b, plt2b, plt5b, plt6b, layout =  @layout [a b ; c d ] )

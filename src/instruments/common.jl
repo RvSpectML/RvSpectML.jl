@@ -4,14 +4,25 @@ pixels_all(inst::AbstractInstrument2D) = min_pixels_in_order(inst):max_pixels_in
 pixels_all(inst::AbstractInstrument1D) = min_pixel(inst):max_pixel(inst)
 max_pixels_in_spectra(inst::AbstractInstrument1D) = length(pixels_all(inst))
 max_pixels_in_spectra(inst::AbstractInstrument2D) = (max_order(inst)-min_order(inst)+1) * (max_pixel_in_order(inst)-min_pixel_in_order(inst)+1)
+min_pixels_in_chunk(inst::AbstractInstrument1D) = 6
 
 """Read manifest containing filename, bjd, target, and optionally additional metadata from CSV file. """
 function read_manifest(fn::String)
     CSV.read(fn)
 end
 
+""" Read header from FITS file and return Dict with contents. """
+function read_header(fn::String; header_idx::Integer = 1)
+    f = FITS(fn)
+    @assert 1<=header_idx<=length(f)
+    #@assert read_key(f[1],"SKY-OBJ")[1] == "Solar"
+    hdr = read_header(f[header_idx])
+    metadata = Dict(zip(map(k->Symbol(k),hdr.keys),hdr.values))
+end
+
+
 """ Read metadata in FITS header and return data for keys in fields_str/fields as a Dict. """
-function read_metadata_from_fits
+function read_metradata_from_fits
 end
 
 function read_metadata_from_fits(fn::String, fields::Array{Symbol,1})
@@ -28,6 +39,7 @@ function read_metadata_from_fits(fn::String; fields::Array{Symbol,1}, fields_str
     @assert length(fields) == length(fields_str)
     f = FITS(fn)
     hdr = read_header(f[1])
+    # Check that header has all expected fields
     for field in fields_str
         @assert findfirst(isequal(field),keys(hdr)) != nothing
     end

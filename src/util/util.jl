@@ -1,4 +1,6 @@
+# Constants
 const speed_of_light_mps = 299792458.0 # TODO: Update value
+
 """Compute Doppler boost factor (non-relativistic) for rv in km/s"""
 calc_doppler_factor(rv::Real) = one(rv) + rv/speed_of_light_mps
 
@@ -9,13 +11,18 @@ calc_doppler_factor(rv::Real, v_perp::Real) = (one(rv) + rv/speed_of_light_mps)/
 function apply_doppler_factor!(spectra::S,doppler_factor::Real) where {S<:AbstractSpectra}
     spectra.λ .*= doppler_factor
     if haskey(spectra.metadata,:doppler_factor)
-        spectra.metadata[:doppler_factor] /= doppler_factor
+        spectra.metadata[:doppler_factor] ./= doppler_factor
     else
         spectra.metadata[:doppler_factor] = 1/doppler_factor
     end
     return spectra
 end
 
+""" Calculate total SNR in (region of) spectra. """
+function calc_snr(flux::AbstractArray{T1},var::AbstractArray{T2}) where {T1<:Real, T2<:Real}
+    @assert size(flux) == size(var)
+    sum(flux./var)/sum(1.0 ./ var)
+end
 
 """Estimate line width based on stellar Teff (K) and optionally v_rot (km/s).  Output in km/s."""
 function predict_line_width(Teff::Real; v_rot::Real=zero(Teff))
@@ -27,33 +34,44 @@ end
 
 
 # Find indicies for pixels around lines
-
 const Δλoλ_fit_line_default = 5*(1.8*1000/speed_of_light_mps)
 const Δλoλ_edge_pad_default = 0*(1.8*1000/speed_of_light_mps)
 
+""" Return a range of columns indices with wavelengths within Δ of line_center """
 function find_cols_to_fit(wavelengths::AbstractArray{T,1}, line_center::Real; Δ::Real = Δλoλ_fit_line_default) where T<:Real
+    @assert Δ >= zero(Δ)
     findfirst(x->x>=line_center*(1-Δ),wavelengths):findlast(x->x<=line_center*(1+Δ),wavelengths)
 end
 
+""" Return a range of columns indices with wavelengths between line_lo and line_hi """
 function find_cols_to_fit(wavelengths::AbstractArray{T,1}, line_lo::Real, line_hi::Real; Δ::Real = Δλoλ_edge_pad_default) where T<:Real
     @assert line_lo < line_hi
     findfirst(x->x>=line_lo*(1-Δ),wavelengths):findlast(x->x<=line_hi*(1+Δ),wavelengths)
 end
 
+""" Return list of all orders that contain a pixel with wavelength lambda """
 function find_orders_with_line(goal::Real,lambda::AbstractArray{T,2}) where T<:Real
    order_min(i) = lambda[1,i]
    order_max(i) = lambda[end,i]
    findall(i->order_min(i)<=goal<=order_max(i), 1:size(lambda,2) )
 end
 
+""" Return list of all orders that contain all pixels with wavelengths between goal_lo and goal_hi """
 function find_orders_with_line(goal_lo::Real,goal_hi::Real,lambda::AbstractArray{T,2}) where T<:Real
    order_min(i) = lambda[1,i]
    order_max(i) = lambda[end,i]
    findall(i->order_min(i)<=goal_lo && goal_hi<=order_max(i), 1:size(lambda,2) )
 end
 
+""" Return list of (pixels, order) pairs that contain pixels with desireed wavelengths.
+    Excludes locations that contain any pixels with var == NaN.
+"""
+function findall_line end
+
 function findall_line(goal::Real,lambda::AbstractArray{T1,2},var::AbstractArray{T2,2}; Δ::Real = Δλoλ_fit_line_default) where {T1<:Real, T2<:Real}
     @assert lambda[1,1] <= goal <= lambda[end,end]
+    @assert size(lambda) == size(var)
+    @assert Δ >= zero(Δ)
     orders = find_orders_with_line(goal,lambda)
     @assert length(orders) >= 1
     locs = map(o->(pixels=find_cols_to_fit(lambda[:,o],goal,Δ=Δ),order=o), orders)
@@ -85,10 +103,8 @@ function findall_line(goal_lo::Real,goal_hi::Real,spectra::AS; Δ::Real = Δλo�
     findall_line(goal_lo,goal_hi,spectra.λ,spectra.var, Δ=Δ)
 end
 
-function calc_snr(flux::AbstractArray{T1},var::AbstractArray{T2}) where {T1<:Real, T2<:Real}
-    @assert size(flux) == size(var)
-    sum(flux./var)/sum(1.0 ./ var)
-end
+""" Return (pixels, order) pair that contain "best" region of spectra, based on highest SNR. """
+function find_line_best end
 
 function find_line_best(goal::Real,lambda::AbstractArray{T1,2},flux::AbstractArray{T2,2},var::AbstractArray{T3,2}; Δ::Real = Δλoλ_fit_line_default) where {T1<:Real, T2<:Real, T3<:Real}
     locs = findall_line(goal,lambda,var,Δ=Δ)
@@ -122,22 +138,61 @@ function make_chunck_list(spectra::AS, line_list::AA; Δ::Real=Δλoλ_fit_line_
 end
 =#
 
+""" Return a ChuckList of best regions of spectrum with lines in line_line.
+    line_list is a DataFrame containing :lambda_lo and :lambda_hi.
+    Pads edges by Δ.
+"""
 function make_chunck_list(spectra::AS, line_list::DataFrame; Δ::Real=Δλoλ_edge_pad_default) where { AS<:AbstractSpectra }
     @assert haskey(line_list,:lambda_lo)
     @assert haskey(line_list,:lambda_hi)
     ChunckList(map(row->ChunkOfSpectra(spectra,find_line_best(row.lambda_lo,row.lambda_hi,spectra,Δ=Δ)), eachrow(line_list) ))
 end
 
-function make_orders_into_chunks(spectra::AS; orders_to_use=1:size(spectra.flux,2),
-        min_col::Integer=min_col_neid_default, max_col::Integer=max_col_neid_default ,
-        pixels_to_use=fill(min_col:max_col,length(orders_to_use)) ) where {AS<:AbstractSpectra, }
-    ChunckList(map(order->ChunkOfSpectra(spectra,(pixels=pixels_to_use[order],order=order)), orders_to_use ))
+""" Return a ChuckList with a region of spectrum from each order in orders_to_use.
+    inst:  Instrument trait
+    orders_to_use: Range or Array (orders_to_use(inst))
+    pixels_to_use: Array of Ranges (each from min_col to max_col)
+    If pixels_to_use is not provided:
+    min_col: (min_col_default(inst))
+    max_col: (max_col_default(inst))
+"""
+function make_orders_into_chunks
 end
 
+function make_orders_into_chunks(spectra::AS, inst::AbstractSpectra,
+        min_col::Integer = min_col_default(inst), # min_col_neid_default,
+        max_col::Integer = max_col_default(inst); #max_col_neid_default ,
+        orders_to_use = orders_to_use(inst), # 1:size(spectra.flux,2),
+        ) where {AS<:AbstractSpectra, }
+    @assert eltype(orders_to_use) <: Integer
+    @assert all( min_order(inst) .<= orders_to_use .<= max_order(inst) )
+    @assert min_col >= min_pixel_in_order(inst)
+    @assert max_col <= max_pixel_in_order(inst)
+    pixels_to_use=fill(min_col:max_col,length(orders_to_use))
+    make_orders_into_chunks(spectra,inst,orders_to_use=orders_to_use, pixels_to_use=pixels_to_use)
+end
+
+function make_orders_into_chunks(spectra::AS, inst::AbstractSpectra;
+        orders_to_use = orders_to_use(inst),
+        pixels_to_use::AAR ) where {AS<:AbstractSpectra, AR<:AbstractRange, AAR<:AbstractArray{AbstractRange,1} }
+    @assert eltype(orders_to_use) <: Integer
+    @assert all( min_order(inst) .<= orders_to_use .<= max_order(inst) )
+    @assert minimum(pixels_to_use) >= min_pixel_in_order(inst)
+    @assert maximum(pixels_to_use) <= max_pixel_in_order(inst)
+    ChunckList( map(order->
+                    ChunkOfSpectra(spectra,(pixels=pixels_to_use[order],order=order)),
+                    orders_to_use ))
+end
+
+""" Return (chunk_timeseries, line_list) that have been trimmed of any chunks that are bad based on any spectra in the chunk_timeseries.
+    chunk_timeseries: ChunkListTimeseries
+    line_linst:  DataFrame w/ lambda_lo, lambda_hi
+    verbose: print debugging info (false)
+"""
 function filter_bad_chunks(chunk_list_timeseries::ACLT, line_list::DataFrame; verbose::Union{Int,Bool} = false) where { ACLT<:AbstractChunckListTimeseries }
+    @assert(length(chunk_list_timeseries)>=1)
     @assert(haskey(line_list,:lambda_lo))
     @assert(haskey(line_list,:lambda_hi))
-    @assert(length(chunk_list_timeseries)>=1)
     idx_keep = trues(num_chunks(chunk_list_timeseries))
     for t in 1:length(chunk_list_timeseries)
         idx_bad_λ = findall(c->any(isnan.(chunk_list_timeseries.chuck_list[t].data[c].λ)),1:num_chunks(chunk_list_timeseries))
@@ -165,9 +220,14 @@ function filter_bad_chunks(chunk_list_timeseries::ACLT, line_list::DataFrame; ve
 end
 
 """ Create a range with equal spacing between points with end points set based on union of all chunks in timeseries.
-    Takes ChunkListTimeseries, chunk index, and optional an oversample_factor (1). """
+    timeseries: ChunkListTimeseries
+    chunk index:
+    oversample_factor: (1)
+"""
 function make_grid_for_chunck(timeseries::ACLT, c::Integer; oversample_factor::Real = 1.0 ) where { ACLT<:AbstractChunckListTimeseries }
     num_obs = length(timeseries.chuck_list)
+    @assert num_obs >= 1
+    @assert 1<= c <= length(first(timeseries.chuck_list).data) # WARN: only tests first chunk_list
     λ_min = maximum(minimum(timeseries.chuck_list[t].data[c].λ) for t in 1:num_obs)
     λ_max = minimum(maximum(timeseries.chuck_list[t].data[c].λ) for t in 1:num_obs)
     Δλ_grid_obs = median((timeseries.chuck_list[t].data[c].λ[end]-
@@ -222,6 +282,7 @@ function calc_normalization(chunk_list::ACL) where { ACL<:AbstractChunckList}
     scale_fac = num_pixels / total_flux
 end
 
+""" Normalize spectrum, multiplying fluxes by scale_fac. """
 function normalize_spectrum!(spectrum::ST, scale_fac::Real) where { ST<:AbstractSpectra }
     @assert 0 < scale_fac < Inf
     @assert !isnan(scale_fac^2)
@@ -230,10 +291,11 @@ function normalize_spectrum!(spectrum::ST, scale_fac::Real) where { ST<:Abstract
     return spectrum
 end
 
-function normalize_spectra!(timeseries::ACLT, spectra::AS) where { ACLT<:AbstractChunckListTimeseries, ST<:AbstractSpectra, AS<:AbstractArray{ST} }
-    @assert length(timeseries) == length(spectra)
-    for t in 1:length(timeseries)
-        scale_fac = calc_normalization(timeseries.chuck_list[t])
+""" Normalize each spectrum based on sum of fluxes in chunk_timeseries region of each spectrum. """
+function normalize_spectra!(chunk_timeseries::ACLT, spectra::AS) where { ACLT<:AbstractChunckListTimeseries, ST<:AbstractSpectra, AS<:AbstractArray{ST} }
+    @assert length(chunk_timeseries) == length(spectra)
+    for t in 1:length(chunk_timeseries)
+        scale_fac = calc_normalization(chunk_timeseries.chuck_list[t])
         println("# t= ",t, " scale_fac= ", scale_fac)
         normalize_spectrum!(spectra[t], scale_fac)
     end
@@ -242,111 +304,7 @@ end
 
 
 # Unorganized code
-function make_interpolator_linear_flux(spectra::Union{AS,AC}) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectra}
-    LinearInterpolation(spectra.λ, spectra.flux)
-end
-
-function make_interpolator_linear_var(spectra::Union{AS,AC}) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectra}
-    LinearInterpolation(spectra.λ, spectra.var)
-end
-
-#=
-using Stheno
-
-function make_interpolator_gp(spectra::Union{AS,AC}; length_scale::Real = 0.1, σ_scale::Real = 1.0) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectra}
-    xobs = spectra.λ
-    yobs = copy(spectra.flux)
-    obs_var = spectra.var
-    med_y = mean(yobs)
-
-    # Choose the length-scale and variance of the process.
-    σ² = (σ_scale * med_y)^2
-    # Construct a kernel with this variance and length scale.
-    k = σ² * stretch(Matern52(), 1 / length_scale)
-
-    # Specify a zero-mean GP with this kernel. Don't worry about the GPC object.
-    f = GP(med_y, k, GPC())
-    fx = f(xobs, obs_var)
-    f_posterior = f | Obs(fx, yobs)
-end
-
-function interp_to_grid(spectra::Union{AS,AC}, grid::AR) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectra, AR<:AbstractRange}
-   #grid = chunk_grids[c]
-   #make_interpolator_linear(spectra).(grid)
-   f_posterior = make_interpolator_gp(spectra,length_scale=6e-5*mean(spectra.λ))
-   (mean=mean(f_posterior(grid)),  std=std.(marginals(gp_interp(grid))))
-end
-
-
-function pack_chunks_into_matrix(timeseries::ACLT, chunk_grids::AR) where { ACLT<:AbstractChunckListTimeseries, RT<:AbstractRange, AR<:AbstractArray{RT,1} }
-   num_obs = length(timeseries)
-   num_λ = sum(length.(chunk_grids))
-   flux_matrix = Array{Float64,2}(undef,num_λ,num_obs)
-   var_matrix = Array{Float64,2}(undef,num_λ,num_obs)
-   λ_vec = Array{Float64,1}(undef,num_λ)
-   chunk_map = Array{UnitRange{Int64}}(undef,length(chunk_grids))
-
-   for t in 1:num_obs
-        idx_start = 0
-        for c in 1:length(chunk_grids)
-            if length(chunk_grids[c]) <= 512
-                gp_interp = make_interpolator_gp(timeseries.chuck_list[t].data[c],length_scale=1e-4*mean(chunk_grids[c]))
-                idx = (idx_start+1):(idx_start+length(chunk_grids[c]))
-                flux_matrix[idx,t] .= mean(gp_interp(chunk_grids[c]))
-                var_matrix[idx,t] .= var.(marginals(gp_interp(chunk_grids[c])))
-                if t == 1
-                    λ_vec[idx] .= chunk_grids[c]
-                    chunk_map[c] = idx
-                    #= if 8500<idx_start <8700
-                        println(c,": ",idx)
-                    end
-                    =#
-                end
-                idx_start += length(chunk_grids[c])
-            else
-                lin_interp_flux = make_interpolator_linear_flux(timeseries.chuck_list[t].data[c])
-                lin_interp_var = make_interpolator_linear_var(timeseries.chuck_list[t].data[c])
-                idx = (idx_start+1):(idx_start+length(chunk_grids[c]))
-                flux_matrix[idx,t] .= lin_interp_flux.(chunk_grids[c])
-                var_matrix[idx,t] .= lin_interp_var.(chunk_grids[c])
-                if t == 1
-                    λ_vec[idx] .= chunk_grids[c]
-                    chunk_map[c] = idx
-                    #= if 8500<idx_start <8700
-                        println(c,": ",idx)
-                    end
-                    =#
-                end
-                idx_start += length(chunk_grids[c])
-            end
-        end
-    end
-
-    #return flux_matrix
-    return (flux=flux_matrix, var=var_matrix, λ=λ_vec, chunk_map=chunk_map)
-end
-
-=#
-
-function calc_deriv(flux::AbstractArray{T1,1}, λ::AbstractArray{T2,1}) where { T1<:Real, T2<:Real }
-    @assert size(flux) == size(λ)
-    @assert length(flux) >= 3
-    dfdlogλ = Array{T1,1}(undef,length(flux))
-    dfdlogλ[1] = 0.5*(flux[2]-flux[1])/(λ[2]-λ[1])*(λ[2]+λ[1])
-    dfdlogλ[2:end-1] .= 0.5*(flux[3:end].-flux[1:end-2])./(λ[3:end].-λ[1:end-2]).*(λ[3:end].+λ[end-2])
-    dfdlogλ[end] = 0.5*(flux[end]-flux[end-1])/(λ[end]-λ[end-1])*(λ[end]+λ[end-1])
-    return dfdlogλ
-end
-
-function calc_mean_deriv(flux::AbstractArray{T1,2}, var::AbstractArray{T1,2}, λ::AbstractArray{T3,1},
-        chunk_map::AbstractArray{URT,1}) where
-    { T1<:Real, T2<:Real, T3<:Real, URT<:AbstractUnitRange} #, RT<:AbstractRange }
-    flux_mean = sum(flux./vm,dims=2)./sum(1.0./vm,dims=2)
-    deriv = Array{T1,1}(undef,length(flux_mean))
-    map(c->deriv[c] .= calc_deriv(flux_mean[c],λv[c]),chunk_map )
-    return deriv
-end
-
+""" Return true if all elements of array are equal to each other. """
 @inline function allequal(x::AbstractArray{T,1}) where {T<:Real}
     length(x) < 2 && return true
     e1 = x[1]

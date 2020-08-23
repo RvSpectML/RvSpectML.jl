@@ -8,10 +8,15 @@ const max_pixels_in_spectra = max_orders_in_spectra*max_pixels_in_order
 min_usable_pixels_in_order = 128
 =#
 
+""" Abstract type for any Spectrum (or region of spectrum) """
 abstract type AbstractSpectra end
+""" Abstract type for any 1-d Spectrum (or region of spectrum) """
 abstract type AbstractSpectra1D <: AbstractSpectra end
+""" Abstract type for any 2-d Spectrum """
 abstract type AbstractSpectra2D <: AbstractSpectra end
 
+""" Basic struct for Spectra1D (or region of specturm)
+    Instruments can specialize their own if additional data is avaliable. """
 struct Spectra1DBasic{T1<:Real,T2<:Real,T3<:Real,#=T4<:Real,=# AA1<:AbstractArray{T1,1},AA2<:AbstractArray{T2,1},AA3<:AbstractArray{T3,1} } <: AbstractSpectra1D
     λ::AA1
     flux::AA2
@@ -20,6 +25,8 @@ struct Spectra1DBasic{T1<:Real,T2<:Real,T3<:Real,#=T4<:Real,=# AA1<:AbstractArra
     metadata::Dict{Symbol,Any}
 end
 
+""" Basic struct for Spectra2D (or region of specturm)
+    Instruments can specialize their own if additional data is avaliable. """
 struct Spectra2DBasic{T1<:Real,T2<:Real,T3<:Real,#=T4<:Real,=# AA1<:AbstractArray{T1,2},AA2<:AbstractArray{T2,2},AA3<:AbstractArray{T3,2}} <: AbstractSpectra2D
     λ::AA1
     flux::AA2

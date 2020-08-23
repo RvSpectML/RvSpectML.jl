@@ -1,7 +1,7 @@
-min_usable_pixels_in_order = 128
-
+""" Abstract type for any ChunkOfSpectrum """
 abstract type AbstractChuckOfSpectra end
 
+""" Standard ChunkOfSpectra for views into Spectra1DBasic or Spectra2DBasic """
 struct ChunkOfSpectra{T1<:Real,T2<:Real,T3<:Real,AA1<:AbstractArray{T1,1},AA2<:AbstractArray{T2,1},AA3<:AbstractArray{T3,1}} <: AbstractChuckOfSpectra
     λ::AA1
     flux::AA2
@@ -39,6 +39,8 @@ function ChunkOfSpectra(spectra::AS, loc::NamedTuple{(:pixels, :order),Tuple{AUR
 end
 
 abstract type AbstractChunckList end
+
+""" Struct containing an array of ChunkOfSpectra """
 mutable struct ChunckList{CT<:AbstractChuckOfSpectra, AT<:AbstractArray{CT,1} } <: AbstractChunckList
       data::AT
 end
@@ -50,6 +52,8 @@ end
 =#
 
 abstract type AbstractChunckListTimeseries end
+
+""" Mtching lists of times and array of ChunkLists """
 mutable struct ChunckListTimeseries{CLT<:AbstractChunckList, ACLT<:AbstractArray{CLT,1}, TT<:Real, AT<:AbstractArray{TT,1} } <: AbstractChunckListTimeseries
     times::AT
     chuck_list::ACLT
@@ -63,5 +67,7 @@ end
 
 import Base.length
 length(cl::CLT) where {CLT<:AbstractChunckList} = length(cl.data)
-length(cl::ACLT) where {ACLT<:AbstractChunckListTimeseries} = length(cl.chuck_list)
-num_chunks(cl::ACLT) where {ACLT<:AbstractChunckListTimeseries} = length(first(cl.chuck_list))
+length(clts::ACLT) where {ACLT<:AbstractChunckListTimeseries} = length(clts.chuck_list)
+
+""" Number of chunks in first chunk_list in chunk_list_timeseries. """
+num_chunks(chunk_list_timeseries::ACLT) where {ACLT<:AbstractChunckListTimeseries} = length(first(chunk_list_timeseries.chuck_list))

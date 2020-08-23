@@ -29,7 +29,7 @@ export orders_all, pixels_all, max_pixels_in_spectra       # generic implementat
 export metadata_symbols_default, metadata_strings_default  # need to specialize
 
 include("common.jl")
-export read_manifest, read_metadata_from_fits
+export read_manifest, read_header, read_metadata_from_fits
 
 include("neid/neid.jl")
 export NEID1D, NEID2D, AnyNEID

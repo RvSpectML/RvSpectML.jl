@@ -1,3 +1,6 @@
+"""
+   Functions & traits for the HARPS-N spectrograph
+"""
 module HARPSN
 using RvSpectML
 using DataFrames, FITSIO
@@ -5,7 +8,7 @@ using DataFrames, FITSIO
 #type EXPRES <: AbstractInstrument end
 struct HARPSN1D <: AbstractInstrument1D end
 struct HARPSN2D <: AbstractInstrument2D end
-AnyHARPSN = Union{HARPSN1D,HARPSN2D}
+const AnyHARPSN = Union{HARPSN1D,HARPSN2D}
 export HARPSN1D, HARPSN2D, AnyHARPSN
 
 #include("traits.jl")

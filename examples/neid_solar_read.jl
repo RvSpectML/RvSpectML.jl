@@ -31,11 +31,13 @@ if true
 
     drift_interp = LinearInterpolation(drift_corrections[:bjd],drift_corrections[:cal_drift])
     df_files_use[!,:drift] = drift_interp.(df_files_use.bjd)
-    if ! "doppler_factor" in names(df)
+    if ! "doppler_factor" in names(df_files_use)
         df_files_use[!,:doppler_factor] = calc_doppler_factor.(df_files_use[:drift])
     else
         df_files_use[!,:doppler_factor] .*= calc_doppler_factor.(df_files_use[:drift])
     end
+
+    @time map(x->apply_doppler_factor!(x[1],x[2]), zip(solar_data,df_files_use.doppler_factor));
 
     # TODO: WARNING: NEED TO CHECK SIGN OF DRIFT CORRECTION!!!
 #=

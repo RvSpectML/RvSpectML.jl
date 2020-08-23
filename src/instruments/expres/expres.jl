@@ -1,3 +1,8 @@
+"""
+   Functions & traits for the EXPRES spectrograph
+   http://exoplanets.astro.yale.edu/expresBlog/
+   https://ui.adsabs.harvard.edu/abs/2016SPIE.9908E..6TJ/abstract
+"""
 module EXPRES
 using RvSpectML
 using DataFrames, FITSIO
@@ -5,7 +10,7 @@ using DataFrames, FITSIO
 #type EXPRES <: AbstractInstrument end
 struct EXPRES1D <: AbstractInstrument1D end
 struct EXPRES2D <: AbstractInstrument2D end
-AnyEXPRES = Union{EXPRES1D,EXPRES2D}
+const AnyEXPRES = Union{EXPRES1D,EXPRES2D}
 export EXPRES1D, EXPRES2D, AnyEXPRES
 
 #include("traits.jl")

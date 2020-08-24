@@ -7,7 +7,7 @@ Contact: https://github.com/eford/
 # Constants
 const speed_of_light_mps = 299792458.0 # TODO: Update value
 
-"""Compute Doppler boost factor (non-relativistic) for rv in km/s"""
+"""Compute Doppler boost factor (non-relativistic) for rv in km/s."""
 calc_doppler_factor(rv::Real) = one(rv) + rv/speed_of_light_mps
 
 """Compute Doppler boost factor (relativistic) for rv and v_perp in km/s"""
@@ -27,7 +27,7 @@ end
 """ Calculate total SNR in (region of) spectra. """
 function calc_snr(flux::AbstractArray{T1},var::AbstractArray{T2}) where {T1<:Real, T2<:Real}
     @assert size(flux) == size(var)
-    sum(flux./var)/sum(1.0 ./ var)
+    sqrt(sum(flux./var)) # /sum(1.0 ./ var)
 end
 
 """Estimate line width based on stellar Teff (K) and optionally v_rot (km/s).  Output in km/s."""

@@ -6,9 +6,11 @@ max_pixels_in_spectra(inst::AbstractInstrument1D) = length(pixels_all(inst))
 max_pixels_in_spectra(inst::AbstractInstrument2D) = (max_order(inst)-min_order(inst)+1) * (max_pixel_in_order(inst)-min_pixel_in_order(inst)+1)
 min_pixels_in_chunk(inst::AbstractInstrument1D) = 6
 
+using CSV
+
 """Read manifest containing filename, bjd, target, and optionally additional metadata from CSV file. """
 function read_manifest(fn::String)
-    CSV.read(fn)
+    CSV.read(fn,threaded=false)
 end
 
 """ Read header from FITS file and return Dict with contents. """
@@ -52,12 +54,12 @@ end
    ESPRESSO format: two columns, lambda and weight.
 """
 function read_mask_espresso(fn::String)
-    CSV.read(fn,header=["lambda","weight"])
+    CSV.read(fn,threaded=false,header=["lambda","weight"],silencewarnings=true)
 end
 
 """ Read mask in VALD csv format.
    VALD format: lambda_lo, lambdaa_hi and weight.
  """
 function read_mask_vald(fn::String)
-    CSV.read(fn,header=["lambda_lo","lambda_hi","depth"])
+    CSV.read(fn,threaded=false,header=["lambda_lo","lambda_hi","depth"])
 end

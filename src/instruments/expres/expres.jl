@@ -6,6 +6,7 @@
 module EXPRES
 using RvSpectML
 using DataFrames, FITSIO
+using Dates  # If need to use datetime2julian() to get jd.  Need to check about getting BJD.
 
 #type EXPRES <: AbstractInstrument end
 struct EXPRES1D <: AbstractInstrument1D end

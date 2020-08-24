@@ -1,3 +1,5 @@
+using Interpolations
+
 """ Return interpolator for fluxes in spectra. """
 function make_interpolator_linear_flux(spectra::Union{AS,AC}) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectrum}
     LinearInterpolation(spectra.λ, spectra.flux)
@@ -100,7 +102,7 @@ end
    Inputs: flux & var (2d: pixel, time)
 """
 function calc_mean_spectrum(flux::AbstractArray{T1,2}, var::AbstractArray{T2,2} ) where { T1<:Real, T2<:Real }
-    flux_mean = sum(flux./var,dims=2)./sum(1.0./var,dims=2)
+    flux_mean = vec(sum(flux./var,dims=2)./sum(1.0./var,dims=2))
 end
 
 """ Return mean numerical derivative of fluxes based on a common set of wavelengths.

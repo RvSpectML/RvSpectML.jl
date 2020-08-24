@@ -15,6 +15,7 @@ using Distributions, Interpolations, MultivariateStats, PDMats
 
 include("types/types.jl")
 include("util/util.jl")
+export calc_doppler_factor
 include("instruments/instruments.jl")
 include("alg/alg.jl")
 

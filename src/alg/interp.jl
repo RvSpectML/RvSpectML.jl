@@ -10,6 +10,47 @@ function make_interpolator_linear_var(spectra::Union{AS,AC}) where { AS<:Abstrac
     LinearInterpolation(spectra.λ, spectra.var)
 end
 
+"""
+ interp_chunk_to_grid_linear!( flux_out, var_out, chunk_of_spectrum, wavelengths )
+Return spectra interpolated onto a grid of points using linear interpolation.
+"""
+function interp_chunk_to_grid_linear!( flux_out::AbstractArray{T1,1}, var_out::AbstractArray{T2,1}, chunk::AC, grid::AR ) where { T1<:Real, T2<:Real, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+    @assert size(flux_out) == size(var_out)
+    @assert size(flux_out) == size(grid)
+    lin_interp_flux = make_interpolator_linear_flux(chunk)
+    lin_interp_var = make_interpolator_linear_var(chunk)
+    flux_out .= lin_interp_flux(grid)
+    var_out .= lin_interp_var(grid)
+    return flux_out
+end
+
+
+function pack_chunk_list_timeseries_to_matrix_linear(timeseries::ACLT, chunk_grids::AR) where { ACLT<:AbstractChunkListTimeseries, RT<:AbstractRange, AR<:AbstractArray{RT,1} }
+    num_obs = length(timeseries)
+    num_λ = sum(length.(chunk_grids))
+    flux_matrix = Array{Float64,2}(undef,num_λ,num_obs)
+    var_matrix = Array{Float64,2}(undef,num_λ,num_obs)
+    λ_vec = Array{Float64,1}(undef,num_λ)
+    chunk_map = Array{UnitRange{Int64}}(undef,length(chunk_grids))
+
+   for t in 1:num_obs
+       idx_start = 0
+       for c in 1:length(chunk_grids)
+           idx = (idx_start+1):(idx_start+length(chunk_grids[c]))
+           interp_chunk_to_grid_linear!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c])
+           if t == 1
+               λ_vec[idx] .= chunk_grids[c]
+               chunk_map[c] = idx
+           end
+           idx_start += length(chunk_grids[c])
+       end
+   end
+
+   return SpectralTimeSeriesCommonWavelengths(λ_vec,flux_matrix,var_matrix,chunk_map, Generic1D() )
+   #return (flux=flux_matrix, var=var_matrix, λ=λ_vec, chunk_map=chunk_map)
+end
+
+
 #=
 using Stheno
 
@@ -114,6 +155,16 @@ function calc_mean_deriv(flux::AbstractArray{T1,2}, var::AbstractArray{T1,2}, λ
     { T1<:Real, T2<:Real, T3<:Real, URT<:AbstractUnitRange} #, RT<:AbstractRange }
     flux_mean = calc_mean_spectrum(flux,var)
     deriv = Array{T1,1}(undef,length(flux_mean))
-    map(c->deriv[c] .= calc_deriv(flux_mean[c],λv[c]),chunk_map )
+    map(c->deriv[c] .= calc_deriv(flux_mean[c],λ[c]),chunk_map )
     return deriv
+end
+
+function calc_rvs_from_taylor_expansion(spectra::STS; mean::MT = calc_mean_spectrum(spectra),
+                deriv::DT = calc_mean_deriv(spectra), idx::RT = 1:length(mean) ) where { STS<:AbstractSpectralTimeSeriesCommonWavelengths,
+                                T1<:Real, MT<:AbstractVector{T1}, T2<:Real, DT<:AbstractVector{T2}, RT<:AbstractUnitRange }
+   @assert length(mean) == length(deriv)
+   @assert size(spectra.flux,1) == length(mean)
+   rv = vec(sum((spectra.flux[idx,:].-mean[idx]).*deriv[idx],dims=1)./sum(abs2.(deriv[idx]))).*speed_of_light_mps
+   σ_rv = sqrt.(vec(sum(spectra.var[idx,:].*abs.(deriv),dims=1)./sum(abs2.(deriv))))./length(deriv).*speed_of_light_mps
+   return (rv=rv, σ_rv=σ_rv)
 end

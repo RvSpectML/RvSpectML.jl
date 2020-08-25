@@ -6,6 +6,7 @@
 include("common.jl")
 export read_manifest, read_header, read_metadata_from_fits
 export read_mask_espresso, read_mask_vald
+export find_overlapping_chunks
 
 include("neid/neid.jl")
 export NEID, NEID1D, NEID2D, AnyNEID

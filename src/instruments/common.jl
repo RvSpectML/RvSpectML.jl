@@ -88,3 +88,16 @@ function read_mask_vald(fn::String)
     df[!,:weight] = df[!,:depth]
     return df
 end
+
+function find_overlapping_chunks(df::DataFrame; verbose::Bool = true)
+    @assert hasproperty(df,:lambda_lo)
+    @assert hasproperty(df,:lambda_hi)
+   if ! any(df.lambda_hi[1:end-1] .>= df.lambda_lo[2:end])
+       return
+   end
+   idx_overlap = findall(df.lambda_hi[1:end-1] .>= df.lambda_lo[2:end])
+   if verbose
+       println("# Number of overlapping chunks: ",length(idx_overlap))
+   end
+   return idx_overlap
+end

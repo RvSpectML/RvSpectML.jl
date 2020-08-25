@@ -1,0 +1,3 @@
+[deps]
+RvSpectML = "1f61ac2c-3a1c-440a-925a-2707197041c8"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

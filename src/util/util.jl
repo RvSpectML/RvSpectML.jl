@@ -7,25 +7,44 @@ Contact: https://github.com/eford/
 # Constants
 const speed_of_light_mps = 299792458.0 # TODO: Update value
 
-"""Compute Doppler boost factor (non-relativistic) for rv in km/s."""
-calc_doppler_factor(rv::Real) = one(rv) + rv/speed_of_light_mps
+"""
+   calc_doppler_factor(rv; v_perp)
 
-"""Compute Doppler boost factor (relativistic) for rv and v_perp in km/s"""
+Return the Doppler boost factor (non-relativistic) for rv in km/s.
+"""
+function calc_doppler_factor end
+
+calc_doppler_factor(rv::Real) = one(rv) + rv/speed_of_light_mps
 calc_doppler_factor(rv::Real, v_perp::Real) = (one(rv) + rv/speed_of_light_mps)/(one(rv) - (rv^2+v_perp^2)/speed_of_light_mps^2)
 
-""" Apply Doppler boost to spectrum's λ's and update its metadata[:doppler_factor], so knows how to undo the transform. """
+"""
+    apply_doppler_boost!(spectrum, doppler_factor) -> typeof(spectrum)
+    apply_doppler_boost!(spectra, df) -> typeof(spectra)
+
+Apply Doppler boost to spectra's λ's and update its metadata[:doppler_factor], so it will know how to undo the transform.
+# Arguments:
+* `spectrum::AbstractSpectra`: spectrum to be boosted
+* `doppler_factor::Real`: boost factor (1 = noop)
+or
+* `spectra::AbstractArray{<:AbstractSpectra}`: spectra to be boosted
+* `df::DataFrame`: provides `:drift` and `:ssb_rv` (in m/s) for calculating the Doppler boost for each spectrum
+
+TODO: Improve documentation formatting.  This can serve as a template.
+"""
+function apply_doppler_boost! end
+
 function apply_doppler_boost!(spectra::AS,doppler_factor::Real) where {AS<:AbstractSpectra}
-        #println("# t= ",time, " doppler_factor= ",doppler_factor)
-        spectra.λ .*= doppler_factor
-        if hasproperty(spectra.metadata,:doppler_factor)
-            spectra.metadata[:doppler_factor] /= doppler_factor
-        else
-            spectra.metadata[:doppler_factor] = 1/doppler_factor
-        end
-        return spectra
+    if doppler_factor == one(doppler_factor) return spectra end
+    #println("# t= ",time, " doppler_factor= ",doppler_factor)
+    spectra.λ .*= doppler_factor
+    if hasproperty(spectra.metadata,:doppler_factor)
+        spectra.metadata[:doppler_factor] /= doppler_factor
+    else
+        spectra.metadata[:doppler_factor] = 1/doppler_factor
+    end
+    return spectra
 end
 
-""" Apply Doppler boost to each's spectrum's λ's and update its metadata[:doppler_factor]. """
 function apply_doppler_boost!(spectra::AbstractArray{AS}, df::DataFrame ) where { AS<:AbstractSpectra }
     @assert size(spectra,1) == size(df,1)
     if !hasproperty(df,:drift) @info "apply_doppler_boost! didn't find :drift to apply."   end
@@ -236,7 +255,35 @@ function filter_bad_chunks(chunk_list_timeseries::ACLT, line_list::DataFrame; ve
     end
 end
 
-""" """
+function filter_bad_chunks(chunk_list_timeseries::ACLT; verbose::Bool = false) where { ACLT<:AbstractChunkListTimeseries }
+    @assert(length(chunk_list_timeseries)>=1)
+    idx_keep = trues(num_chunks(chunk_list_timeseries))
+    for t in 1:length(chunk_list_timeseries)
+        idx_bad_λ = findall(c->any(isnan.(chunk_list_timeseries.chunk_list[t].data[c].λ)),1:num_chunks(chunk_list_timeseries))
+        idx_bad_flux = findall(c->any(isnan.(chunk_list_timeseries.chunk_list[t].data[c].flux)),1:num_chunks(chunk_list_timeseries))
+        idx_bad_var = findall(c->any(isnan.(chunk_list_timeseries.chunk_list[t].data[c].var)),1:num_chunks(chunk_list_timeseries))
+        idx_keep[idx_bad_λ] .= false
+        idx_keep[idx_bad_flux] .= false
+        idx_keep[idx_bad_var] .= false
+        if verbose && (length(idx_bad_λ)+length(idx_bad_flux)+length(idx_bad_var) > 0)
+               println("# Removing chunks", vcat(idx_bad_λ,idx_bad_flux,idx_bad_var), " at time ", t, " due to NaNs (",length(idx_bad_λ),",",length(idx_bad_flux),",",length(idx_bad_var),").")
+        end
+
+    end
+    chunks_to_remove = findall(.!idx_keep)
+    if length(chunks_to_remove) == 0
+        if verbose   println("# Nothing to remove.")   end
+        return chunk_list_timeseries
+    else
+        if verbose
+            println("# Removing ", length(chunks_to_remove), " chunks due to NaNs.")
+            map(c->println("# ",c,": ",line_list.lambda_lo[c]," - ",line_list.lambda_hi[c]),chunks_to_remove)
+        end
+        new_chunk_list_timeseries = [ChunkList(chunk_list_timeseries.chunk_list[t].data[idx_keep]) for t in 1:length(chunk_list_timeseries) ]
+        return ChunkListTimeseries(chunk_list_timeseries.times[idx_keep],new_chunk_list_timeseries, inst=chunk_list_timeseries.inst, metadata=chunk_list_timeseries.metadata[idx_keep])
+    end
+end
+
 
 """ Create a range with equal spacing between points with end points set based on union of all chunks in timeseries.
     timeseries: ChunkListTimeseries

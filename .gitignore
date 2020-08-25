@@ -1,5 +1,34 @@
+# Configuration files
+data_paths.jl
+
+# Julia
 *.jl.*.cov
 *.jl.cov
 *.jl.mem
 /Manifest.toml
+/docs/Manifest.toml
+/examples/Manifest.toml
+/nootebooks/Manifest.toml
+/test/Manifest.toml
+
+# Large files to be downloaded outside of git
+/data/large
+
+# Temporary files
+/plots
+/test/testdir
+
+# Documenter
 /docs/build/
+/docs/site/
+
+# Jupyter
+/notebooks
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*

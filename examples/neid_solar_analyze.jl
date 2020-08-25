@@ -1,27 +1,28 @@
 include("neid_solar_read.jl")
 
+using DataFrames, CSV, Query
+using Statistics
+
 lambda_range_with_data = (min = maximum(d->minimum(d.λ),solar_data), max = minimum(d->maximum(d.λ),solar_data) )
 
 #vald_filename = "VALD_Fe1_DP_rejectTelluricSlope0.0_badLineFilterESPRESSO_overlapcutoff6e-05_depthcutoff0.05_allowBlends0_wavesoriginal_depthsoriginal_nbin1depth0.mas"
-vald_filename = "VALD_Fe1_DP_rejectTelluricSlope0.0_badLineFilterESPRESSO-strict-NEID-BIS_overlapcutoff6e-05_depthcutoff0.05_allowBlends0_wavesReiners_depthssolar_nbin1depth0.mas"
-vald_df = CSV.read(vald_filename,header=["lambda_lo","lambda_hi","depth_vald"])
+vald_filename = joinpath(ancilary_data_path,"VALD_Fe1_DP_rejectTelluricSlope0.0_badLineFilterESPRESSO-strict-NEID-BIS_overlapcutoff6e-05_depthcutoff0.05_allowBlends0_wavesReiners_depthssolar_nbin1depth0.mas")
+vald_df = RvSpectML.read_mask_vald(vald_filename)
+#vald_df = CSV.read(vald_filename,header=["lambda_lo","lambda_hi","depth_vald"])
 line_list_df = vald_df |>
   @filter(lambda_range_with_data.min <= _.lambda_lo ) |>
   @filter( _.lambda_hi < lambda_range_with_data.max) |>
 #  @filter( _.lambda_lo >6157 || _.lambda_hi < 6155  ) |>   # "Line" w/ large variability
-  DataFrame;
-size(line_list_df)
+  DataFrame
 
-#@time chunk_list = make_chunk_list(solar_data[1],line_list_df)
-# Adjust width of chunks
-line_list_df[:lambda_mid] = sqrt.(line_list_df.lambda_lo.*line_list_df.lambda_hi)
+# TODO: Move adjust width of chunks into read_mask_vald
 chunk_size_factor = 3       # TODO: Figure out what value to use
-max_vald_line_offset = 0.0       # km/s
-line_width = predict_line_width(5780,v_rot=1.8) # # km/s
-Δλoλ_fit_line = (max_vald_line_offset+chunk_size_factor*line_width)*1000/speed_of_light_mps
-println("# Δλ/λ = ",Δλoλ_fit_line)
-line_list_df.lambda_hi .= line_list_df.lambda_mid*(1 + Δλoλ_fit_line)
-line_list_df.lambda_lo .= line_list_df.lambda_mid/(1 + Δλoλ_fit_line)
+ max_vald_line_offset = 0.0       # km/s
+ line_width = RvSpectML.predict_line_width(5780,v_rot=1.8) # # km/s
+ Δλoλ_fit_line = (max_vald_line_offset+chunk_size_factor*line_width)*1000/RvSpectML.speed_of_light_mps
+ println("# Δλ/λ = ",Δλoλ_fit_line)
+ line_list_df.lambda_hi .= line_list_df.lambda*(1 + Δλoλ_fit_line)
+ line_list_df.lambda_lo .= line_list_df.lambda/(1 + Δλoλ_fit_line)
 
 chunk_list_df = line_list_df
 
@@ -32,15 +33,14 @@ if any(line_list_df.lambda_hi[1:end-1] .>= line_list_df.lambda_lo[2:end])
 end
 minimum(line_list_df.lambda_lo), maximum(line_list_df.lambda_hi)
 
-
-chunk_list_df = merge_lines(line_list_df)
+chunk_list_df = RvSpectML.merge_lines(line_list_df)
 size(chunk_list_df)
 #chunk_list_df
 
-solar_data[1].λ[:,1:90]
+#solar_data[1].λ[:,1:90]
 
 #@time time_series_of_chunk_lists = map(spec->make_chunk_list(spec,line_list_df),solar_data)
-@time time_series_of_chunk_lists = map(spec->make_chunk_list(spec,chunk_list_df),solar_data)
+@time time_series_of_chunk_lists = map(spec->RvSpectML.make_chunk_list(spec,chunk_list_df),solar_data)
 chunk_list_timeseries = ChunkListTimeseries(df_files_use.bjd,time_series_of_chunk_lists)
 
 chunk_list_timeseries.chunk_list[5].data[10].flux
@@ -49,6 +49,7 @@ chunk_list_timeseries.chunk_list[5].data[10].flux
 #solar_data[5].flux ./= 100
 
 # If want to keep orders as one big chunk
+#=
 neid_orders_to_use = 1:90
 pixels_to_use_neid = fill(min_col_neid_default:max_col_neid_default,length(neid_orders_to_use))
 if  73<maximum(neid_orders_to_use)   pixels_to_use_neid[73]=1940:max_col_neid_default    end
@@ -59,19 +60,21 @@ pixels_to_use_neid = repeat(map(i->560+i*1024:560+(i+1)*1024,0:7),length(neid_or
 neid_orders_to_use = mapreduce(i->repeat([i],8),vcat,neid_orders_to_use)
 end
 
-@time time_series_of_order_lists = map( spec->make_orders_into_chunks(spec,
-                orders_to_use=neid_orders_to_use, pixels_to_use=pixels_to_use_neid) ,solar_data)
+=#
+solar_data[1]
+@time time_series_of_order_lists = map( spec->RvSpectML.make_orders_into_chunks(spec,NEID.NEID2D()), solar_data)
+                #orders_to_use=neid_orders_to_use, pixels_to_use=pixels_to_use_neid) ,solar_data)
 order_list_timeseries = ChunkListTimeseries(df_files_use.bjd,time_series_of_order_lists)
 
 # Check that no NaN's included
-map(t->any(map(o->any(isnan.(solar_data[t].λ[pixels_to_use_neid[o],o])),1:60)),length(solar_data))
+#map(spec->any(map(o->any(isnan.(spec.λ[pixels_to_use_neid[o],o])),1:60)),solar_data)
 
 bad_pixels = map(x->(x[1],x[2]),findall(isnan.(solar_data[5].flux)))
 not_in_bad_collum_idx = findall(x->(x[1]<439 || x[1]>450),bad_pixels)
 bad_pixels[not_in_bad_collum_idx]
 
 println(size(chunk_list_df), " vs ", num_chunks(chunk_list_timeseries) )
-(chunk_list_timeseries, chunk_list_df) = filter_bad_chunks(chunk_list_timeseries,chunk_list_df)
+(chunk_list_timeseries, chunk_list_df) = RvSpectML.filter_bad_chunks(chunk_list_timeseries,chunk_list_df)
 println(size(chunk_list_df), " vs ", num_chunks(chunk_list_timeseries) )
 
 chunk_list_df[1,:]
@@ -80,7 +83,7 @@ chunk_list_df[1,:]
 
 
 #normalize_spectra!(chunk_list_timeseries,solar_data)
-normalize_spectra!(order_list_timeseries,solar_data);
+RvSpectML.normalize_spectra!(order_list_timeseries,solar_data);
 
 solar_data[5].flux[4000:6000]
 chunk_list_timeseries.chunk_list[5].data[100].flux
@@ -90,28 +93,21 @@ using Plots
 #chunk_list_timeseries.chunk_list[1].data[1].λ
 
 order_idx = 20:22
-xmin = Inf # minimum(order_list_df.lambda_lo[chunk_idx])
-xmax = 0   # maximum(order_list_df.lambda_hi[chunk_idx])
-plt = plot(legend=:none)
-for c in order_idx
-    t = 1
-    plot!(plt,order_list_timeseries.chunk_list[t].data[c].λ ,order_list_timeseries.chunk_list[t].data[c].flux)
-    xmin = min(xmin,minimum(order_list_timeseries.chunk_list[t].data[c].λ))
-    xmax = max(xmax,maximum(order_list_timeseries.chunk_list[t].data[c].λ))
-end
-#xlims!(xmin,xmax)
-display(plt)
+plt = RvSpectML.plot_spectrum_chunks(order_list_timeseries, order_idx)
 
+chunk_idx = 13:22
+RvSpectML.plot_spectrum_chunks(chunk_list_timeseries, chunk_idx, plt=plt)
 
-chunk_idx = 12:20
+#= Goofing around to see how well chunks line up
+chunk_idx = 13:20
 xmin = minimum(chunk_list_df.lambda_lo[chunk_idx])
 xmax = maximum(chunk_list_df.lambda_hi[chunk_idx])
-#plt = plot(legend=:none)
+plt = plot(legend=:none)
 #xlims!(xmin,xmax)
 for c in chunk_idx
     t = 1
     #if(sum(chunk_list_df.line_depths[c])<0.25) continue end
-    λ_mid = 0# sqrt(chunk_list_df.lambda_hi[c]*chunk_list_df.lambda_lo[c])
+    λ_mid = sqrt(chunk_list_df.lambda_hi[c]*chunk_list_df.lambda_lo[c])
     println("c= ",c , " λs= ",chunk_list_df.line_λs[c]," depths= ",chunk_list_df.line_depths[c])
     #println("  λlo= ",chunk_list_df.lambda_lo[c]," λhi= ",chunk_list_df.lambda_hi[c], " Δλ= ",chunk_list_df.lambda_hi[c]-chunk_list_df.lambda_lo[c])
     plot!(plt,chunk_list_timeseries.chunk_list[t].data[c].λ.-λ_mid,chunk_list_timeseries.chunk_list[t].data[c].flux)
@@ -119,10 +115,10 @@ end
 #plot!(plt,solar_data[1].λ,solar_data[1].flux)
 #xlims!(4560,4565)
 display(plt)
+=#
 
 
-
-chunk_grids = map(c->make_grid_for_chunk(chunk_list_timeseries,c), 1:num_chunks(chunk_list_timeseries) )
+chunk_grids = map(c->RvSpectML.make_grid_for_chunk(chunk_list_timeseries,c), 1:num_chunks(chunk_list_timeseries) )
 
 # Doesn't work because looking up lambda_min and lambda_max, but haven't been updated since splitting order into segments
 #chunk_grids = map(c->make_grid_for_chunk(order_list_timeseries,c), 1:num_chunks(order_list_timeseries) )
@@ -130,7 +126,8 @@ chunk_grids = map(c->make_grid_for_chunk(chunk_list_timeseries,c), 1:num_chunks(
 
 mean(chunk_grids[1])
 
-(fm, vm, λv, cm) = pack_chunks_into_matrix(chunk_list_timeseries,chunk_grids)
+# TODO:  RESUME here
+@time (fm, vm, λv, cm) = RvSpectML.pack_chunks_into_matrix(chunk_list_timeseries,chunk_grids)
 
 size(fm)
 fm_mean = sum(fm./vm,dims=2)./sum(1.0./vm,dims=2)

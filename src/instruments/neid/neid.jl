@@ -6,7 +6,7 @@ Created: August 2020
 """
 
 module NEID
-using ..RvSpectML 
+using RvSpectML
 using DataFrames, FITSIO
 
 #type NEID <: AbstractInstrument end
@@ -27,5 +27,6 @@ export metadata_symbols_default, metadata_strings_default
 
 include("io.jl")
 export make_manifest, read_metadata, read_header, read_data, read_solar_data
+export read_drift_corrections!, read_barycentric_corrections!
 
 end

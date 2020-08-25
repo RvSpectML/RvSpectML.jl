@@ -50,9 +50,8 @@ function Spectra1DBasic(λ::A1, flux::A2, var::A3, inst::InstT;
     @assert size(λ) == size(flux)
     @assert size(λ) == size(var)
     @assert 1 <= length(λ) <= max_pixel(inst)-min_pixel(inst)+1
-    Spectra1DBasic{eltype(λ),eltype(flux),eltype(var),typeof(inst),typeof(λ),typeof(flux),typeof(var)}(λ,flux,var,inst,metadata)
+    Spectra1DBasic{eltype(λ),eltype(flux),eltype(var),typeof(λ),typeof(flux),typeof(var),typeof(inst)}(λ,flux,var,inst,metadata)
 end
-
 
 function Spectra2DBasic(λ::A1, flux::A2, var::A3, inst::InstT;
      metadata::Dict{Symbol,Any} = Dict{Symbol,Any}() ) where {
@@ -60,7 +59,7 @@ function Spectra2DBasic(λ::A1, flux::A2, var::A3, inst::InstT;
      InstT<:AbstractInstrument  }
     @assert size(λ) == size(flux)
     @assert size(λ) == size(var)
-    @assert 1 <= size(λ,1) <= max_pixels_in_order(inst)-min_pixels_in_order(inst)+1
+    @assert 1 <= size(λ,1) <= max_pixel_in_order(inst)-min_pixel_in_order(inst)+1
     @assert 1 <= size(λ,2) <= max_order(inst)-min_order(inst)+1
-    Spectra2DBasic{eltype(λ),eltype(flux),eltype(var),typeof(inst),typeof(λ),typeof(flux),typeof(var)}(λ,flux,var,inst,metadata)
+    Spectra2DBasic{eltype(λ),eltype(flux),eltype(var),typeof(λ),typeof(flux),typeof(var),typeof(inst)}(λ,flux,var,inst,metadata)
 end

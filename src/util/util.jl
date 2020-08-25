@@ -13,21 +13,32 @@ calc_doppler_factor(rv::Real) = one(rv) + rv/speed_of_light_mps
 """Compute Doppler boost factor (relativistic) for rv and v_perp in km/s"""
 calc_doppler_factor(rv::Real, v_perp::Real) = (one(rv) + rv/speed_of_light_mps)/(one(rv) - (rv^2+v_perp^2)/speed_of_light_mps^2)
 
-"""Multiply spectra's λs by doppler_factor and update spectra metadata, so doppler_factor knows how to undo the transform."""
-function apply_doppler_factor!(spectra::S,doppler_factor::Real) where {S<:AbstractSpectra}
-    spectra.λ .*= doppler_factor
-    if haskey(spectra.metadata,:doppler_factor)
-        spectra.metadata[:doppler_factor] ./= doppler_factor
-    else
-        spectra.metadata[:doppler_factor] = 1/doppler_factor
-    end
-    return spectra
+""" Apply Doppler boost to spectrum's λ's and update its metadata[:doppler_factor], so knows how to undo the transform. """
+function apply_doppler_boost!(spectra::AS,doppler_factor::Real) where {AS<:AbstractSpectra}
+        #println("# t= ",time, " doppler_factor= ",doppler_factor)
+        spectra.λ .*= doppler_factor
+        if hasproperty(spectra.metadata,:doppler_factor)
+            spectra.metadata[:doppler_factor] /= doppler_factor
+        else
+            spectra.metadata[:doppler_factor] = 1/doppler_factor
+        end
+        return spectra
+end
+
+""" Apply Doppler boost to each's spectrum's λ's and update its metadata[:doppler_factor]. """
+function apply_doppler_boost!(spectra::AbstractArray{AS}, df::DataFrame ) where { AS<:AbstractSpectra }
+    @assert size(spectra,1) == size(df,1)
+    if !hasproperty(df,:drift) @info "apply_doppler_boost! didn't find :drift to apply."   end
+    doppler_factor_drift = hasproperty(df,:drift) ? calc_doppler_factor.(df[!,:drift]) : ones(size(spectra))
+    if !hasproperty(df,:drift) @info "apply_doppler_boost! didn't find :ssb_rv to apply."  end
+    doppler_factor_ssb = hasproperty(df,:ssb_rv) ? calc_doppler_factor.(df[!,:ssb_rv]) : ones(size(spectra))
+    map(x->apply_doppler_boost!(x[1],x[2]), zip(spectra,doppler_factor_drift .* doppler_factor_ssb) );
 end
 
 """ Calculate total SNR in (region of) spectra. """
 function calc_snr(flux::AbstractArray{T1},var::AbstractArray{T2}) where {T1<:Real, T2<:Real}
     @assert size(flux) == size(var)
-    sqrt(sum(flux./var)) # /sum(1.0 ./ var)
+    sqrt(sum(flux./var))
 end
 
 """Estimate line width based on stellar Teff (K) and optionally v_rot (km/s).  Output in km/s."""
@@ -149,8 +160,8 @@ end
     Pads edges by Δ.
 """
 function make_chunk_list(spectra::AS, line_list::DataFrame; Δ::Real=Δλoλ_edge_pad_default) where { AS<:AbstractSpectra }
-    @assert haskey(line_list,:lambda_lo)
-    @assert haskey(line_list,:lambda_hi)
+    @assert hasproperty(line_list,:lambda_lo)
+    @assert hasproperty(line_list,:lambda_hi)
     ChunkList(map(row->ChuckOfSpectrum(spectra,find_line_best(row.lambda_lo,row.lambda_hi,spectra,Δ=Δ)), eachrow(line_list) ))
 end
 
@@ -165,17 +176,17 @@ end
 function make_orders_into_chunks
 end
 
-function make_orders_into_chunks(spectra::AS, inst::AbstractSpectra,
-        min_col::Integer = min_col_default(inst), # min_col_neid_default,
-        max_col::Integer = max_col_default(inst); #max_col_neid_default ,
-        orders_to_use = orders_to_use(inst) # 1:size(spectra.flux,2),
+function make_orders_into_chunks(spectra::AS, inst::AbstractInstrument;
+        min_col::Integer = min_col_default(spectra.inst), # min_col_neid_default,
+        max_col::Integer = max_col_default(spectra.inst), #max_col_neid_default ,
+        orders_to_use = orders_to_use_default(spectra.inst) # 1:size(spectra.flux,2),
         ) where {AS<:AbstractSpectra }
     @assert eltype(orders_to_use) <: Integer
-    @assert all( min_order(inst) .<= orders_to_use .<= max_order(inst) )
-    @assert min_col >= min_pixel_in_order(inst)
-    @assert max_col <= max_pixel_in_order(inst)
+    @assert all( min_order(spectra.inst) .<= orders_to_use .<= max_order(spectra.inst) )
+    @assert min_col >= min_pixel_in_order(spectra.inst)
+    @assert max_col <= max_pixel_in_order(spectra.inst)
     pixels_to_use=fill(min_col:max_col,length(orders_to_use))
-    make_orders_into_chunks(spectra,inst,orders_to_use=orders_to_use, pixels_to_use=pixels_to_use)
+    make_orders_into_chunks(spectra,orders_to_use=orders_to_use, pixels_to_use=pixels_to_use)
 end
 
 function make_orders_into_chunks(spectra::AS;
@@ -197,8 +208,8 @@ end
 """
 function filter_bad_chunks(chunk_list_timeseries::ACLT, line_list::DataFrame; verbose::Union{Int,Bool} = false) where { ACLT<:AbstractChunkListTimeseries }
     @assert(length(chunk_list_timeseries)>=1)
-    @assert(haskey(line_list,:lambda_lo))
-    @assert(haskey(line_list,:lambda_hi))
+    @assert(hasproperty(line_list,:lambda_lo))
+    @assert(hasproperty(line_list,:lambda_hi))
     idx_keep = trues(num_chunks(chunk_list_timeseries))
     for t in 1:length(chunk_list_timeseries)
         idx_bad_λ = findall(c->any(isnan.(chunk_list_timeseries.chunk_list[t].data[c].λ)),1:num_chunks(chunk_list_timeseries))
@@ -225,6 +236,8 @@ function filter_bad_chunks(chunk_list_timeseries::ACLT, line_list::DataFrame; ve
     end
 end
 
+""" """
+
 """ Create a range with equal spacing between points with end points set based on union of all chunks in timeseries.
     timeseries: ChunkListTimeseries
     chunk index:
@@ -250,37 +263,41 @@ end
 # Maniuplation Line lists
 """ Return DataFrame with specifications for each chunk which will contain one or more lines.
     Input:  line_list a DataFrame with:
-    -  lambda_lo, lambda_hi, lambda_mid, depth_vald
+    -  lambda_lo, lambda_hi, lambda, depth
     Output:  DataFrame with
     - lambda_lo & lambda_hi: boundaries for chunk
-    - line_λs & line_depths: arrays with info about each line
+    - lambda & line_depths: arrays with info about each line
 """
 function merge_lines(line_list::DataFrame)
+    @assert hasproperty(line_list,:lambda_lo)
+    @assert hasproperty(line_list,:lambda_hi)
+    @assert hasproperty(line_list,:lambda)
+    @assert hasproperty(line_list,:depth)
     chunk_list_df = DataFrame(:lambda_lo=>Float64[],:lambda_hi=>Float64[],
-                                :line_λs=>Array{Float64,1}[],:line_depths=>Array{Float64,1}[])
+                                :lambda=>Array{Float64,1}[],:depth=>Array{Float64,1}[])
     num_lines = size(line_list,1)
     @assert num_lines >= 2
     lambda_lo_last = line_list[1,:lambda_lo]
     lambda_hi_last = line_list[1,:lambda_hi]
-    line_λs = [line_list[1,:lambda_mid]]
-    line_depths = [line_list[1,:depth_vald]]
+    lambda = [line_list[1,:lambda]]
+    line_depths = [line_list[1,:depth]]
     for i in 2:num_lines
         lambda_lo = line_list[i,:lambda_lo]
         lambda_hi = line_list[i,:lambda_hi]
         if lambda_lo>lambda_hi_last
-            push!(chunk_list_df, (lambda_lo_last, lambda_hi_last, line_λs, line_depths))
+            push!(chunk_list_df, (lambda_lo_last, lambda_hi_last, lambda, line_depths))
             (lambda_lo_last, lambda_hi_last) = (lambda_lo, lambda_hi)
-            line_λs = [line_list[i,:lambda_mid]]
-            line_depths = [line_list[i,:depth_vald]]
+            lambda = [line_list[i,:lambda]]
+            line_depths = [line_list[i,:depth]]
         else
             lambda_hi_last = lambda_hi
-            push!(line_λs,line_list[i,:lambda_mid])
-            push!(line_depths,line_list[i,:depth_vald])
+            push!(lambda,line_list[i,:lambda])
+            push!(line_depths,line_list[i,:depth])
         end
     end
     if chunk_list_df[end,:lambda_hi] != lambda_hi_last
         #push!(chunk_list_df, (lambda_lo_last, lambda_hi_last))
-        push!(chunk_list_df, (lambda_lo_last, lambda_hi_last, line_λs, line_depths))
+        push!(chunk_list_df, (lambda_lo_last, lambda_hi_last, lambda, line_depths))
     end
     return chunk_list_df
 end
@@ -311,7 +328,7 @@ function normalize_spectra!(chunk_timeseries::ACLT, spectra::AS) where { ACLT<:A
         println("# t= ",t, " scale_fac= ", scale_fac)
         normalize_spectrum!(spectra[t], scale_fac)
     end
-    return timeseries
+    return chunk_timeseries
 end
 
 

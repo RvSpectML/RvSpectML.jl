@@ -1,24 +1,46 @@
-# Trait-based functions defaults (can be overwritten by instrument-specific versions)
+
+# Declare functions that should be specialized for each instrument here, so they can be imported into their instrument's module.
+function min_order end
+function max_order end
+function min_pixel_in_order end
+function max_pixel_in_order end
+function min_pixel end
+function max_pixel end
+
+function orders_to_use_default end
+function min_col_default end
+function max_col_default end
+
+function metadata_symbols_default end
+function metadata_strings_default end
+
+# Trait-based functions that provide defaults (can be overwritten by instrument-specific versions)
 orders_all(inst::AbstractInstrument2D) = min_order(inst):max_order(inst)
-pixels_all(inst::AbstractInstrument2D) = min_pixels_in_order(inst):max_pixels_in_order(inst)
+pixels_all(inst::AbstractInstrument2D) = min_pixels_in_order(inst):max_pixel_in_order(inst)
 pixels_all(inst::AbstractInstrument1D) = min_pixel(inst):max_pixel(inst)
 max_pixels_in_spectra(inst::AbstractInstrument1D) = length(pixels_all(inst))
 max_pixels_in_spectra(inst::AbstractInstrument2D) = (max_order(inst)-min_order(inst)+1) * (max_pixel_in_order(inst)-min_pixel_in_order(inst)+1)
 min_pixels_in_chunk(inst::AbstractInstrument1D) = 6
 
-using CSV
+using DataFrames, CSV, FITSIO
 
 """Read manifest containing filename, bjd, target, and optionally additional metadata from CSV file. """
 function read_manifest(fn::String)
-    CSV.read(fn,threaded=false)
+    df = CSV.read(fn,threaded=false)
+    @assert hasproperty(df,:filename)
+    @assert hasproperty(df,:bjd)
+    @assert hasproperty(df,:target)
+    @assert size(df,1) >= 1
+    return df
 end
 
 """ Read header from FITS file and return Dict with contents. """
 function read_header(fn::String; header_idx::Integer = 1)
+    println("# Reading: ",fn, " hdu= ",header_idx)
     f = FITS(fn)
     @assert 1<=header_idx<=length(f)
-    #@assert read_key(f[1],"SKY-OBJ")[1] == "Solar"
-    hdr = read_header(f[header_idx])
+    #@assert read_key(f[header_idx],"SKY-OBJ")[1] == "Solar"
+    hdr = FITSIO.read_header(f[header_idx])
     metadata = Dict(zip(map(k->Symbol(k),hdr.keys),hdr.values))
 end
 
@@ -40,7 +62,7 @@ end
 function read_metadata_from_fits(fn::String; fields::Array{Symbol,1}, fields_str::AbstractArray{AS,1} )  where { AS<:AbstractString }
     @assert length(fields) == length(fields_str)
     f = FITS(fn)
-    hdr = read_header(f[1])
+    hdr = FITSIO.read_header(f[1])
     # Check that header has all expected fields
     for field in fields_str
         @assert findfirst(isequal(field),keys(hdr)) != nothing
@@ -51,15 +73,18 @@ function read_metadata_from_fits(fn::String; fields::Array{Symbol,1}, fields_str
 end
 
 """ Read mask in ESPRESSO csv format.
-   ESPRESSO format: two columns, lambda and weight.
+   ESPRESSO format: lambda and weight.
 """
 function read_mask_espresso(fn::String)
     CSV.read(fn,threaded=false,header=["lambda","weight"],silencewarnings=true)
 end
 
 """ Read mask in VALD csv format.
-   VALD format: lambda_lo, lambdaa_hi and weight.
- """
+   VALD format: lambda_lo, lambdaa_hi and depth.
+"""
 function read_mask_vald(fn::String)
-    CSV.read(fn,threaded=false,header=["lambda_lo","lambda_hi","depth"])
+    df = CSV.read(fn,threaded=false,header=["lambda_lo","lambda_hi","depth"])
+    df[!,:lambda] = sqrt.(df[!,:lambda_lo].*df[!,:lambda_hi])
+    df[!,:weight] = df[!,:depth]
+    return df
 end

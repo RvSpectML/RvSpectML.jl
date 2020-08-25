@@ -87,6 +87,14 @@ function pack_chunks_into_matrix(timeseries::ACLT, chunk_grids::AR) where { ACLT
 end
 
 =#
+
+""" Return mean flux (averaging over observations at different times, variance weighted) based on a common set of wavelengths.
+   Inputs: flux & var (2d: pixel, time)
+"""
+function calc_mean_spectrum(flux::AbstractArray{T1,2}, var::AbstractArray{T2,2} ) where { T1<:Real, T2<:Real }
+    flux_mean = vec(sum(flux./var,dims=2)./sum(1.0./var,dims=2))
+end
+
 """ Estimate numerical derivative of fluxes given wavelengths. """
 function calc_deriv(flux::AbstractArray{T1,1}, λ::AbstractArray{T2,1}) where { T1<:Real, T2<:Real }
     @assert size(flux) == size(λ)
@@ -96,13 +104,6 @@ function calc_deriv(flux::AbstractArray{T1,1}, λ::AbstractArray{T2,1}) where { 
     dfdlogλ[2:end-1] .= 0.5*(flux[3:end].-flux[1:end-2])./(λ[3:end].-λ[1:end-2]).*(λ[3:end].+λ[end-2])
     dfdlogλ[end] = 0.5*(flux[end]-flux[end-1])/(λ[end]-λ[end-1])*(λ[end]+λ[end-1])
     return dfdlogλ
-end
-
-""" Return mean flux (averaging over observations at different times, variance weighted) based on a common set of wavelengths.
-   Inputs: flux & var (2d: pixel, time)
-"""
-function calc_mean_spectrum(flux::AbstractArray{T1,2}, var::AbstractArray{T2,2} ) where { T1<:Real, T2<:Real }
-    flux_mean = vec(sum(flux./var,dims=2)./sum(1.0./var,dims=2))
 end
 
 """ Return mean numerical derivative of fluxes based on a common set of wavelengths.

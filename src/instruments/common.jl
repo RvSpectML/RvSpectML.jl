@@ -26,7 +26,7 @@ using DataFrames, CSV, FITSIO
 
 """Read manifest containing filename, bjd, target, and optionally additional metadata from CSV file. """
 function read_manifest(fn::String)
-    df = CSV.read(fn,threaded=false)
+    df = CSV.read(fn,DataFrame,threaded=false)
     @assert hasproperty(df,:filename)
     @assert hasproperty(df,:bjd)
     @assert hasproperty(df,:target)
@@ -76,14 +76,14 @@ end
    ESPRESSO format: lambda and weight.
 """
 function read_mask_espresso(fn::String)
-    CSV.read(fn,threaded=false,header=["lambda","weight"],silencewarnings=true)
+    CSV.read(fn,DataFrame,threaded=false,header=["lambda","weight"],silencewarnings=true)
 end
 
 """ Read mask in VALD csv format.
    VALD format: lambda_lo, lambdaa_hi and depth.
 """
 function read_mask_vald(fn::String)
-    df = CSV.read(fn,threaded=false,header=["lambda_lo","lambda_hi","depth"])
+    df = CSV.read(fn,DataFrame,threaded=false,header=["lambda_lo","lambda_hi","depth"])
     df[!,:lambda] = sqrt.(df[!,:lambda_lo].*df[!,:lambda_hi])
     df[!,:weight] = df[!,:depth]
     return df

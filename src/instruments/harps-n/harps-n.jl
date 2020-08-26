@@ -17,6 +17,7 @@ export orders_to_use_default, min_col_default, max_col_default
 export metadata_symbols_default, metadata_strings_default
 
 #include("io.jl")
-export make_manifest, read_header, read_header, read_data, read_solar_data
+export make_manifest, read_data, read_solar_data
+# read_header not exported to avoid conflict with FITSIO.read_header
 
 end

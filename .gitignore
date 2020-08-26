@@ -8,13 +8,15 @@ data_paths.jl
 /Manifest.toml
 /docs/Manifest.toml
 /examples/Manifest.toml
-/nootebooks/Manifest.toml
+/notebooks/Manifest.toml
 /test/Manifest.toml
 
 # Large files to be downloaded outside of git
 /data/large
 
 # Temporary files
+tmp.jl
+/examples/output
 /plots
 /test/testdir
 

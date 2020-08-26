@@ -14,7 +14,8 @@ end
  interp_chunk_to_grid_linear!( flux_out, var_out, chunk_of_spectrum, wavelengths )
 Return spectra interpolated onto a grid of points using linear interpolation.
 """
-function interp_chunk_to_grid_linear!( flux_out::AbstractArray{T1,1}, var_out::AbstractArray{T2,1}, chunk::AC, grid::AR ) where { T1<:Real, T2<:Real, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_grid_linear!( flux_out::AbstractArray{T1,1}, var_out::AbstractArray{T2,1}, chunk::AC, grid::AR ) where {
+    T1<:Real, T2<:Real, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
     lin_interp_flux = make_interpolator_linear_flux(chunk)
@@ -24,8 +25,29 @@ function interp_chunk_to_grid_linear!( flux_out::AbstractArray{T1,1}, var_out::A
     return flux_out
 end
 
+#using Stheno
+#using TemporalGPs
+# NOTE:  Using own GP code for now, since include predicting derivatives and can minimize unnecessary dependancies
+# TODO:  Revisit if can use TemporalGPs for improved speed
+"""
+ interp_chunk_to_grid_gp!( flux_out, var_out, chunk_of_spectrum, wavelengths )
+Return spectra interpolated onto a grid of points using Gaussian Process interpolation.
+"""
+function interp_chunk_to_grid_gp!( flux_out::AbstractArray{T1,1}, var_out::AbstractArray{T2,1}, chunk::AC, grid::AR ) where { T1<:Real, T2<:Real, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+    @assert size(flux_out) == size(var_out)
+    @assert size(flux_out) == size(grid)
+    @warn "Placeholder... doesn't use GP yet."
+    lin_interp_flux = make_interpolator_linear_flux(chunk)
+    lin_interp_var = make_interpolator_linear_var(chunk)
+    flux_out .= lin_interp_flux(grid)
+    var_out .= lin_interp_var(grid)
+    return flux_out
+end
 
-function pack_chunk_list_timeseries_to_matrix_linear(timeseries::ACLT, chunk_grids::AR) where { ACLT<:AbstractChunkListTimeseries, RT<:AbstractRange, AR<:AbstractArray{RT,1} }
+
+function pack_chunk_list_timeseries_to_matrix_linear(timeseries::ACLT, chunk_grids::Union{AR,AAV}; alg::Symbol = :Linear) where {
+        ACLT<:AbstractChunkListTimeseries, RT<:AbstractRange, AR<:AbstractArray{RT,1}, T<:Real, AV<:AbstractVector{T}, AAV<:AbstractArray{AV,1} }
+    @assert alg == :Linear || alg == :GP  # TODO: Eventually move to traits-based system?
     num_obs = length(timeseries)
     num_λ = sum(length.(chunk_grids))
     flux_matrix = Array{Float64,2}(undef,num_λ,num_obs)
@@ -33,11 +55,16 @@ function pack_chunk_list_timeseries_to_matrix_linear(timeseries::ACLT, chunk_gri
     λ_vec = Array{Float64,1}(undef,num_λ)
     chunk_map = Array{UnitRange{Int64}}(undef,length(chunk_grids))
 
+
    for t in 1:num_obs
        idx_start = 0
        for c in 1:length(chunk_grids)
            idx = (idx_start+1):(idx_start+length(chunk_grids[c]))
-           interp_chunk_to_grid_linear!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c])
+           if alg == :Linear
+               interp_chunk_to_grid_linear!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c])
+           elseif alg == :GP
+               interp_chunk_to_grid_gp!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c])
+           end
            if t == 1
                λ_vec[idx] .= chunk_grids[c]
                chunk_map[c] = idx
@@ -47,7 +74,6 @@ function pack_chunk_list_timeseries_to_matrix_linear(timeseries::ACLT, chunk_gri
    end
 
    return SpectralTimeSeriesCommonWavelengths(λ_vec,flux_matrix,var_matrix,chunk_map, Generic1D() )
-   #return (flux=flux_matrix, var=var_matrix, λ=λ_vec, chunk_map=chunk_map)
 end
 
 
@@ -160,11 +186,46 @@ function calc_mean_deriv(flux::AbstractArray{T1,2}, var::AbstractArray{T1,2}, λ
 end
 
 function calc_rvs_from_taylor_expansion(spectra::STS; mean::MT = calc_mean_spectrum(spectra),
-                deriv::DT = calc_mean_deriv(spectra), idx::RT = 1:length(mean) ) where { STS<:AbstractSpectralTimeSeriesCommonWavelengths,
-                                T1<:Real, MT<:AbstractVector{T1}, T2<:Real, DT<:AbstractVector{T2}, RT<:AbstractUnitRange }
+                deriv::DT = calc_mean_deriv(spectra), idx::RT = 1:length(mean),
+                equal_weight::Bool = true ) where {
+                    STS<:AbstractSpectralTimeSeriesCommonWavelengths, T1<:Real, MT<:AbstractVector{T1},
+                    T2<:Real, DT<:AbstractVector{T2}, RT<:AbstractUnitRange }
    @assert length(mean) == length(deriv)
    @assert size(spectra.flux,1) == length(mean)
-   rv = vec(sum((spectra.flux[idx,:].-mean[idx]).*deriv[idx],dims=1)./sum(abs2.(deriv[idx]))).*speed_of_light_mps
-   σ_rv = sqrt.(vec(sum(spectra.var[idx,:].*abs.(deriv),dims=1)./sum(abs2.(deriv))))./length(deriv).*speed_of_light_mps
-   return (rv=rv, σ_rv=σ_rv)
+   @assert minimum(idx) >=1
+   @assert maximum(idx) <= length(mean)
+
+   if equal_weight # Pixels equally-weighted
+      norm = sum(abs2.(deriv[idx]))
+      rv = sum((spectra.flux[idx,:].-mean[idx]).*deriv[idx],dims=1).*(speed_of_light_mps/norm)
+      # TODO: WARN: Uncertinaties ignores correlations between pixels, particularly problematic when oversample pixels
+      σ_rv = sqrt.(sum(spectra.var[idx,:].*abs2.(deriv[idx]),dims=1)) .*(speed_of_light_mps/norm)
+  else # Pixels inverse variance weighted
+      # TODO:  CHECK/FIX? math for inverse variance weighting.
+      # Or maybe the math is right, but it's just a bad idea to have different weighting within one line/chunk
+      @info "Warning: I think this is either wrong or a bad idea."
+      norm = sum(abs2.(deriv[idx])./spectra.var[idx,:])
+      rv = sum((spectra.flux[idx,:].-mean[idx]).*deriv[idx]./spectra.var[idx,:],dims=1).*(speed_of_light_mps/norm)
+      σ_rv = sqrt.(sum(abs2.(deriv)./spectra.var[idx,:],dims=1)).*(speed_of_light_mps/norm)
+   end
+   return (rv=vec(rv), σ_rv=vec(σ_rv))
+end
+
+function calc_chunk_rvs_from_taylor_expansion(spectra::STS; mean::MT = calc_mean_spectrum(spectra),
+                deriv::DT = calc_mean_deriv(spectra),
+                equal_weight::Bool = false ) where {
+                    STS<:AbstractSpectralTimeSeriesCommonWavelengths, T1<:Real, MT<:AbstractVector{T1},
+                    T2<:Real, DT<:AbstractVector{T2}, RT<:AbstractUnitRange }
+   @assert length(mean) == length(deriv)
+   @assert size(spectra.flux,1) == length(mean)
+
+   map(idx->calc_rvs_from_taylor_expansion(spectra,mean=mean,deriv=deriv,idx=idx),spectra.chunk_map)
+end
+
+
+function compute_spectra_perp_doppler_shift(spectra::AA, deriv::V1, rvs::V2) where {
+            T1<:Real, AA<:AbstractArray{T1,2}, T2<:Real, V1<:AbstractVector{T2}, T3<:Real, V2<:AbstractVector{T3} }
+   @assert size(spectra,1) == length(deriv)
+   @assert size(spectra,2) == length(rvs)
+   fm_perp = spectra .- rvs' .* deriv./RvSpectML.speed_of_light_mps
 end

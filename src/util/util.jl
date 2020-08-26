@@ -294,6 +294,7 @@ function make_grid_for_chunk(timeseries::ACLT, c::Integer; oversample_factor::Re
     num_obs = length(timeseries.chunk_list)
     @assert num_obs >= 1
     @assert 1<= c <= length(first(timeseries.chunk_list).data) # WARN: only tests first chunk_list
+    # Create grid, so that chunks at all times include the grid's minimum and maximum wavelength.
     λ_min = maximum(minimum(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
     λ_max = minimum(maximum(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
     Δλ_grid_obs = median((timeseries.chunk_list[t].data[c].λ[end]-
@@ -302,7 +303,10 @@ function make_grid_for_chunk(timeseries::ACLT, c::Integer; oversample_factor::Re
     num_pixels_obs = mean(length(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
     num_pixels_gen = (num_pixels_obs-1) * oversample_factor + 1
     Δλ_grid_gen = (λ_max-λ_min)/ (num_pixels_gen-1)
-    range(λ_min,stop=λ_max,step=Δλ_grid_gen)
+    return range(λ_min,stop=λ_max,step=Δλ_grid_gen)
+    # TODO: Tweak to make other code work with grids spaced eveningly in logλ
+    #Δlnλ_grid_gen = log(λ_max/λ_min)/ (num_pixels_gen-1)
+    #exp.(range(log(λ_min),stop=log(λ_max),step=Δlnλ_grid_gen))
 end
 
 
@@ -367,12 +371,13 @@ function normalize_spectrum!(spectrum::ST, scale_fac::Real) where { ST<:Abstract
     return spectrum
 end
 
+
 """ Normalize each spectrum based on sum of fluxes in chunk_timeseries region of each spectrum. """
 function normalize_spectra!(chunk_timeseries::ACLT, spectra::AS) where { ACLT<:AbstractChunkListTimeseries, ST<:AbstractSpectra, AS<:AbstractArray{ST} }
     @assert length(chunk_timeseries) == length(spectra)
     for t in 1:length(chunk_timeseries)
         scale_fac = calc_normalization(chunk_timeseries.chunk_list[t])
-        println("# t= ",t, " scale_fac= ", scale_fac)
+        # println("# t= ",t, " scale_fac= ", scale_fac)
         normalize_spectrum!(spectra[t], scale_fac)
     end
     return chunk_timeseries
@@ -389,4 +394,46 @@ end
         x[i] == e1 || return false
     end
     return true
+end
+
+function bin_consecutive_spectra(spectra::AbstractSpectralTimeSeriesCommonWavelengths, n::Integer)
+  local num_in = size(spectra.flux,2)
+  @assert num_in >= n
+  local num_out = floor(Int,num_in//n)
+  local flux_out = Array{eltype(spectra.flux),2}(undef,size(spectra.flux,1),num_out)
+  local var_out  = Array{eltype(spectra.flux),2}(undef,size(spectra.flux,1),num_out)
+  local time_idx_out  = Array{UnitRange,1}(undef,num_out)
+  #idx_binned = map(i->1+(i-1)*obs_per_bin:obs_per_bin*i,1:num_obs_binned)
+
+  local idx_start = 1
+  for i in 1:num_out
+    idx_stop = min(idx_start+n-1,num_in)
+    flux_out[:,i] .= vec(sum(spectra.flux[:,idx_start:idx_stop],dims=2))
+    var_out[:,i]  .= vec(sum((spectra.var[:,idx_start:idx_stop]),dims=2))
+    time_idx_out[i] = idx_start:idx_stop
+    idx_start = idx_stop + 1
+  end
+  metadata_out = MetadataT(:time_idx=>time_idx_out)
+  return typeof(spectra)(spectra.λ,flux_out,var_out,spectra.chunk_map,spectra.inst,metadata_out)
+end
+
+function bin_times(spectra::AbstractSpectralTimeSeriesCommonWavelengths, times::AT, n::Integer) where { T<:Real, AT<:AbstractVector{T} }
+    @assert haskey(spectra.metadata,:time_idx)
+    map(idx->mean(times[idx]), spectra.metadata[:time_idx])
+end
+
+function bin_times(times::AT, n::Integer) where { T<:Real, AT<:AbstractVector{T} }
+    local num_in = length(times)
+    @assert num_in >= n
+    local num_out = floor(Int,num_in//n)
+    local times_out = Vector{eltype(times)}(undef,num_out)
+    local time_idx_out  = Array{UnitRange,1}(undef,num_out)
+    local idx_start = 1
+    for i in 1:num_out
+      idx_stop = min(idx_start+n-1,num_in)
+      times_out[i] .= mean(times[idx_start:idx_stop])
+      time_idx_out[i] = idx_start:idx_stop
+      idx_start = idx_stop + 1
+    end
+    return times_out
 end

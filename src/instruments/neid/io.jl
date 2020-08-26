@@ -81,7 +81,7 @@ end
 
 """ Read CSV of NEID drift corrections, interpolate to bjd's in df and insert into df[:,drift]. """
 function read_drift_corrections!(fn::String, df::DataFrame, df_time_col::Symbol = :bjd)
-    drift_corrections = CSV.read(fn, header=["bjd", "sci_drift", "cal_drift"]);
+    drift_corrections = CSV.read(fn, DataFrame, header=["bjd", "sci_drift", "cal_drift"]);
     @assert any(isequal(:bjd),propertynames(drift_corrections))
     @assert any(isequal(:cal_drift),propertynames(drift_corrections))
     drift_interp = LinearInterpolation(drift_corrections[!,:bjd],drift_corrections[!,:cal_drift])
@@ -91,7 +91,7 @@ end
 
 """ Read CSV of NEID barycentric corrections, interpolate to bjd's in df and insert into df[:,ssb_rv]. """
 function read_barycentric_corrections!(fn::String, df::DataFrame, df_time_col::Symbol = :bjd)
-    ssb_corrections = CSV.read(fn, header=["bjd","rv_ssb"], select=[1,2], types=types=[Float64,Float64], datarow=2, silencewarnings=true);
+    ssb_corrections = CSV.read(fn, DataFrame, header=["bjd","rv_ssb"], select=[1,2], types=types=[Float64,Float64], datarow=2, silencewarnings=true);
     @assert any(isequal(:bjd),propertynames(ssb_corrections))
     @assert any(isequal(:rv_ssb),propertynames(ssb_corrections))
     ssb_interp = LinearInterpolation(ssb_corrections.bjd, ssb_corrections.rv_ssb)

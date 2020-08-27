@@ -29,14 +29,14 @@ RvSpectML.GPs.reset_ncalls()
 =#
 
 f_mean = calc_mean_spectrum(spectra_all.flux,spectra_all.var)
- deriv = calc_mean_deriv(spectra_all.flux,spectra_all.var,spectra_all.λ,spectra_all.chunk_map)
+ deriv = calc_mean_dfluxdlnlambda(spectra_all.flux,spectra_all.var,spectra_all.λ,spectra_all.chunk_map)
  plt_times = (chunk_list_timeseries.times .-minimum(chunk_list_timeseries.times)).*24
  spectra_matrix = spectra_all
 
 if 2 <= num_spectra_to_bin <=20
   spectra_binned = RvSpectML.bin_consecutive_spectra(spectra_all,num_spectra_to_bin)
   f_mean = calc_mean_spectrum(spectra_binned.flux,spectra_binned.var)
-  deriv = calc_mean_deriv(spectra_binned.flux,spectra_binned.var,spectra_binned.λ,spectra_binned.chunk_map)
+  deriv = calc_mean_dfluxdlnlambda(spectra_binned.flux,spectra_binned.var,spectra_binned.λ,spectra_binned.chunk_map)
   times_binned = RvSpectML.bin_times(spectra_binned,chunk_list_timeseries.times,num_spectra_to_bin)
   plt_times = (times_binned.-minimum(chunk_list_timeseries.times)).*24
   spectra_matrix = spectra_binned
@@ -76,7 +76,7 @@ order_grids = map(c->RvSpectML.make_grid_for_chunk(order_list_timeseries,c,overs
     spectral_orders_matrix = RvSpectML.bin_consecutive_spectra(spectral_orders_matrix,num_spectra_to_bin)
   end
   f_mean_orders = calc_mean_spectrum(spectral_orders_matrix.flux,spectral_orders_matrix.var)
-  deriv_orders = calc_mean_deriv(spectral_orders_matrix.flux,spectral_orders_matrix.var,spectral_orders_matrix.λ,spectral_orders_matrix.chunk_map)
+  deriv_orders = calc_mean_dfluxdlnlambda(spectral_orders_matrix.flux,spectral_orders_matrix.var,spectral_orders_matrix.λ,spectral_orders_matrix.chunk_map)
 
 if make_plots
   plt_order = 40

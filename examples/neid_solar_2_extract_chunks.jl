@@ -28,8 +28,8 @@ espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks","G2.espresso.mas")
 espresso_df = RvSpectML.read_mask_espresso(espresso_filename)
 
 lambda_range_with_data = (min = maximum(d->minimum(d.λ),solar_data), max = minimum(d->maximum(d.λ),solar_data) )
-#line_list_df = vald_df |>
-line_list_df = espresso_df |>
+line_list_df = vald_df |>
+#line_list_df = espresso_df |>
    @filter(lambda_range_with_data.min <= _.lambda_lo ) |>
    @filter( _.lambda_hi < lambda_range_with_data.max) |>
 #   @filter( _.lambda_lo >6157 || _.lambda_hi < 6155  ) |>   # Avoid "line" w/ large variability
@@ -66,7 +66,7 @@ for (r,row) in enumerate(eachrow(chunk_list_df) )
 
 end
 
-
+# TODO:  FIX.  SOMETHING BROKE HERE.
 chunk_list_timeseries = RvSpectML.make_chunk_list_timeseries(solar_data,chunk_list_df)
 # Check that no NaN's included
 (chunk_list_timeseries, chunk_list_df) = RvSpectML.filter_bad_chunks(chunk_list_timeseries,chunk_list_df)

@@ -29,12 +29,6 @@ function (f::ChunkWidthFuncOfλ)(λ::Real; chunk_size_factor::Real = default_chu
     return Δlnλ
 end
 
-# Default values shared across instruments
-default_chunk_size_factor = 3       # TODO: Figure out what value to use.  Ask Alex
-default_min_chunk_Δv = 20          # km/s
-default_line_width = RvSpectML.predict_line_width(5780,v_rot=1.8)  # km/s
-default_calc_chunk_width = ChunkWidthFixedΔlnλ(default_chunk_size_factor*RvSpectML.predict_line_width(5780,v_rot=1.8)/speed_of_light_mps)
-
 """
     Read mask in ESPRESSO csv format.
 ESPRESSO format: lambda and weight.
@@ -65,6 +59,39 @@ function read_mask_vald(fn::String; calcΔ::CCWT = default_calc_chunk_width) whe
     return df
 end
 
+"""  Convert vacuum wavelength (in Å) to air wavelength
+Ref: Donald Morton (2000, ApJ. Suppl., 130, 403) via
+     https://www.astro.uu.se/valdwiki/Air-to-vacuum%20conversion
+"""
+function λ_vac_to_air(λ_vac::Real)
+    @assert 3500 < λ_vac < 13000  # Making sure in Å for optical/NIR spectra.
+    local s = 10000/λ_vac
+    local n = 1 + 0.0000834254 + 0.02406147 / (130 - s^2) + 0.00015998 / (38.9 - s^2)
+    return λ_vac/n
+end
+
+""" Convert air wavelength (in Å) to vacuum wavelength
+Ref: https://www.astro.uu.se/valdwiki/Air-to-vacuum%20conversion
+     VALD3 tools use the following solution derived by N. Piskunov
+"""
+function λ_air_to_vac(λ_air::Real)
+    @assert 3500 < λ_air < 13000  # Making sure in Å for optical/NIR spectra.
+    local s = 10000/λ_air
+    local n = 1 + 0.00008336624212083 + 0.02408926869968 / (130.1065924522 - s^22) + 0.0001599740894897 / (38.92568793293 - s^22)
+    λ_air*n
+end
+
+"""Estimate line width based on stellar Teff (K) and optionally v_rot (km/s).  Output in km/s."""
+function predict_line_width(Teff::Real; v_rot::Real=zero(Teff))
+    @assert 3000 < Teff < 10000 # K
+    @assert 0 <= v_rot <=100 # km/s
+    line_width_thermal = 13*sqrt(Teff/1e4) # km/s
+    line_width = sqrt(v_rot^2+line_width_thermal^2) # km/s
+end
+
+
+
+
 """ Return indices of any chunks in df that have overlapping lambda_hi[i] and lambda_lo[i+1].  """
 function find_overlapping_chunks(df::DataFrame; verbose::Bool = true)
     @assert hasproperty(df,:lambda_lo)
@@ -77,4 +104,45 @@ function find_overlapping_chunks(df::DataFrame; verbose::Bool = true)
        println("# Number of overlapping chunks: ",length(idx_overlap))
    end
    return idx_overlap
+end
+
+""" Return DataFrame with specifications for each chunk which will contain one or more lines.
+    Input:  line_list a DataFrame with:
+    -  lambda_lo, lambda_hi, lambda, depth
+    Output:  DataFrame with
+    - lambda_lo & lambda_hi: boundaries for chunk
+    - lambda & line_depths: arrays with info about each line
+"""
+function merge_lines(line_list::DataFrame)
+    @assert hasproperty(line_list,:lambda_lo)
+    @assert hasproperty(line_list,:lambda_hi)
+    @assert hasproperty(line_list,:lambda)
+    @assert hasproperty(line_list,:depth)
+    chunk_list_df = DataFrame(:lambda_lo=>Float64[],:lambda_hi=>Float64[],
+                                :lambda=>Array{Float64,1}[],:depth=>Array{Float64,1}[])
+    num_lines = size(line_list,1)
+    @assert num_lines >= 2
+    lambda_lo_last = line_list[1,:lambda_lo]
+    lambda_hi_last = line_list[1,:lambda_hi]
+    lambda = [line_list[1,:lambda]]
+    line_depths = [line_list[1,:depth]]
+    for i in 2:num_lines
+        lambda_lo = line_list[i,:lambda_lo]
+        lambda_hi = line_list[i,:lambda_hi]
+        if lambda_lo>lambda_hi_last
+            push!(chunk_list_df, (lambda_lo_last, lambda_hi_last, lambda, line_depths))
+            (lambda_lo_last, lambda_hi_last) = (lambda_lo, lambda_hi)
+            lambda = [line_list[i,:lambda]]
+            line_depths = [line_list[i,:depth]]
+        else
+            lambda_hi_last = lambda_hi
+            push!(lambda,line_list[i,:lambda])
+            push!(line_depths,line_list[i,:depth])
+        end
+    end
+    if chunk_list_df[end,:lambda_hi] != lambda_hi_last
+        #push!(chunk_list_df, (lambda_lo_last, lambda_hi_last))
+        push!(chunk_list_df, (lambda_lo_last, lambda_hi_last, lambda, line_depths))
+    end
+    return chunk_list_df
 end

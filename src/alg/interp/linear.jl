@@ -168,6 +168,7 @@ end
 
 =#
 
+#=
 """ Return mean flux (averaging over observations at different times, variance weighted) based on a common set of wavelengths.
    Inputs: flux & var (2d: pixel, time)
 """
@@ -176,7 +177,7 @@ function calc_mean_spectrum(flux::AbstractArray{T1,2}, var::AbstractArray{T2,2} 
 end
 
 """ Estimate numerical derivative of fluxes given wavelengths. """
-function calc_deriv(flux::AbstractArray{T1,1}, λ::AbstractArray{T2,1}) where { T1<:Real, T2<:Real }
+function calc_dfluxdlnlambda(flux::AbstractArray{T1,1}, λ::AbstractArray{T2,1}) where { T1<:Real, T2<:Real }
     @assert size(flux) == size(λ)
     @assert length(flux) >= 3
     dfdlogλ = Array{T1,1}(undef,length(flux))
@@ -189,17 +190,17 @@ end
 """ Return mean numerical derivative of fluxes based on a common set of wavelengths.
     Inputs: flux & var (2d) and λ (1d)
  """
-function calc_mean_deriv(flux::AbstractArray{T1,2}, var::AbstractArray{T1,2}, λ::AbstractArray{T3,1},
+function calc_mean_dfluxdlnlambda(flux::AbstractArray{T1,2}, var::AbstractArray{T1,2}, λ::AbstractArray{T3,1},
         chunk_map::AbstractArray{URT,1}) where
     { T1<:Real, T2<:Real, T3<:Real, URT<:AbstractUnitRange} #, RT<:AbstractRange }
     flux_mean = calc_mean_spectrum(flux,var)
     deriv = Array{T1,1}(undef,length(flux_mean))
-    map(c->deriv[c] .= calc_deriv(flux_mean[c],λ[c]),chunk_map )
+    map(c->deriv[c] .= calc_dfluxdlnlambda(flux_mean[c],λ[c]),chunk_map )
     return deriv
 end
 
 function calc_rvs_from_taylor_expansion(spectra::STS; mean::MT = calc_mean_spectrum(spectra),
-                deriv::DT = calc_mean_deriv(spectra), idx::RT = 1:length(mean),
+                deriv::DT = calc_mean_dfluxdlnlambda(spectra), idx::RT = 1:length(mean),
                 equal_weight::Bool = true ) where {
                     STS<:AbstractSpectralTimeSeriesCommonWavelengths, T1<:Real, MT<:AbstractVector{T1},
                     T2<:Real, DT<:AbstractVector{T2}, RT<:AbstractUnitRange }
@@ -225,7 +226,7 @@ function calc_rvs_from_taylor_expansion(spectra::STS; mean::MT = calc_mean_spect
 end
 
 function calc_chunk_rvs_from_taylor_expansion(spectra::STS; mean::MT = calc_mean_spectrum(spectra),
-                deriv::DT = calc_mean_deriv(spectra),
+                deriv::DT = calc_mean_dfluxdlnlambda(spectra),
                 equal_weight::Bool = false ) where {
                     STS<:AbstractSpectralTimeSeriesCommonWavelengths, T1<:Real, MT<:AbstractVector{T1},
                     T2<:Real, DT<:AbstractVector{T2}, RT<:AbstractUnitRange }
@@ -242,3 +243,4 @@ function compute_spectra_perp_doppler_shift(spectra::AA, deriv::V1, rvs::V2) whe
    @assert size(spectra,2) == length(rvs)
    fm_perp = spectra .- rvs' .* deriv./RvSpectML.speed_of_light_mps
 end
+=#

@@ -26,7 +26,7 @@ fm_mean = sum(fm./vm,dims=2)./sum(1.0./vm,dims=2)
 #fm
 #fm_mean = mean(fm,dims=2)
 deriv_old = copy(deriv)
-deriv = calc_mean_deriv(fm,vm,λv,cm)
+deriv = calc_mean_dfluxdlnlambda(fm,vm,λv,cm)
 idx_plt = cm[13]
 rvs = vec(sum((fm[idx_plt,:].-fm_mean[idx_plt]).*deriv[idx_plt],dims=1)./sum(abs2.(deriv[idx_plt]))).*speed_of_light_mps
 #rvs = vec(sum((fm[idx_plt,:].-fm_mean[idx_plt]).*deriv[idx_plt],dims=1)./sum(abs2.(deriv[idx_plt]))).*speed_of_light_mps

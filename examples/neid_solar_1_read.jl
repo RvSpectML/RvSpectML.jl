@@ -6,7 +6,7 @@ using RvSpectML
 using DataFrames, Query
 
 # TODO: USER:  Either the paths that specify where datafiles are stored here or in examples/data_paths.jl
-solar_data_path = "20190918"   # TODO:  Update with path to data on your local machine
+solar_data_path = "20190918"
 ancilary_data_path = "."
  if isfile(joinpath(pkgdir(RvSpectML),"examples","data_paths.jl"))
     include(joinpath(pkgdir(RvSpectML),"examples","data_paths.jl"))
@@ -32,4 +32,4 @@ NEID.read_barycentric_corrections!(joinpath(ancilary_data_path,"SolarTelescope20
 
 NEID.read_differential_extinctions!(joinpath(ancilary_data_path,"20190918_diff_ex_full_fixed.txt"), df_files_use)
 
-RvSpectML.apply_doppler_boost!(solar_data,df_files_use)
+apply_doppler_boost!(solar_data,df_files_use)

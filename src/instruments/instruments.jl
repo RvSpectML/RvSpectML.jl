@@ -11,7 +11,12 @@ export read_manifest, read_header, read_metadata_from_fits
 include("linelists_masks.jl")
 export ChunkWidthFixedΔlnλ
 export read_mask_espresso, read_mask_vald
+#export predict_line_width
+export λ_vac_to_air, λ_air_to_vac
 export find_overlapping_chunks
+export merge_lines
+
+include("param.jl")
 
 #=
 For each instrument/data file type, users need to create a sub-type of either AbstractInstrument2D or AbstractInstrument1D and

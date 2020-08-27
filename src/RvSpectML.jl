@@ -22,13 +22,13 @@ using Distributions, Interpolations, MultivariateStats, PDMats
 include("types/types.jl")
 
 include("util/util.jl")
- export calc_doppler_factor, apply_doppler_boost!
- #export predict_line_width
- export λ_vac_to_air, λ_air_to_vac
- #export find_cols..., find_orders..., findall_line,...
- export make_chunk_list, make_orders_into_chunks, filter_bad_chunks, make_grid_for_chunk
- export merge_lines
- export calc_normalization, normalize_spectrum!
+export calc_doppler_factor, apply_doppler_boost!
+
+include("util/spectra.jl")
+export calc_normalization, normalize_spectrum!
+include("util/chunks.jl")
+export make_chunk_list, make_orders_into_chunks, filter_bad_chunks, make_grid_for_chunk
+#export find_cols..., find_orders..., findall_line,...
 
 # alg.jl  is responsible for exporting its own types, modules & functions
 include("alg/alg.jl")

@@ -13,6 +13,9 @@ if make_plots
 plt_order = 42
  plt_order_pix = 3301:3800
 
+
+# TODO: START the CCF calculation
+#=
 fm_perp = RvSpectML.compute_spectra_perp_doppler_shift(spectral_orders_matrix.flux,deriv_orders, ave_good_chunks_rvs )
   idx_good_obs = 1:length(ave_good_chunks_rvs)
   M = fit(PCA, fm_perp[:,idx_good_obs]; maxoutdim=10)
@@ -37,3 +40,4 @@ end
 if make_plots
   RvSpectML.plot_basis_scores_cor( ave_good_chunks_rvs, pca_out)
 end
+=#

@@ -18,11 +18,14 @@ calc_doppler_factor(rv::Real) = one(rv) + rv/speed_of_light_mps
 calc_doppler_factor(rv::Real, v_perp::Real) = (one(rv) + rv/speed_of_light_mps)/(one(rv) - (rv^2+v_perp^2)/speed_of_light_mps^2)
 
 """
-    searchsortednearest(a<:AbstractVector, x::Real)
-	searchsortednearest(a<:AbstractVector, x<:AbstractVector)
+   searchsortednearest(a<:AbstractVector, x::Real)
+   searchsortednearest(a<:AbstractVector, x<:AbstractVector)
 
-Return the nearest value in a vecotr.  All vecotrs are assumed to already be sorted.
-Original author: Christian Gilbertson
+   Find the index of vector a where the value of a is closest to x.
+   All vecotrs are assumed to already be sorted.
+
+Credit: traktofon @ https://discourse.julialang.org/t/findnearest-function/4143/4
+Vector Vector version by Christian Gilbertson?
 """
 function searchsortednearest end
 
@@ -38,6 +41,11 @@ function searchsortednearest(a::AbstractVector{T} where T<:Real, x::Real)
    end
 end
 
+function searchsortednearest(x::T, a::AbstractVector{T}) where T
+    @warn "Did you mean to reverse the order of x and a?"
+    return searchsortednearest(a, x)
+end
+
 function searchsortednearest(a::Vector{T} where T<:Real, x::Vector{T} where T<:Real)
    len_x = length(x)
    len_a = length(a)
@@ -48,6 +56,9 @@ function searchsortednearest(a::Vector{T} where T<:Real, x::Vector{T} where T<:R
    end
    return idxs
 end
+
+
+
 
 """ Return true if all elements of array are equal to each other. """
 @inline function allequal(x::AbstractArray{T,1}) where {T<:Real}

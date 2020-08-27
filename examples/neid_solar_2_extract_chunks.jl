@@ -57,17 +57,21 @@ chunk_list_df = RvSpectML.merge_lines(line_list_df)
 @assert find_overlapping_chunks(chunk_list_df) == nothing
 
 size(solar_data)
-chunk_list_df
+chunk_list_df = chunk_list_df[10:end,:]
 
+#=
 for (r,row) in enumerate(eachrow(chunk_list_df) )
-   line_best = RvSpectML.find_line_best(row.lambda_lo,row.lambda_hi,solar_data[1])
-   println("# r= ",r,": line_best = ",line_best)
-   flush(stdout)
-
+   t = 1 # for t in 1:size(solar_data,1)
+      line_best = RvSpectML.find_line_best(row.lambda_lo,row.lambda_hi,solar_data[1])
+      println("# r= ",r," t= ",t,": line_best = ",line_best, " λ=(",row.lambda_lo,", ",row.lambda_hi,")")
+      flush(stdout)
+      @assert length(line_best.order) >= 1
 end
+=#
 
-# TODO:  FIX.  SOMETHING BROKE HERE.
+# TODO:  FIX:  Problem with ESPRESSO mask having lots of lines getting meged into humongous chunks that don't fit into the order!
 chunk_list_timeseries = RvSpectML.make_chunk_list_timeseries(solar_data,chunk_list_df)
+
 # Check that no NaN's included
 (chunk_list_timeseries, chunk_list_df) = RvSpectML.filter_bad_chunks(chunk_list_timeseries,chunk_list_df)
 println(size(chunk_list_df), " vs ", num_chunks(chunk_list_timeseries) )

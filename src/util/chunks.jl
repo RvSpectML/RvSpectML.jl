@@ -24,6 +24,10 @@ end
 function find_orders_with_line(goal::Real,lambda::AbstractArray{T,2}) where T<:Real
    order_min(i) = lambda[1,i]
    order_max(i) = lambda[end,i]
+   for i in 1:5
+       println("# i= ",i," order_min= ",order_min(i)," order_max= ",order_max(i), "   goal= ",goal)
+   end
+   flush(stdout)
    findall(i->order_min(i)<=goal<=order_max(i), 1:size(lambda,2) )
 end
 
@@ -57,6 +61,10 @@ function findall_line(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,2},v
     @assert lambda[1,1] <= goal_lo < goal_hi <= lambda[end,end]
     orders = find_orders_with_line(goal_lo,goal_hi,lambda)
     #if ! (length(orders) >= 1) return end
+    for i in 1:5
+        println("# i= ",i," min(order)= ",minimum(lambda[:,i])," max(order)= ",maximum(lambda[:,i]), "   goal_lo= ",goal_lo, " goal_hi = ",goal_hi)
+    end
+    flush(stdout)
     @assert length(orders) >= 1
     locs = map(o->(pixels=find_cols_to_fit(lambda[:,o],goal_lo, goal_hi,Δ=Δ),order=o), orders)
     locs_good_idx = findall(t->!any(isnan.(var[t[1],t[2]])),locs)
@@ -88,7 +96,10 @@ end
 
 function find_line_best(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,2},flux::AbstractArray{T2,2},var::AbstractArray{T3,2}; Δ::Real = Δλoλ_edge_pad_default) where {T1<:Real, T2<:Real, T3<:Real}
     locs = findall_line(goal_lo,goal_hi,lambda,var,Δ=Δ)
-    if length(locs) == 0   return  missing end
+    if length(locs) == 0
+        println("=>(",goal_lo, ", ",goal_hi, ")  Δ=",Δ)
+        return  missing
+    end
     #scores = map( t->sum( flux[t[1],t[2]] ./ var[t[1],t[2]])/sum( 1.0 ./ var[t[1],t[2]]), locs)
     scores = map( t->calc_snr(flux[t[1],t[2]],var[t[1],t[2]]), locs)
     idx_best = findmax(scores)

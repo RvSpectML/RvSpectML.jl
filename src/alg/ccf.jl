@@ -5,16 +5,24 @@ Contact: mlp95@psu.edu
 Based on code by Alex Wise (aw@psu.edu)
 """
 
-# set some constants as globals
-c_ms = 2.99782458e8
-c_kms = c_ms/1000.0
+# packages
+#using LsqFit
+#using LinearAlgebra
+#import Polynomials
 
-# set CCF parameters as globals
-CCF_width = 15e3  # m/s window
-dV = 820.0 / 10.0   # one tenth of one pixel (which instrument?)
-mask_width = 1500.0 # a few pixels (which instrument?)
+# physical constants
+const c_ms = 2.99782458e8    # m/s
+const c_kms = 2.99782458e5   # km/s
 
-function find_bin_edges(wavs::AA{T,1}) where T<:Real
+# set some CCF parameters
+const CCF_width = 15e3       # m/s window
+const dV = 250.0             # size of velocity step
+const mask_width = 410.0     # m/s (width of mask entries)
+
+"""
+
+"""
+function find_bin_edges(fws::AbstractArray{T,1}) where T<:AbstractFloat
     fwse = (fws[2:end] + fws[1:end-1]) ./ 2.0
     le = 2.0 * fws[1] - fwse[1]
     re = 2.0 * fws[end] - fwse[end]
@@ -23,9 +31,16 @@ function find_bin_edges(wavs::AA{T,1}) where T<:Real
     return fwsle, fwsre
 end
 
-function project_mask(fws::AA{T,1}, mask::AA{T,2}; shift_factor::T=1.0) where T<:Real
+"""
+    project_mask(fws, mask, shift_factor)
+
+Compute the projection of the tophat mask onto the 1D array
+of wavelengths (fws) at a given shift factor.
+"""
+function project_mask(fws::AbstractArray{T,1}, mask::AbstractArray{T,2};
+                      shift_factor::T=1.0) where T<:AbstractFloat
     # find bin edges
-    fwsle, fwsre = find_bin_edges
+    fwsle, fwsre = find_bin_edges(fws)
 
     # allocate memory for mask projection
     nm = size(mask, 1)
@@ -35,9 +50,9 @@ function project_mask(fws::AA{T,1}, mask::AA{T,2}; shift_factor::T=1.0) where T<
 
     # shift the mask
     mask_shifted = zeros(size(mask))
-    mask_shifted[:,1] = mask[:,1] .* shift_factor
-    mask_shifted[:,2] = mask[:,2] .* shift_factor
-    mask_shifted[:,3] = mask[:,3]
+    mask_shifted[:,1] = view(mask,:,1) .* shift_factor
+    mask_shifted[:,2] = view(mask,:,2) .* shift_factor
+    mask_shifted[:,3] = view(mask,:,3)
     mask = mask_shifted
 
     # set indexing variables
@@ -74,13 +89,36 @@ function project_mask(fws::AA{T,1}, mask::AA{T,2}; shift_factor::T=1.0) where T<
     return projection
 end
 
-function ccf_1D(ws::AA{T,1}, sp::AA{T,1}, mask1::AA{T,2};
-                RVguess::T=0.0, wccf::T=CCF_width, res_factor::T=1.0) where T<:Real
+
+"""
+    doppler_factor(vel)
+
+Compute the longitudinal relativistic doppler factor given a velocity
+in meters per second.
+"""
+function doppler_factor(vel::T) where T<:AbstractFloat
+    num = one(T) + vel/c_ms
+    den = one(T) - vel/c_ms
+    return sqrt(num/den)
+end
+
+
+"""
+    ccf_1D(ws, sp, mask1)
+
+Compute the cross correlation function of a spectrum and a tophat mask given
+1D arrays of wavelengths and flux (ws and sp) and a 2D mask with one entry
+per line. One mask entry consists of the left and right end of tophats and a
+weight.
+"""
+function ccf_1D(ws::AbstractArray{T,1}, sp::AbstractArray{T,1},
+                mask1::AbstractArray{T,2}; RVguess::T=0.0,
+                wccf::T=CCF_width, res_factor::T=1.0) where T<:AbstractFloat
     # make sure wavelengths and spectrum are 1D arrays
     @assert ndims(ws) == 1
     @assert ndims(sp) == 1
 
-    # set arbitrary params that affect RV measurement result
+    # set arbitrary params that AbstractFloatfect RV measurement result
     dv = dV / res_factor
     nccf = ceil(Int, wccf/dv)
 
@@ -89,7 +127,7 @@ function ccf_1D(ws::AA{T,1}, sp::AA{T,1}, mask1::AA{T,2};
     ccf = zeros(size(ccfd))
 
     # calculate shift factors ahead of time
-    shift_factors = sqrt.((1.0 .+ ccfd./c_ms)./(1.0 .- ccfd./c_ms))
+    shift_factors = doppler_factor.(ccfd)
 
     # loop through each velocity, project the mask and compute ccf
     for i in 1:length(ccf)
@@ -102,45 +140,20 @@ function ccf_1D(ws::AA{T,1}, sp::AA{T,1}, mask1::AA{T,2};
     return ccfd, ccf
 end
 
-function ccf_1D(ws::AA{T,1}, sp::AA{T,2}, mask1::AA{T,2};
-                RVguess::T=0.0, wccf::T=CCF_width, res_factor::T=1.0) where T<:Real
+function ccf_1D(ws::AbstractArray{T,1}, sp::AbstractArray{T,2},
+                mask1::AbstractArray{T,2}; RVguess::T=0.0,
+                wccf::T=CCF_width, res_factor::T=1.0) where T<:AbstractFloat
     # get number of dims
     ntimes = size(sp, 2)
 
     # do the first ccf
-    ccfd, ccf = ccf_1D(ws, sp[:,1], mask1, RVguess=RVguess, wccf=wccf, res_factor=res_factor)
+    ccfd, ccf = ccf_1D(ws, view(sp,:,1), mask1, RVguess=RVguess, wccf=wccf, res_factor=res_factor)
 
     # allocate memory & loop over rest
     ccfa = zeros(length(ccf), ntimes); ccfa[:,1] = ccf
     for i in 2:ntimes
-        ccfd, ccftemp = ccf_1D(ws, sp[:,i], mask1, RVguess=RVguess, wccf=wccf, res_factor=res_factor)
+        ccfd, ccftemp = ccf_1D(ws, view(sp,:,i), mask1, RVguess=RVguess, wccf=wccf, res_factor=res_factor)
         ccfa[:,i] = ccftemp
     end
     return ccfd, ccfa
 end
-
-@. gaussian(x, p) = p[4] + p[3] * exp(-(x-p[1])^2.0/(2.0 * p[2]^2.0))
-
-function rv_from_ccf(ccfd::AA{T,1}, ccf::AA{T,1}; fit_type="gauss_fit") where T<:Real
-    # make initial guess parameters
-    μ = ccfd[argmin(ccf)]
-    σ = 500
-    amp = minimum(ccf) - maximum(ccf)
-    y0 = maximum(ccf)
-    p0 = [μ, σ, amp, y0]
-
-    if fit_type == "gauss_fit"
-        fit = curve_fit(gaussian, ccfd, ccf, p0)
-    end
-    return -coef(fit)[1]
-end
-
-function rv_from_ccf(ccfd::AA{T,1}, ccf::AA{T,2}; fit_type="gauss_fit") where T<:Real
-    RVs = zeros(size(ccf,2))
-    for i in 1:length(RVs)
-        RVs[i] = rv_from_ccf(ccfd, ccf[:,i], fit_type=fit_type)
-    end
-    return RVs
-end
-
-# function measure_rv(wavs, spec, mask)

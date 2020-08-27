@@ -2,15 +2,11 @@ using DataFrames, CSV
 
 abstract type AbstractCalcChunkWidth end
 
-""" Functor to return a constant scale factor for chunk widths """
+""" Functor to return a constant scale factor for chunk widths (regardless of wavelength passed)"""
 struct ChunkWidthFixedΔlnλ <: AbstractCalcChunkWidth
    Δlnλ::Float64
 end
-(f::ChunkWidthFixedΔlnλ)(λ::Real) = return f.Δlnλ
-
-#function (f::ChunkWidthFixedΔlnλ)(λ::Real)
-#    return Δlnλ
-#end
+(f::ChunkWidthFixedΔlnλ)(λ::Real) = f.Δlnλ
 
 """
    Functor to return a scale factor for chunk widths that depends on the chunk's central wavelength.
@@ -22,12 +18,13 @@ struct ChunkWidthFuncOfλ <: AbstractCalcChunkWidth
 end
 
 function (f::ChunkWidthFuncOfλ)(λ::Real; chunk_size_factor::Real = default_chunk_size_factor,
-    line_width::Real = default_line_width, min_chunk_Δv::Real = default_min_chunk_Δv )
-    chunk_half_width = max(chunk_size_factor*line_width, min_chunk_Δv)/speed_of_light_mps
-    psf_width = 1e-6*(1+(λ-6000)/60000)   # TODO: Repalce, just some random number for demo purposes
+    line_width::Real = default_line_width_kmps, min_chunk_Δv::Real = default_min_chunk_Δv )
+    chunk_half_width = max(chunk_size_factor*line_width, min_chunk_Δv)*1000/speed_of_light_mps
+    psf_width = λ*1e-6*(1+(λ-6000)/60000)   # TODO: Repalce, just some random number for demo purposes
     Δlnλ = sqrt(chunk_half_width^2+psf_width^2)
     return Δlnλ
 end
+
 
 """
     Read mask in ESPRESSO csv format.
@@ -35,9 +32,10 @@ ESPRESSO format: lambda and weight.
 Warning: ESPRESSO masks don't provide line depth and sometimes include one entry for a blend of lines.
 """
 function read_mask_espresso(fn::String; calcΔ::CCWT = default_calc_chunk_width) where { CCWT<:AbstractCalcChunkWidth }
-    df = CSV.read(fn,DataFrame,threaded=false,header=["lambda","weight"],delim=' ',ignorerepeated=true)
+    local df = CSV.read(fn,DataFrame,threaded=false,header=["lambda","weight"],delim=' ',ignorerepeated=true)
     df[!,:lambda] .= λ_air_to_vac.(df[!,:lambda])
-    Δ = calcΔ.(df[!,:lambda])
+    local Δ = calcΔ.(df[!,:lambda])
+    @assert all(Δ.>0)
     df[!,:lambda_lo] = df[!,:lambda]./(1 .+ Δ)
     df[!,:lambda_hi] = df[!,:lambda].*(1 .+ Δ)
     df[!,:depth] = df[!,:weight]  # TODO: Decide out what we want to do about tracking depths and weights sepoarately
@@ -48,11 +46,12 @@ end
    VALD format: lambda_lo, lambdaa_hi and depth.
 """
 function read_mask_vald(fn::String; calcΔ::CCWT = default_calc_chunk_width) where { CCWT<:AbstractCalcChunkWidth }
-    df = CSV.read(fn,DataFrame,threaded=false,header=["lambda_lo","lambda_hi","depth"])
+    local df = CSV.read(fn,DataFrame,threaded=false,header=["lambda_lo","lambda_hi","depth"])
     df[!,:lambda_lo] .= λ_air_to_vac.(df[!,:lambda_lo])
     df[!,:lambda_hi] .= λ_air_to_vac.(df[!,:lambda_hi])
     df[!,:lambda] = sqrt.(df[!,:lambda_lo].*df[!,:lambda_hi])
-    Δ = calcΔ.(df[!,:lambda])
+    local Δ = calcΔ.(df[!,:lambda])
+    @assert all(Δ.>0)
     df[!,:lambda_lo] = df[!,:lambda]./(1 .+ Δ)
     df[!,:lambda_hi] = df[!,:lambda].*(1 .+ Δ)
     df[!,:weight] = df[!,:depth] # TODO: Decide out what we want to do about tracking depths and weights sepoarately

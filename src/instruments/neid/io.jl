@@ -99,6 +99,17 @@ function read_barycentric_corrections!(fn::String, df::DataFrame, df_time_col::S
     return df
 end
 
+""" Read space delimited file with differential extinction corrections, interpolate to bjd's in df and insert into df[:,diff_ext_rv]. """
+function read_differential_extinctions!(fn::String, df::DataFrame, df_time_col::Symbol = :bjd)
+    df_diff_ext = CSV.read(fn, DataFrame, delim='\t')
+    @assert any(isequal(:JD),propertynames(df_diff_ext))
+    @assert any(isequal(:delta_vr),propertynames(df_diff_ext))
+    diff_ext = LinearInterpolation(df_diff_ext.JD, df_diff_ext.delta_vr)
+    df[!,:diff_ext_rv] = diff_ext(df[!,df_time_col])
+    return df
+end
+
+
 #=
 """ """
 function (fn::String)

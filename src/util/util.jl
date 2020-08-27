@@ -47,18 +47,45 @@ end
 
 function apply_doppler_boost!(spectra::AbstractArray{AS}, df::DataFrame ) where { AS<:AbstractSpectra }
     @assert size(spectra,1) == size(df,1)
+    local doppler_factor = ones(size(spectra))
     if !hasproperty(df,:drift) @info "apply_doppler_boost! didn't find :drift to apply."   end
-    doppler_factor_drift = hasproperty(df,:drift) ? calc_doppler_factor.(df[!,:drift]) : ones(size(spectra))
+    if  hasproperty(df,:drift)        doppler_factor .*= calc_doppler_factor.(df[!,:drift])          end
     if !hasproperty(df,:drift) @info "apply_doppler_boost! didn't find :ssb_rv to apply."  end
-    doppler_factor_ssb = hasproperty(df,:ssb_rv) ? calc_doppler_factor.(df[!,:ssb_rv]) : ones(size(spectra))
-    map(x->apply_doppler_boost!(x[1],x[2]), zip(spectra,doppler_factor_drift .* doppler_factor_ssb) );
+    if  hasproperty(df,:ssb_rv)       doppler_factor   .*= calc_doppler_factor.(df[!,:ssb_rv])       end
+    if !hasproperty(df,:drift) @info "apply_doppler_boost! didn't find :diff_ext_rv to apply."  end
+    if  hasproperty(df,:diff_ext_rv)  doppler_factor   .*= calc_doppler_factor.(df[!,:diff_ext_rv])  end
+    map(x->apply_doppler_boost!(x[1],x[2]), zip(spectra,doppler_factor) );
 end
 
-""" Calculate total SNR in (region of) spectra. """
+"""  Calculate total SNR in (region of) spectra. """
 function calc_snr(flux::AbstractArray{T1},var::AbstractArray{T2}) where {T1<:Real, T2<:Real}
     @assert size(flux) == size(var)
     sqrt(sum(flux./var))
 end
+
+"""  Convert vacuum wavelength (in Å) to air wavelength
+Ref: Donald Morton (2000, ApJ. Suppl., 130, 403) via
+     https://www.astro.uu.se/valdwiki/Air-to-vacuum%20conversion
+"""
+function λ_vac_to_air(λ_vac::Real)
+    @assert 3500 < λ_vac < 13000  # Making sure in Å for optical/NIR spectra.
+    local s = 10000/λ_vac
+    local n = 1 + 0.0000834254 + 0.02406147 / (130 - s^2) + 0.00015998 / (38.9 - s^2)
+    return λ_vac/n
+end
+
+""" Convert air wavelength (in Å) to vacuum wavelength
+Ref: https://www.astro.uu.se/valdwiki/Air-to-vacuum%20conversion
+     VALD3 tools use the following solution derived by N. Piskunov
+"""
+function λ_air_to_vac(λ_air::Real)
+    @assert 3500 < λ_air < 13000  # Making sure in Å for optical/NIR spectra.
+    local s = 10000/λ_air
+    local n = 1 + 0.00008336624212083 + 0.02408926869968 / (130.1065924522 - s^22) + 0.0001599740894897 / (38.92568793293 - s^22)
+    λ_air*n
+end
+
+
 
 """Estimate line width based on stellar Teff (K) and optionally v_rot (km/s).  Output in km/s."""
 function predict_line_width(Teff::Real; v_rot::Real=zero(Teff))
@@ -144,6 +171,7 @@ function find_line_best end
 
 function find_line_best(goal::Real,lambda::AbstractArray{T1,2},flux::AbstractArray{T2,2},var::AbstractArray{T3,2}; Δ::Real = Δλoλ_fit_line_default) where {T1<:Real, T2<:Real, T3<:Real}
     locs = findall_line(goal,lambda,var,Δ=Δ)
+    if length(locs) == 0   return  missing end
     #scores = map( t->sum( flux[t[1],t[2]] ./ var[t[1],t[2]])/sum( 1.0 ./ var[t[1],t[2]]), locs)
     scores = map( t->calc_snr(flux[t[1],t[2]],var[t[1],t[2]]), locs)
     idx_best = findmax(scores)
@@ -152,6 +180,7 @@ end
 
 function find_line_best(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,2},flux::AbstractArray{T2,2},var::AbstractArray{T3,2}; Δ::Real = Δλoλ_edge_pad_default) where {T1<:Real, T2<:Real, T3<:Real}
     locs = findall_line(goal_lo,goal_hi,lambda,var,Δ=Δ)
+    if length(locs) == 0   return  missing end
     #scores = map( t->sum( flux[t[1],t[2]] ./ var[t[1],t[2]])/sum( 1.0 ./ var[t[1],t[2]]), locs)
     scores = map( t->calc_snr(flux[t[1],t[2]],var[t[1],t[2]]), locs)
     idx_best = findmax(scores)

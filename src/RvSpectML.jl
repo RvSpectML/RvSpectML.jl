@@ -24,6 +24,7 @@ include("types/types.jl")
 include("util/util.jl")
  export calc_doppler_factor, apply_doppler_boost!
  #export predict_line_width
+ export λ_vac_to_air, λ_air_to_vac
  #export find_cols..., find_orders..., findall_line,...
  export make_chunk_list, make_orders_into_chunks, filter_bad_chunks, make_grid_for_chunk
  export merge_lines
@@ -38,6 +39,6 @@ include("instruments/instruments.jl")
 # util/plots.jl  is responsible for exporting its own functions
 include("util/plots.jl")
 export plot_spectrum_chunks
-export plot_basis_vectors, plot_basis_scores 
+export plot_basis_vectors, plot_basis_scores
 
 end

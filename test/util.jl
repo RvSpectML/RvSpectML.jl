@@ -10,8 +10,8 @@ using Test
 end
 @testset "Masks" begin
 using DataFrames
-mask_df = read_mask_espresso("../data/masks/G2.espresso.mas")
+mask_df = read_mask_espresso(joinpath(pkgdir(RvSpectML),"data/masks/G2.espresso.mas"))
     @test typeof(mask_df) <: DataFrame
     @test size(mask_df,1) >= 5551
-    @test size(mask_df,2) == 2
+    @test size(mask_df,2) == 5
 end

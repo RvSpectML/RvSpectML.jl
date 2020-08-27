@@ -57,12 +57,14 @@ function findall_line(goal::Real,lambda::AbstractArray{T1,2},var::AbstractArray{
     return locs
 end
 
-function findall_line(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,2},var::AbstractArray{T2,2}; Δ::Real = Δλoλ_edge_pad_default) where {T1<:Real, T2<:Real}
+function findall_line(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,2},var::AbstractArray{T2,2}; Δ::Real = Δλoλ_edge_pad_default, verbose::Bool = false) where {T1<:Real, T2<:Real}
     @assert lambda[1,1] <= goal_lo < goal_hi <= lambda[end,end]
     orders = find_orders_with_line(goal_lo,goal_hi,lambda)
     #if ! (length(orders) >= 1) return end
-    for i in 1:5
+    if verbose
+        for i in 1:5
         println("# i= ",i," min(order)= ",minimum(lambda[:,i])," max(order)= ",maximum(lambda[:,i]), "   goal_lo= ",goal_lo, " goal_hi = ",goal_hi)
+        end
     end
     flush(stdout)
     @assert length(orders) >= 1

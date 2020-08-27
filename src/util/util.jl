@@ -29,12 +29,13 @@ Vector Vector version by Christian Gilbertson?
 """
 function searchsortednearest end
 
-function searchsortednearest(a::AbstractVector{T} where T<:Real, x::Real)
+function searchsortednearest(a::AbstractVector{T} where T<:Real, x::Real )
    idx = searchsortedfirst(a,x)
    if (idx==1); return idx; end
    if (idx>length(a)); return length(a); end
    if (a[idx]==x); return idx; end
-   if (abs(a[idx]-x) < abs(a[idx-1]-x))
+   #if (abs(a[idx]-x) < abs(a[idx-1]-x))
+   if (abs2(a[idx]-x) < abs2(a[idx-1]-x))
       return idx
    else
       return idx-1
@@ -46,7 +47,8 @@ function searchsortednearest(x::T, a::AbstractVector{T}) where T
     return searchsortednearest(a, x)
 end
 
-function searchsortednearest(a::Vector{T} where T<:Real, x::Vector{T} where T<:Real)
+ #  TODO: EBF: Does this assumes 0-based arrays?
+function searchsortednearest(a::AbstractVector{T1}, x::AbstractVector{T2}) where { T1<:Real, T2<:Real }
    len_x = length(x)
    len_a = length(a)
    idxs = zeros(Int64, len_x)
@@ -54,11 +56,26 @@ function searchsortednearest(a::Vector{T} where T<:Real, x::Vector{T} where T<:R
    for i in 2:len_x
 	   idxs[i] = idxs[i-1] + searchsortednearest(view(a, idxs[i-1]:len_a), x[i]) - 1
    end
+   if any(idxs.<1) || any(idxs.>len_x)
+	   println("Asked to search for x = ",x[1:3], " in a = ", a[1:3], " ... ", a[end-3:end])
+	   println("Returned idx = ",idxs[1:3]," ... ", idxs[end-3:end])
+   end
+
    return idxs
 end
 
 
 
+"""A generalized version of the built in append!() function
+By Christian Gilbertson?
+# TODO:  Ask Christian what the purpose of this is relative to std append
+"""
+function multiple_append!(a::Vector{T}, b...) where {T<:Real}
+    for i in 1:length(b)
+        append!(a, b[i])
+    end
+    return a
+end
 
 """ Return true if all elements of array are equal to each other. """
 @inline function allequal(x::AbstractArray{T,1}) where {T<:Real}

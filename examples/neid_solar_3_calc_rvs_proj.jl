@@ -17,21 +17,10 @@ oversample_fac_chunks = 2
  plt_order_pix = 3301:3800
 
 chunk_grids = map(c->RvSpectML.make_grid_for_chunk(chunk_list_timeseries,c,oversample_factor=oversample_fac_chunks), 1:num_chunks(chunk_list_timeseries) )
- @time spectra_all = RvSpectML.pack_chunk_list_timeseries_to_matrix(chunk_list_timeseries,chunk_grids)
-#=
-RvSpectML.GPs.reset_ncalls()
- @time spectra_all_gp = RvSpectML.pack_chunk_list_timeseries_to_matrix(chunk_list_timeseries,chunk_grids[1:1], alg=:GP)
- plt1 = scatter(spectra_all.λ,spectra_all.flux[:,1],markersize=1.5,label="Obs")
- plot!(plt1,spectra_all_gp.λ[spectra_all_gp.chunk_map[1]],spectra_all_gp.flux[spectra_all_gp.chunk_map[1],1],markersize=1.5,label="GP")
- #plt2 = scatter(spectra_all.λ,spectra_all.flux[:,1]-mean(spectra_all.flux,dims=2),markersize=1.5,label="Obs")
- plt2 = plot(spectra_all_gp.λ[spectra_all_gp.chunk_map[1]],spectra_all_gp.flux[spectra_all_gp.chunk_map[1],1].-mean(spectra_all.flux[:,1],dims=2),markersize=1.5,label="GP")
- plot(plt1,plt2,layout=(2,1) )
-=#
-
-f_mean = calc_mean_spectrum(spectra_all.flux,spectra_all.var)
- deriv = calc_mean_dfluxdlnlambda(spectra_all.flux,spectra_all.var,spectra_all.λ,spectra_all.chunk_map)
+ @time spectra_matrix = RvSpectML.pack_chunk_list_timeseries_to_matrix(chunk_list_timeseries,chunk_grids, alg=:Sinc, oversample_factor=oversample_fac_chunks)
+ f_mean = calc_mean_spectrum(spectra_matrix.flux,spectra_matrix.var)
+ deriv = calc_mean_dfluxdlnlambda(spectra_matrix.flux,spectra_matrix.var,spectra_matrix.λ,spectra_matrix.chunk_map)
  plt_times = (chunk_list_timeseries.times .-minimum(chunk_list_timeseries.times)).*24
- spectra_matrix = spectra_all
 
 if 2 <= num_spectra_to_bin <=20
   spectra_binned = RvSpectML.bin_consecutive_spectra(spectra_all,num_spectra_to_bin)
@@ -43,18 +32,18 @@ if 2 <= num_spectra_to_bin <=20
 end
 
 if make_plots
-   #idx_chunk_min = 20
-   #idx_chunk_max = 21
-   global idx_plt = first(spectra_matrix.chunk_map[idx_chunk_min]):last(spectra_matrix.chunk_map[idx_chunk_max])
+   idx_chunk_min = 20
+   idx_chunk_max = 20
+   global idx_plt = (first(spectra_matrix.chunk_map[idx_chunk_min]):last(spectra_matrix.chunk_map[idx_chunk_max]))
    mean_in_plt = mean(f_mean[idx_plt])
    std_in_plt = stdm(f_mean[idx_plt],mean_in_plt)
    plt1 = plot()
-   plot!(plt1,spectra_matrix.λ[idx_plt],(spectra_matrix.flux[idx_plt,:].-mean_in_plt)./std_in_plt,linecolor=:black, label=:none)
+   scatter!(plt1,spectra_matrix.λ[idx_plt],(spectra_matrix.flux[idx_plt,:].-mean_in_plt)./std_in_plt,linecolor=:black, markersize=0, color=:black,label=:none)
    plot!(plt1,spectra_matrix.λ[idx_plt],(f_mean[idx_plt].-mean_in_plt)./std_in_plt,linecolor=:red, label="Standardized mean spectrum")
    plot!(plt1,spectra_matrix.λ[idx_plt], deriv[idx_plt]./std(deriv[idx_plt]), label="Standardized deriv", linecolor=:green)
    display(plt1)
+   #plot!(spectra_matrix.λ[idx_plt],./std_in_plt,linecolor=:red, label="Standardized mean spectrum")
 end
-
 
 println("Computing RVs using dflux/dlnlambda from chunks.")
  (rvs_1, σ_rvs_1) = RvSpectML.calc_rvs_from_taylor_expansion(spectra_matrix,mean=f_mean,deriv=deriv)

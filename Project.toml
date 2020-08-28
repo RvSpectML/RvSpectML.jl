@@ -1,7 +1,7 @@
 name = "RvSpectML"
 uuid = "1f61ac2c-3a1c-440a-925a-2707197041c8"
 authors = ["Eric Ford <ebf11@psu.edu> and contributors"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -25,14 +25,20 @@ TemporalGPs = "e155a3c4-0841-43e1-8b83-a0e4f03cc18f"
 
 [compat]
 CSV = "0.7"
+DSP = "0.6"
 DataFrames = "0.21"
 Distributions = "0.23"
+FITSIO = "0.16"
 Interpolations = "0.12"
+LsqFit = "v0.11"
 MultivariateStats = "0.7"
 Optim = "0.22"
 PDMats = "0.10"
 Plots = "1.6"
+Polynomials = "1.1"
 Query = "1.0"
+Stheno = "0.6"
+TemporalGPs = "0.3"
 julia = "1.5"
 
 [extras]

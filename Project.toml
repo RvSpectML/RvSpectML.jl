@@ -25,6 +25,7 @@ TemporalGPs = "e155a3c4-0841-43e1-8b83-a0e4f03cc18f"
 
 [compat]
 CSV = "0.7"
+DSP = "0.6"
 DataFrames = "0.21"
 Distributions = "0.23"
 Interpolations = "0.12"

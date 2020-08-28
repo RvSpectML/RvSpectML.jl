@@ -3,6 +3,7 @@ Author: Michael Palumbo
 Created: December 2019
 Contact: mlp95@psu.edu
 Based on code by Alex Wise (aw@psu.edu)
+Optimized by Eric Ford
 """
 
 # packages
@@ -13,6 +14,9 @@ Based on code by Alex Wise (aw@psu.edu)
 module CCFTophat
 
 export calc_ccf_Δv_grid, ccf_1D
+export calc_ccf_chunk, calc_ccf_chunklist, calc_ccf_chunklist_timeseries
+
+import ..RvSpectML: AbstractChuckOfSpectrum, AbstractChunkList, AbstractChunkListTimeseries
 
 # physical constants
 const c_ms = 2.99782458e8    # m/s
@@ -23,6 +27,33 @@ const c_kms = 2.99782458e5   # km/s
 const CCF_width = 15e3       # m/s window
 const dV = 250.0             # size of velocity step
 const mask_width = 410.0     # m/s (width of mask entries)
+
+function calc_ccf_chunk(chunk::AbstractChuckOfSpectrum, mask )
+  res = ccf_1D(chunk.λ,chunk.flux, mask)
+end
+
+function calc_ccf_chunklist(chunk_list::AbstractChunkList, mask )
+  mapreduce(chunk->calc_ccf_chunk(chunk, mask), +, chunk_list.data)
+end
+
+function calc_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries, mask )
+  mapreduce(cl->calc_ccf_chunklist(cl, mask),hcat,clt.chunk_list)
+end
+
+function calc_order_ccfs_chunklist(chunk_list::AbstractChunkList, mask )
+  mapreduce(chunk->calc_ccf_chunk(chunk, mask), hcat, chunk_list.data)
+end
+
+function calc_order_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries, mask )
+  nΔvs = length(calc_ccf_Δv_grid())
+  norders = length(clt.chunk_list[1].data)
+  nobs =  length(clt.chunk_list)
+  order_ccfs = zeros(nΔvs, norders, nobs)
+  for i in 1:nobs
+      order_ccfs[:,:,i] .= calc_order_ccfs_chunklist(clt.chunk_list[i], mask)
+  end
+  return order_ccfs
+end
 
 """
    find_bin_edges(pixel_centers::AbstractArray)

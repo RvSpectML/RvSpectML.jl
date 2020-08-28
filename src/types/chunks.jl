@@ -74,21 +74,6 @@ function ChunkListTimeseries(t::AT, cl::ACLT) where {CLT<:AbstractChunkList, ACL
 end
 =#
 
-function make_chunk_list_timeseries(spectra::AS,chunk_list_df::DataFrame) where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} }
-    times = map(s->s.metadata[:bjd],spectra)
-    metadata = make_vec_metadata_from_spectral_timeseries(spectra)
-    time_series_of_chunk_lists = map(spec->RvSpectML.make_chunk_list(spec,chunk_list_df),spectra)
-    chunk_list_timeseries = ChunkListTimeseries(times, time_series_of_chunk_lists, inst=first(spectra).inst, metadata=metadata )
-end
-
-function make_order_list_timeseries(spectra::AS) #= , order_list::AOL ) =# where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} #=, CLT<:AbstractChunkList, AOL::AbstractArray{CLT,1} =# }
-    times = map(s->s.metadata[:bjd],spectra)
-    inst = first(spectra).inst
-    metadata = make_vec_metadata_from_spectral_timeseries(spectra)
-    order_list = map( spec->RvSpectML.make_orders_into_chunks(spec,inst), spectra)
-    chunk_list_timeseries = ChunkListTimeseries(times, order_list, inst=first(spectra).inst, metadata=metadata )
-end
-
 import Base.length
 length(cl::CLT) where {CLT<:AbstractChunkList} = length(cl.data)
 length(clts::ACLT) where {ACLT<:AbstractChunkListTimeseries} = length(clts.chunk_list)

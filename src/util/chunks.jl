@@ -4,6 +4,106 @@ Created: August 2020
 Contact: https://github.com/eford/
 """
 
+""" make_orders_into_chunks
+
+Return a ChunkList with a region of spectrum from each order in orders_to_use.
+# Arguments
+- spectra<:AbstractSpectra
+- inst:  Instrument trait that provides default values
+# Optional arguments
+- orders_to_use: Range or Array (orders_to_use(inst))
+- pixels_to_use: Array of Ranges (each from min_col to max_col)
+or
+- min_col: (min_col_default(inst)) and
+- max_col: (max_col_default(inst))
+"""
+function make_orders_into_chunks
+end
+
+function make_orders_into_chunks(spectra::AS, inst::AbstractInstrument;
+        min_col::Integer = min_col_default(spectra.inst), # min_col_neid_default,
+        max_col::Integer = max_col_default(spectra.inst), #max_col_neid_default ,
+        orders_to_use = orders_to_use_default(spectra.inst) # 1:size(spectra.flux,2),
+        ) where {AS<:AbstractSpectra }
+    @assert eltype(orders_to_use) <: Integer
+    @assert all( min_order(spectra.inst) .<= orders_to_use .<= max_order(spectra.inst) )
+    @assert min_col >= min_pixel_in_order(spectra.inst)
+    @assert max_col <= max_pixel_in_order(spectra.inst)
+    pixels_to_use=fill(min_col:max_col,length(orders_to_use))
+    make_orders_into_chunks(spectra,orders_to_use=orders_to_use, pixels_to_use=pixels_to_use)
+end
+
+function make_orders_into_chunks(spectra::AS;
+        orders_to_use::Union{AR,AA1}, pixels_to_use::AAR ) where {
+         AS<:AbstractSpectra, AR<:AbstractRange{Int64}, AA1<:AbstractArray{Int64,1}, AAR<:AbstractArray{AR,1} }
+    @assert eltype(orders_to_use) <: Integer
+    #@assert all( min_order(inst) .<= orders_to_use .<= max_order(inst) )
+    #@assert minimum(pixels_to_use) >= min_pixel_in_order(inst)
+    #@assert maximum(pixels_to_use) <= max_pixel_in_order(inst)
+    ChunkList( map(order->
+                    ChuckOfSpectrum(spectra,(pixels=pixels_to_use[order],order=order)),
+                    orders_to_use ))
+end
+
+
+""" make_grid_for_chunk
+Create a range with equal spacing between points with end points set based on union of all chunks in timeseries.
+# Arguments:
+- timeseries: ChunkListTimeseries
+- chunk index:
+- oversample_factor: (1)
+"""
+function make_grid_for_chunk(timeseries::ACLT, c::Integer; oversample_factor::Real = 1.0, spacing::Symbol = :Linear ) where { ACLT<:AbstractChunkListTimeseries }
+    num_obs = length(timeseries.chunk_list)
+    @assert num_obs >= 1
+    @assert 1<= c <= length(first(timeseries.chunk_list).data)
+    @assert allequal(map(chunk->length(chunk.data),timeseries.chunk_list))
+    @assert spacing == :Log || spacing == :Linear
+    if spacing == :Log
+        @warn "There's some issues with end points exceeding the bounds.  Round off error?  May cause bounds errors."
+    end
+    # Create grid, so that chunks at all times include the grid's minimum and maximum wavelength.
+    λ_min = maximum(minimum(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
+    λ_max = minimum(maximum(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
+    Δλ_grid_obs = mean(log(timeseries.chunk_list[t].data[c].λ[end]/
+                           timeseries.chunk_list[t].data[c].λ[1]   )/
+                         (length(timeseries.chunk_list[t].data[c].λ)-1) for t in 1:num_obs)
+    num_pixels_obs = log(λ_max/λ_min)/Δλ_grid_obs
+    num_pixels_gen = (num_pixels_obs-1) * oversample_factor + 1
+    if spacing == :Log
+        Δlnλ_grid_obs = mean(log(timeseries.chunk_list[t].data[c].λ[end]/
+                                 timeseries.chunk_list[t].data[c].λ[1]   )/
+                                 (length(timeseries.chunk_list[t].data[c].λ)-1) for t in 1:num_obs)
+        num_pixels_obs = log(λ_max/λ_min)/Δlnλ_grid_obs
+        num_pixels_gen = (num_pixels_obs-1) * oversample_factor + 1
+            Δlnλ_grid_gen = log(λ_max/λ_min)/ (num_pixels_gen-1)
+        return exp.(range(log(λ_min),stop=log(λ_max),step=Δlnλ_grid_gen))
+    elseif spacing == :Linear
+        Δλ_grid_obs = mean((timeseries.chunk_list[t].data[c].λ[end]-timeseries.chunk_list[t].data[c].λ[1] )/
+                            (length(timeseries.chunk_list[t].data[c].λ)-1) for t in 1:num_obs)
+        num_pixels_obs = (λ_max-λ_min)/Δλ_grid_obs
+        num_pixels_gen = (num_pixels_obs-1) * oversample_factor + 1
+        Δλ_grid_gen = (λ_max-λ_min)/ (num_pixels_gen-1)
+        return range(λ_min,stop=λ_max,step=Δλ_grid_gen)
+    end
+end
+
+function make_chunk_list_timeseries(spectra::AS,chunk_list_df::DataFrame) where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} }
+    times = map(s->s.metadata[:bjd],spectra)
+    metadata = make_vec_metadata_from_spectral_timeseries(spectra)
+    time_series_of_chunk_lists = map(spec->RvSpectML.make_chunk_list(spec,chunk_list_df),spectra)
+    chunk_list_timeseries = ChunkListTimeseries(times, time_series_of_chunk_lists, inst=first(spectra).inst, metadata=metadata )
+end
+
+function make_order_list_timeseries(spectra::AS) #= , order_list::AOL ) =# where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} #=, CLT<:AbstractChunkList, AOL::AbstractArray{CLT,1} =# }
+    times = map(s->s.metadata[:bjd],spectra)
+    inst = first(spectra).inst
+    metadata = make_vec_metadata_from_spectral_timeseries(spectra)
+    order_list = map( spec->RvSpectML.make_orders_into_chunks(spec,inst), spectra)
+    chunk_list_timeseries = ChunkListTimeseries(times, order_list, inst=first(spectra).inst, metadata=metadata )
+end
+
+
 # Find indicies for pixels around lines
 const Δλoλ_fit_line_default = 5*(1.8*1000/speed_of_light_mps)
 const Δλoλ_edge_pad_default = 0*(1.8*1000/speed_of_light_mps)
@@ -134,42 +234,6 @@ function make_chunk_list(spectra::AS, line_list::DataFrame; Δ::Real=Δλoλ_edg
     ChunkList(map(row->ChuckOfSpectrum(spectra,find_line_best(row.lambda_lo,row.lambda_hi,spectra,Δ=Δ)), eachrow(line_list) ))
 end
 
-""" Return a ChunkList with a region of spectrum from each order in orders_to_use.
-    inst:  Instrument trait that provides orders_to_use and pixels_to_use.
-    or
-    orders_to_use: Range or Array (orders_to_use(inst))
-    pixels_to_use: Array of Ranges (each from min_col to max_col)
-    min_col: (min_col_default(inst))
-    max_col: (max_col_default(inst))
-"""
-function make_orders_into_chunks
-end
-
-function make_orders_into_chunks(spectra::AS, inst::AbstractInstrument;
-        min_col::Integer = min_col_default(spectra.inst), # min_col_neid_default,
-        max_col::Integer = max_col_default(spectra.inst), #max_col_neid_default ,
-        orders_to_use = orders_to_use_default(spectra.inst) # 1:size(spectra.flux,2),
-        ) where {AS<:AbstractSpectra }
-    @assert eltype(orders_to_use) <: Integer
-    @assert all( min_order(spectra.inst) .<= orders_to_use .<= max_order(spectra.inst) )
-    @assert min_col >= min_pixel_in_order(spectra.inst)
-    @assert max_col <= max_pixel_in_order(spectra.inst)
-    pixels_to_use=fill(min_col:max_col,length(orders_to_use))
-    make_orders_into_chunks(spectra,orders_to_use=orders_to_use, pixels_to_use=pixels_to_use)
-end
-
-function make_orders_into_chunks(spectra::AS;
-        orders_to_use::Union{AR,AA1}, pixels_to_use::AAR ) where {
-         AS<:AbstractSpectra, AR<:AbstractRange{Int64}, AA1<:AbstractArray{Int64,1}, AAR<:AbstractArray{AR,1} }
-    @assert eltype(orders_to_use) <: Integer
-    #@assert all( min_order(inst) .<= orders_to_use .<= max_order(inst) )
-    #@assert minimum(pixels_to_use) >= min_pixel_in_order(inst)
-    #@assert maximum(pixels_to_use) <= max_pixel_in_order(inst)
-    ChunkList( map(order->
-                    ChuckOfSpectrum(spectra,(pixels=pixels_to_use[order],order=order)),
-                    orders_to_use ))
-end
-
 """ Return (chunk_timeseries, line_list) that have been trimmed of any chunks that are bad based on any spectra in the chunk_timeseries.
     chunk_timeseries: ChunkListTimeseries
     line_linst:  DataFrame w/ lambda_lo, lambda_hi
@@ -227,50 +291,9 @@ function filter_bad_chunks(chunk_list_timeseries::ACLT; verbose::Bool = false) w
     else
         if verbose
             println("# Removing ", length(chunks_to_remove), " chunks due to NaNs.")
-            map(c->println("# ",c,": ",line_list.lambda_lo[c]," - ",line_list.lambda_hi[c]),chunks_to_remove)
+            map(c->println("# ",c,": ",findall(.!idx_keep)))
         end
         new_chunk_list_timeseries = [ChunkList(chunk_list_timeseries.chunk_list[t].data[idx_keep]) for t in 1:length(chunk_list_timeseries) ]
         return ChunkListTimeseries(chunk_list_timeseries.times[idx_keep],new_chunk_list_timeseries, inst=chunk_list_timeseries.inst, metadata=chunk_list_timeseries.metadata[idx_keep])
-    end
-end
-
-
-""" Create a range with equal spacing between points with end points set based on union of all chunks in timeseries.
-    timeseries: ChunkListTimeseries
-    chunk index:
-    oversample_factor: (1)
-"""
-function make_grid_for_chunk(timeseries::ACLT, c::Integer; oversample_factor::Real = 1.0, spacing::Symbol = :Linear ) where { ACLT<:AbstractChunkListTimeseries }
-    num_obs = length(timeseries.chunk_list)
-    @assert num_obs >= 1
-    @assert 1<= c <= length(first(timeseries.chunk_list).data)
-    @assert allequal(map(chunk->length(chunk.data),timeseries.chunk_list))
-    @assert spacing == :Log || spacing == :Linear
-    if spacing == :Log
-        @warn "There's some issues with end points exceeding the bounds.  Round off error?  May cause bounds errors."
-    end
-    # Create grid, so that chunks at all times include the grid's minimum and maximum wavelength.
-    λ_min = maximum(minimum(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
-    λ_max = minimum(maximum(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
-    Δλ_grid_obs = mean(log(timeseries.chunk_list[t].data[c].λ[end]/
-                           timeseries.chunk_list[t].data[c].λ[1]   )/
-                         (length(timeseries.chunk_list[t].data[c].λ)-1) for t in 1:num_obs)
-    num_pixels_obs = log(λ_max/λ_min)/Δλ_grid_obs
-    num_pixels_gen = (num_pixels_obs-1) * oversample_factor + 1
-    if spacing == :Log
-        Δlnλ_grid_obs = mean(log(timeseries.chunk_list[t].data[c].λ[end]/
-                                 timeseries.chunk_list[t].data[c].λ[1]   )/
-                                 (length(timeseries.chunk_list[t].data[c].λ)-1) for t in 1:num_obs)
-        num_pixels_obs = log(λ_max/λ_min)/Δlnλ_grid_obs
-        num_pixels_gen = (num_pixels_obs-1) * oversample_factor + 1
-            Δlnλ_grid_gen = log(λ_max/λ_min)/ (num_pixels_gen-1)
-        return exp.(range(log(λ_min),stop=log(λ_max),step=Δlnλ_grid_gen))
-    elseif spacing == :Linear
-        Δλ_grid_obs = mean((timeseries.chunk_list[t].data[c].λ[end]-timeseries.chunk_list[t].data[c].λ[1] )/
-                            (length(timeseries.chunk_list[t].data[c].λ)-1) for t in 1:num_obs)
-        num_pixels_obs = (λ_max-λ_min)/Δλ_grid_obs
-        num_pixels_gen = (num_pixels_obs-1) * oversample_factor + 1
-        Δλ_grid_gen = (λ_max-λ_min)/ (num_pixels_gen-1)
-        return range(λ_min,stop=λ_max,step=Δλ_grid_gen)
     end
 end

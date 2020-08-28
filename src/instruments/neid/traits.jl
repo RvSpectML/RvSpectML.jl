@@ -9,9 +9,11 @@ min_pixel(::NEID1D) = 1
 max_pixel(::NEID1D) = 90*9216 # TODO: Update once know size of NEID's 1d extracted spectra
 
 import RvSpectML: orders_to_use_default, min_col_default, max_col_default
-orders_to_use_default(::NEID2D) = 1:52
-min_col_default(::NEID2D) = 451
-max_col_default(::NEID2D) = 9216 - (min_col_default(NEID2D())-1)
+#orders_to_use_default(inst::NEID2D) = 1:52   # Avoiding redder orders due to tellurics
+orders_to_use_default(inst::NEID2D) = 1:71   # Avoiding 72 because of NaNs in solar data
+min_col_default(::NEID2D) = 451              # Avoiding smaller columns due to NaNs
+#min_col_default(::NEID2D) = 2000              # Avoiding smaller columns due to lower flux and distortions
+max_col_default(::NEID2D) = 9216 - (min_col_default(NEID2D())-1)   # Avoiding larger columns for symmetry
 
 import RvSpectML: metadata_symbols_default, metadata_strings_default
 metadata_symbols_default(::AnyNEID) = Symbol[:bjd, :target, :ssbz]

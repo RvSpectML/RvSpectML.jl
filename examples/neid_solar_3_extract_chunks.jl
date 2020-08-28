@@ -6,9 +6,7 @@ make_plots = isdefined(Main,:make_plots) ? make_plots : true
    using Plots
  end
 
-make_plots
-
-order_list_timeseries = RvSpectML.make_order_list_timeseries(solar_data) # ,chunk_list_df)
+order_list_timeseries = RvSpectML.make_order_list_timeseries(solar_data)
 
 order_list_timeseries = RvSpectML.filter_bad_chunks(order_list_timeseries)
 
@@ -29,10 +27,9 @@ vald_df = RvSpectML.read_mask_vald(vald_filename)
 
 lambda_range_with_data = (min = maximum(d->minimum(d.λ),solar_data), max = minimum(d->maximum(d.λ),solar_data) )
 line_list_df = vald_df |>
-#line_list_df = espresso_df |>
    @filter(lambda_range_with_data.min <= _.lambda_lo ) |>
    @filter( _.lambda_hi < lambda_range_with_data.max) |>
-   @filter( _.lambda_hi < 6000.0 ) |>
+#   @filter( _.lambda_hi < 6000.0 ) |>
 #   @filter( _.lambda_lo >6157 || _.lambda_hi < 6155  ) |>   # Avoid "line" w/ large variability
    DataFrame
 

@@ -1,4 +1,6 @@
-using Statistics
+using RvSpectML
+ using Statistics
+ using Dates
 
 make_plots = true
 include("neid_solar_1_read.jl")
@@ -15,13 +17,14 @@ espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks","G2.espresso.mas")
 #    @filter( _.lambda_hi < 6000.0 ) |>
  #   @filter( _.lambda_lo >6157 || _.lambda_hi < 6155  ) |>   # Avoid "line" w/ large variability
     DataFrame
- mask_entry_doppler_factor = 1+5*mean(log.(order_list_timeseries.chunk_list[1].data[1].λ[2:end]./order_list_timeseries.chunk_list[1].data[1].λ[1:end-1]))
+ mask_entry_doppler_factor = 1+0.8*mean(log.(order_list_timeseries.chunk_list[1].data[1].λ[2:end]./order_list_timeseries.chunk_list[1].data[1].λ[1:end-1]))
  my_mask = hcat(line_list_df.lambda./mask_entry_doppler_factor,line_list_df.lambda.*mask_entry_doppler_factor, line_list_df.weight)
  Δv_grid = RvSpectML.CCFTophat.calc_ccf_Δv_grid()
 
 
-#cffs_as_if_vac = copy(ccfs)
-@time ccfs = RvSpectML.CCFTophat.calc_ccf_chunklist_timeseries(order_list_timeseries, my_mask)
+tstart = now()
+ @time ccfs = RvSpectML.CCFTophat.calc_ccf_chunklist_timeseries(order_list_timeseries, my_mask)
+ println("# CCF runtime: ", now()-tstart)
  rvs_ccf_gauss = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(Δv_grid,ccfs[:,i],fit_type = "gaussian") for i in 1:length(order_list_timeseries) ]
  rvs_ccf_quad  = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(Δv_grid,ccfs[:,i], fit_type = "quadratic") for i in 1:length(order_list_timeseries) ]
  rvs_ccf_cent  = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(Δv_grid,ccfs[:,i], fit_type = "centroid") for i in 1:length(order_list_timeseries) ]
@@ -33,6 +36,27 @@ espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks","G2.espresso.mas")
   xlabel!("Δv (m/s)")
   ylabel!("CCF")
  end
+
+ #make_plots = true
+ if make_plots
+   nbin = 4
+   plt_t = (order_list_timeseries.times .- minimum(order_list_timeseries.times) ) .* 24
+   plt = scatter(plt_t,rvs_ccf_gauss.-mean(rvs_ccf_gauss),label="Gaussian")
+   scatter!(plt,plt_t,rvs_ccf_quad.-mean(rvs_ccf_quad),label="Quadratic")
+   #scatter!(plt,plt_t,rvs_ccf_best.-mean(rvs_ccf_best),label="Best fit")
+   #scatter!(plt,plt_t,rvs_ccf_cent.mean(rvs_ccf_cent),label="Centroid")
+   times_binned = RvSpectML.bin_times(plt_t, nbin)
+   rvs_ccf_gauss_binned = RvSpectML.bin_times(rvs_ccf_gauss, nbin)
+   println("# RMS of binned (n=",nbin,") RVs: ", std(rvs_ccf_gauss_binned))
+   scatter!(times_binned,rvs_ccf_gauss_binned.-mean(rvs_ccf_gauss),label="Binned")
+   plot!(times_binned,rvs_ccf_gauss_binned.-mean(rvs_ccf_gauss),label=:none,color=3)
+   xlabel!(plt,"Time (hr)")
+   ylabel!(plt,"RV (m/s)")
+   display(plt)
+ end
+
+0
+
 
 
 # Try using Alex's clean lines
@@ -60,18 +84,6 @@ vald_filename = joinpath(ancilary_data_path,"VALD_Fe1_DP_rejectTelluricSlope0.0_
 
 # Try breaking CCFs up by order
 @time order_ccfs = RvSpectML.CCFTophat.calc_order_ccf_chunklist_timeseries(order_list_timeseries, my_mask)
-
-#make_plots = true
-if make_plots
-  plt_t = (order_list_timeseries.times .- minimum(order_list_timeseries.times) ) .* 24
-  plt = scatter(plt_t,rvs_ccf_gauss.-mean(rvs_ccf_gauss),label="Gaussian")
-  scatter!(plt,plt_t,rvs_ccf_quad.-mean(rvs_ccf_quad),label="Quadratic")
-  #scatter!(plt,plt_t,rvs_ccf_best.-mean(rvs_ccf_best),label="Best fit")
-  #scatter!(plt,plt_t,rvs_ccf_cent.mean(rvs_ccf_cent),label="Centroid")
-  xlabel!(plt,"Time (hr)")
-  ylabel!(plt,"RV (m/s)")
-  display(plt)
-end
 
 if make_plots
   order_idx = 8

@@ -115,7 +115,7 @@ function bin_times(times::AT, n::Integer) where { T<:Real, AT<:AbstractVector{T}
     local idx_start = 1
     for i in 1:num_out
       idx_stop = min(idx_start+n-1,num_in)
-      times_out[i] .= mean(times[idx_start:idx_stop])
+      times_out[i] = mean(times[idx_start:idx_stop])
       time_idx_out[i] = idx_start:idx_stop
       idx_start = idx_stop + 1
     end

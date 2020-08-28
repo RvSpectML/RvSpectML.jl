@@ -27,8 +27,7 @@ function add_metadata_from_fits!(df::DataFrame, fn::String)
 end
 
 """ Read NEID (non-solar) data from FITS file, and return in a Spectra2DBasic object."""
-function read_data
-end
+function read_data   end
 
 function read_data(fn::String, metadata::Dict{Symbol,Any} )
     f = FITS(fn)
@@ -85,7 +84,7 @@ function read_drift_corrections!(fn::String, df::DataFrame, df_time_col::Symbol 
     @assert any(isequal(:bjd),propertynames(drift_corrections))
     @assert any(isequal(:cal_drift),propertynames(drift_corrections))
     drift_interp = LinearInterpolation(drift_corrections[!,:bjd],drift_corrections[!,:cal_drift])
-    df[!,:drift] = drift_interp.(df[!,df_time_col]) # df_files_use.bjd)
+    df[!,:drift] = -drift_interp.(df[!,df_time_col])
     return df
 end
 
@@ -105,13 +104,6 @@ function read_differential_extinctions!(fn::String, df::DataFrame, df_time_col::
     @assert any(isequal(:JD),propertynames(df_diff_ext))
     @assert any(isequal(:delta_vr),propertynames(df_diff_ext))
     diff_ext = LinearInterpolation(df_diff_ext.JD, df_diff_ext.delta_vr)
-    df[!,:diff_ext_rv] = diff_ext(df[!,df_time_col])/100 # cm/s -> m/s
+    df[!,:diff_ext_rv] = -diff_ext(df[!,df_time_col])/100 # cm/s -> m/s
     return df
 end
-
-
-#=
-""" """
-function (fn::String)
-end
-=#

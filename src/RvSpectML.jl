@@ -23,6 +23,7 @@ include("types/types.jl")
 
 include("util/util.jl")
 export calc_doppler_factor, apply_doppler_boost!
+export absorption_line
 #export searchsortednearest
 
 include("util/spectra.jl")

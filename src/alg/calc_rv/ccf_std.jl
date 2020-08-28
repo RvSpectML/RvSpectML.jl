@@ -22,8 +22,7 @@ Compute the cross correlation function and fit to calculate a velocity
 using the specified method. Valid arguments for fit_type include
 "gaussian", "quadratic", and "centroid".
 """
-function measure_rv(wavs::AbstractArray{T,1}, spec::AbstractArray{T,1},
-                    mask::AbstractArray{T,2}; fit_type::String="gaussian") where T<:AbstractFloat
+function measure_rv(wavs::A1, spec::A2, mask::A3; fit_type::String="gaussian") where  {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1}, T3<:Real, A3<:AbstractArray{T3,2}  }
     ccfd, ccf = ccf_1D(wavs, spec, mask, res_factor=1.0)
 
     # do the fit for velocity
@@ -39,8 +38,8 @@ function measure_rv(wavs::AbstractArray{T,1}, spec::AbstractArray{T,1},
     end
 end
 
-function measure_rv(wavs::AbstractArray{T,1}, spec::AbstractArray{T,2},
-                    mask::AbstractArray{T,2}; fit_type::String="gaussian") where T<:AbstractFloat
+function measure_rv(wavs::A1, spec::A2,
+                    mask::A3; fit_type::String="gaussian") where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1}, T3<:Real, A3<:AbstractArray{T3,2}  }
     RVs = zeros(size(spec,2))
     for i in eachindex(RVs)
         RVs[i] = measure_rv(wavs, spec[:,i], mask, fit_type=fit_type)
@@ -74,9 +73,8 @@ function measure_rv_from_ccf(ccfd::A1, ccf::A2,
     end
 end
 
-function measure_rv_from_ccf(ccfd::A1, ccf::A2,
-                    mask::AbstractArray{T3,2}; fit_type::String="gaussian")  where { T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,2}, T3<:Real }
-    RVs = zeros(size(spec,2))
+function measure_rv_from_ccf(ccfd::A1, ccf::A2, mask::A3; fit_type::String="gaussian")  where { T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1}, T3<:Real, A3<:AbstractArray{T3,2} }
+    RVs = zeros(size(ccf,2))
     for i in eachindex(RVs)
         RVs[i] = measure_rv_from_ccf(ccfd, ccf[:,i], fit_type=fit_type)
     end
@@ -87,7 +85,7 @@ end
 """
 
 """
-function prelim_fit(ccfd::AbstractArray{T,1}, ccf::AbstractArray{T,1}) where T<:AbstractFloat
+function prelim_fit(ccfd::A1, ccf::A2 ) where  {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
     dep = maximum(ccf) - minimum(ccf)
     val = (dep/2.0) + minimum(ccf)
     ind1 = findfirst(ccf .<= val)
@@ -98,7 +96,7 @@ end
 """
 
 """
-function rv_from_ccf_quadratic(ccfd::AbstractArray{T,1}, ccf::AbstractArray{T,1}) where T<:AbstractFloat
+function rv_from_ccf_quadratic(ccfd::A1, ccf::A2) where  {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
     # do a prelim fit to get the width
     wid = prelim_fit(ccfd, ccf)
 
@@ -125,7 +123,7 @@ end
 """
 
 """
-function rv_from_ccf_gaussian(ccfd::AbstractArray{T,1}, ccf::AbstractArray{T,1}) where T<:AbstractFloat
+function rv_from_ccf_gaussian(ccfd::A1, ccf::A2) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
     # do a prelim fit to get the width
     wid = prelim_fit(ccfd, ccf)
 
@@ -154,14 +152,14 @@ end
 """
 
 """
-function rv_from_ccf_centroid(ccfd::AbstractArray{T,1}, ccf::AbstractArray{T,1}) where T<:AbstractFloat
+function rv_from_ccf_centroid(ccfd::A1, ccf::A2) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
     return -dot(ccf, ccfd) / sum(ccf)
 end
 
 """
 
 """
-function rv_from_ccf_bestfit(ccfd::AbstractArray{T,1}, ccf::AbstractArray{T,1}) where T<:AbstractFloat
+function rv_from_ccf_bestfit(ccfd::A1, ccf::A2) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
     ccfd[findmin(ccf)[2]]
 end
 

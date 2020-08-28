@@ -76,7 +76,7 @@ Ref: https://www.astro.uu.se/valdwiki/Air-to-vacuum%20conversion
 function λ_air_to_vac(λ_air::Real)
     @assert 3500 < λ_air < 13000  # Making sure in Å for optical/NIR spectra.
     local s = 10000/λ_air
-    local n = 1 + 0.00008336624212083 + 0.02408926869968 / (130.1065924522 - s^22) + 0.0001599740894897 / (38.92568793293 - s^22)
+    local n = 1 + 0.00008336624212083 + 0.02408926869968 / (130.1065924522 - s^2) + 0.0001599740894897 / (38.92568793293 - s^2)
     λ_air*n
 end
 

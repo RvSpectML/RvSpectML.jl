@@ -18,6 +18,10 @@ export calc_ccf_chunk, calc_ccf_chunklist, calc_ccf_chunklist_timeseries
 
 import ..RvSpectML: AbstractChuckOfSpectrum, AbstractChunkList, AbstractChunkListTimeseries
 
+using ThreadedIterables
+
+#using ThreadTools
+
 # physical constants
 const c_ms = 2.99782458e8    # m/s
 const c_kms = 2.99782458e5   # km/s
@@ -37,11 +41,10 @@ function calc_ccf_chunklist(chunk_list::AbstractChunkList, mask )
 end
 
 function calc_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries, mask )
-  mapreduce(cl->calc_ccf_chunklist(cl, mask),hcat,clt.chunk_list)
+  @threaded mapreduce(cl->calc_ccf_chunklist(cl, mask),hcat,clt.chunk_list)
 end
 
 function calc_order_ccfs_chunklist(chunk_list::AbstractChunkList, mask )
-  mapreduce(chunk->calc_ccf_chunk(chunk, mask), hcat, chunk_list.data)
 end
 
 function calc_order_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries, mask )
@@ -49,7 +52,7 @@ function calc_order_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries, m
   norders = length(clt.chunk_list[1].data)
   nobs =  length(clt.chunk_list)
   order_ccfs = zeros(nΔvs, norders, nobs)
-  for i in 1:nobs
+  Threads.@threads for i in 1:nobs
       order_ccfs[:,:,i] .= calc_order_ccfs_chunklist(clt.chunk_list[i], mask)
   end
   return order_ccfs
@@ -225,11 +228,15 @@ Compute the longitudinal relativistic doppler factor given a velocity
 in meters per second.
 """
 function doppler_factor(vel::Real)
+    one(vel) + vel/c_ms
+end
+
+# Eric replaced this version with above.  Should double check that won't cause anyeone suprises.
+function doppler_factor_orig(vel::Real)
     num = one(vel) + vel/c_ms
     den = one(vel) - vel/c_ms
     return sqrt(num/den)
 end
-
 
 """
     ccf_1D(ws, sp, mask1)
@@ -276,6 +283,7 @@ function ccf_1D(ws::A1, sp::A2, mask1::A3
 
     # allocate memory & loop over rest
     ccfa = zeros(nccfa, ntimes);
+    #Threads.@threads
     for i in 1:ntimes
         ccfa[:,i] .= ccf_1D(ws, view(sp,:,i), mask1, RVguess=RVguess, wccf=wccf, res_factor=res_factor)
     end

@@ -17,6 +17,16 @@ function calc_doppler_factor end
 calc_doppler_factor(rv::Real) = one(rv) + rv/speed_of_light_mps
 calc_doppler_factor(rv::Real, v_perp::Real) = (one(rv) + rv/speed_of_light_mps)/(one(rv) - (rv^2+v_perp^2)/speed_of_light_mps^2)
 
+
+"""
+   absorption_line(x; mid, width, depth)
+
+Return a Gaussian absorption line profile evaluated at x.
+"""
+function absorption_line(x::T; mid=zero(T), width=one(T), depth=one(T)) where T<:AbstractFloat
+    return one(T) - depth * exp(-((x-mid)/width)^2.0/2.0)
+end
+
 """
    searchsortednearest(a<:AbstractVector, x::Real)
    searchsortednearest(a<:AbstractVector, x<:AbstractVector)

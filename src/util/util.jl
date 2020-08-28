@@ -47,7 +47,6 @@ function searchsortednearest(x::T, a::AbstractVector{T}) where T
     return searchsortednearest(a, x)
 end
 
- #  TODO: EBF: Does this assumes 0-based arrays?
 function searchsortednearest(a::AbstractVector{T1}, x::AbstractVector{T2}) where { T1<:Real, T2<:Real }
    len_x = length(x)
    len_a = length(a)
@@ -56,11 +55,6 @@ function searchsortednearest(a::AbstractVector{T1}, x::AbstractVector{T2}) where
    for i in 2:len_x
 	   idxs[i] = idxs[i-1] + searchsortednearest(view(a, idxs[i-1]:len_a), x[i]) - 1
    end
-   if any(idxs.<1) || any(idxs.>len_x)
-	   println("Asked to search for x = ",x[1:3], " in a = ", a[1:3], " ... ", a[end-3:end])
-	   println("Returned idx = ",idxs[1:3]," ... ", idxs[end-3:end])
-   end
-
    return idxs
 end
 

@@ -8,9 +8,9 @@ make_plots_orig_3 = isdefined(Main,:make_plots) ? make_plots : true
  end
 
 # Set parameters for this analysis
-oversample_fac_chunks = 2
- oversample_fac_orders = 2
- num_spectra_to_bin = 1   # 1 results in no binning in time
+oversample_fac_chunks = 1
+ oversample_fac_orders = 1
+ num_spectra_to_bin = 5   # 1 results in no binning in time
  idx_chunk_min = 20
  idx_chunk_max = 21
  plt_order = 42
@@ -23,7 +23,7 @@ chunk_grids = map(c->RvSpectML.make_grid_for_chunk(chunk_list_timeseries,c,overs
  plt_times = (chunk_list_timeseries.times .-minimum(chunk_list_timeseries.times)).*24
 
 if 2 <= num_spectra_to_bin <=20
-  spectra_binned = RvSpectML.bin_consecutive_spectra(spectra_all,num_spectra_to_bin)
+  spectra_binned = RvSpectML.bin_consecutive_spectra(spectra_matrix,num_spectra_to_bin)
   f_mean = calc_mean_spectrum(spectra_binned.flux,spectra_binned.var)
   deriv = calc_mean_dfluxdlnlambda(spectra_binned.flux,spectra_binned.var,spectra_binned.λ,spectra_binned.chunk_map)
   times_binned = RvSpectML.bin_times(spectra_binned,chunk_list_timeseries.times,num_spectra_to_bin)
@@ -49,19 +49,22 @@ println("Computing RVs using dflux/dlnlambda from chunks.")
  (rvs_1, σ_rvs_1) = RvSpectML.calc_rvs_from_taylor_expansion(spectra_matrix,mean=f_mean,deriv=deriv)
  rms_rvs_1 = std(rvs_1)
  mean_σ_rvs_1 = mean(σ_rvs_1)
+ flush(stdout)
  println("# rms(RVs)  = ", rms_rvs_1, "  σ_RVs = ", mean_σ_rvs_1, "   N_obs = ", length(rvs_1) )
  flush(stdout)
  if make_plots
    plt2 = scatter(plt_times, rvs_1, yerr=σ_rvs_1, label="RV chunks", color=:blue)
  end
- plt2
+
 
 
 
 # Analyze spectra as a set of (large sections of) orders
 order_grids = map(c->RvSpectML.make_grid_for_chunk(order_list_timeseries,c,oversample_factor=oversample_fac_orders), 1:num_chunks(order_list_timeseries) )
-  spectral_orders_matrix = RvSpectML.pack_chunk_list_timeseries_to_matrix(order_list_timeseries,order_grids)
-  if 2 <= num_spectra_to_bin <=20
+
+spectral_orders_matrix = RvSpectML.pack_chunk_list_timeseries_to_matrix(order_list_timeseries,order_grids)
+
+if 2 <= num_spectra_to_bin <=20
     spectral_orders_matrix = RvSpectML.bin_consecutive_spectra(spectral_orders_matrix,num_spectra_to_bin)
   end
   f_mean_orders = calc_mean_spectrum(spectral_orders_matrix.flux,spectral_orders_matrix.var)
@@ -77,7 +80,7 @@ if make_plots
      local plt = plot()
      plot!(plt,plt_λ,(f_mean_orders[idx_plt].-mean_in_plt)./std_in_plt,label=:none,linecolor=:black)
      plot!(plt,plt_λ, deriv_orders[idx_plt]./std(deriv_orders[idx_plt]),label=:none, linecolor=:green)
-     scatter!(plt,plt_λ,(spectral_orders_matrix.flux[idx_plt,:].-mean_in_plt)./std_in_plt,markersize=1, label=:none)
+     #scatter!(plt,plt_λ,(spectral_orders_matrix.flux[idx_plt,:].-mean_in_plt)./std_in_plt,markersize=1, label=:none)
      xlabel!(plt,"λ (Å)")
      ylabel!(plt,"Mean & Deriv")
      local plt3 = scatter(plt_λ,spectral_orders_matrix.flux[idx_plt,:].-f_mean_orders[idx_plt],markersize=1, label=:none)
@@ -92,6 +95,7 @@ println("Computing RVs using dflux/dlnlambda from orders.")
                      sum(mapreduce(c ->(1.0./order_rvs[c].σ_rv.^2), hcat, 1:length(order_rvs)),dims=2) )
   rms_order_rvs = map(order->std(order.rv), order_rvs)
   mean_order_σrvs = map(order->mean(order.σ_rv), order_rvs)
+  flush(stdout)
   println("# rms(ave_order_rvs)/√N = ", std(ave_order_rvs)/sqrt(length(ave_order_rvs)), "  <RMS RVs> = ", mean(rms_order_rvs)#=/sqrt(length(ave_order_rvs))=#, "  <σ_RVs> = ", mean(mean_order_σrvs) )
   if make_plots
     plt4 = histogram(abs.(ave_order_rvs),bins=40,label="|Ave Order RVs|", alpha=0.75)
@@ -111,6 +115,7 @@ chunk_rms_cut_off = quantile(rms_order_rvs,0.9)
 
  rms_rvs_ave_good_orders = std(ave_good_chunks_rvs)
  mean_sigma_good_chunks = mean(sigma_good_chunks_rvs)
+ flush(stdout)
  println("# rms(RVs_good_orders) = ", rms_rvs_ave_good_orders,  "  <σ_RV good orders> = ", mean_sigma_good_chunks, "   N_obs = ", length(ave_good_chunks_rvs) )
  #map(o->plot!(plt,chunk_list_timeseries.times,order_rvs[o].rv,yerr=order_rvs[o].σ_rv,markersize=1,label=:none),idx_good_chunks )
 

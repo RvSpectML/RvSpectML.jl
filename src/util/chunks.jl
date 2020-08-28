@@ -240,21 +240,37 @@ end
     chunk index:
     oversample_factor: (1)
 """
-function make_grid_for_chunk(timeseries::ACLT, c::Integer; oversample_factor::Real = 1.0 ) where { ACLT<:AbstractChunkListTimeseries }
+function make_grid_for_chunk(timeseries::ACLT, c::Integer; oversample_factor::Real = 1.0, spacing::Symbol = :Linear ) where { ACLT<:AbstractChunkListTimeseries }
     num_obs = length(timeseries.chunk_list)
     @assert num_obs >= 1
-    @assert 1<= c <= length(first(timeseries.chunk_list).data) # WARN: only tests first chunk_list
+    @assert 1<= c <= length(first(timeseries.chunk_list).data)
+    @assert allequal(map(chunk->length(chunk.data),timeseries.chunk_list))
+    @assert spacing == :Log || spacing == :Linear
+    if spacing == :Log
+        @warn "There's some issues with end points exceeding the bounds.  Round off error?  May cause bounds errors."
+    end
     # Create grid, so that chunks at all times include the grid's minimum and maximum wavelength.
     λ_min = maximum(minimum(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
     λ_max = minimum(maximum(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
-    Δλ_grid_obs = median((timeseries.chunk_list[t].data[c].λ[end]-
-            timeseries.chunk_list[t].data[c].λ[1])/
-              (length(timeseries.chunk_list[t].data[c].λ)-1) for t in 1:num_obs)
-    num_pixels_obs = mean(length(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
+    Δλ_grid_obs = mean(log(timeseries.chunk_list[t].data[c].λ[end]/
+                           timeseries.chunk_list[t].data[c].λ[1]   )/
+                         (length(timeseries.chunk_list[t].data[c].λ)-1) for t in 1:num_obs)
+    num_pixels_obs = log(λ_max/λ_min)/Δλ_grid_obs
     num_pixels_gen = (num_pixels_obs-1) * oversample_factor + 1
-    Δλ_grid_gen = (λ_max-λ_min)/ (num_pixels_gen-1)
-    return range(λ_min,stop=λ_max,step=Δλ_grid_gen)
-    # TODO: Tweak to make other code work with grids spaced eveningly in logλ
-    #Δlnλ_grid_gen = log(λ_max/λ_min)/ (num_pixels_gen-1)
-    #exp.(range(log(λ_min),stop=log(λ_max),step=Δlnλ_grid_gen))
+    if spacing == :Log
+        Δlnλ_grid_obs = mean(log(timeseries.chunk_list[t].data[c].λ[end]/
+                                 timeseries.chunk_list[t].data[c].λ[1]   )/
+                                 (length(timeseries.chunk_list[t].data[c].λ)-1) for t in 1:num_obs)
+        num_pixels_obs = log(λ_max/λ_min)/Δlnλ_grid_obs
+        num_pixels_gen = (num_pixels_obs-1) * oversample_factor + 1
+            Δlnλ_grid_gen = log(λ_max/λ_min)/ (num_pixels_gen-1)
+        return exp.(range(log(λ_min),stop=log(λ_max),step=Δlnλ_grid_gen))
+    elseif spacing == :Linear
+        Δλ_grid_obs = mean((timeseries.chunk_list[t].data[c].λ[end]-timeseries.chunk_list[t].data[c].λ[1] )/
+                            (length(timeseries.chunk_list[t].data[c].λ)-1) for t in 1:num_obs)
+        num_pixels_obs = (λ_max-λ_min)/Δλ_grid_obs
+        num_pixels_gen = (num_pixels_obs-1) * oversample_factor + 1
+        Δλ_grid_gen = (λ_max-λ_min)/ (num_pixels_gen-1)
+        return range(λ_min,stop=λ_max,step=Δλ_grid_gen)
+    end
 end

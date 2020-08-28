@@ -4,6 +4,12 @@ Created: December 2019
 Contact: mlp95@psu.edu
 Based on code by Alex Wise (aw@psu.edu)
 """
+
+module RVFromCCF
+
+export measure_rv_from_ccf
+import ..RvSpectML: searchsortednearest
+
 # packages
 using LsqFit
 using LinearAlgebra
@@ -42,6 +48,42 @@ function measure_rv(wavs::AbstractArray{T,1}, spec::AbstractArray{T,2},
     return RVs
 end
 
+
+"""
+    measure_rv(wavs, spec, mask; fit_type="gaussian")
+
+Compute the cross correlation function and fit to calculate a velocity
+using the specified method. Valid arguments for fit_type include
+"gaussian", "quadratic", and "centroid".
+"""
+function measure_rv_from_ccf(ccfd::A1, ccf::A2,
+            ; fit_type::String="gaussian") where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
+
+    # do the fit for velocity
+    @assert fit_type in ["quadratic", "gaussian", "centroid", "bestfit"]
+    if fit_type == "quadratic"
+        return rv_from_ccf_quadratic(ccfd, ccf)
+    elseif fit_type == "gaussian"
+        return rv_from_ccf_gaussian(ccfd, ccf)
+    elseif fit_type == "centroid"
+        return rv_from_ccf_centroid(ccfd, ccf)
+    elseif fit_type == "bestfit"
+        return rv_from_ccf_bestfit(ccfd, ccf)
+    else
+        return nothing
+    end
+end
+
+function measure_rv_from_ccf(ccfd::A1, ccf::A2,
+                    mask::AbstractArray{T3,2}; fit_type::String="gaussian")  where { T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,2}, T3<:Real }
+    RVs = zeros(size(spec,2))
+    for i in eachindex(RVs)
+        RVs[i] = measure_rv_from_ccf(ccfd, ccf[:,i], fit_type=fit_type)
+    end
+    return RVs
+end
+
+
 """
 
 """
@@ -78,6 +120,8 @@ function rv_from_ccf_quadratic(ccfd::AbstractArray{T,1}, ccf::AbstractArray{T,1}
     return -b/(2*a)
 end
 
+@. gaussian_prof(x, p) = p[4] + p[3] * exp(-(x-p[1])^2.0/(2.0 * p[2]^2.0))
+
 """
 
 """
@@ -113,3 +157,12 @@ end
 function rv_from_ccf_centroid(ccfd::AbstractArray{T,1}, ccf::AbstractArray{T,1}) where T<:AbstractFloat
     return -dot(ccf, ccfd) / sum(ccf)
 end
+
+"""
+
+"""
+function rv_from_ccf_bestfit(ccfd::AbstractArray{T,1}, ccf::AbstractArray{T,1}) where T<:AbstractFloat
+    ccfd[findmin(ccf)[2]]
+end
+
+end # module

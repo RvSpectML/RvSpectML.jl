@@ -102,7 +102,7 @@ end
 
 # Wrapper code to deal with weird data structures
 function pack_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Union{AR,AAV}; alg::Symbol = :Linear,
-    oversample_factor::Real = 1 ) where {
+    oversample_factor::Real = 1, verbose::Bool = false ) where {
         ACLT<:AbstractChunkListTimeseries, RT<:AbstractRange, AR<:AbstractArray{RT,1}, T<:Real, AV<:AbstractVector{T}, AAV<:AbstractArray{AV,1} }
     @assert alg == :Linear || alg == :GP  || alg == :Sinc # TODO: Eventually move to traits-based system?
     num_obs = length(timeseries)
@@ -115,7 +115,7 @@ function pack_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Uni
     if (alg == :GP) && (maximum(length.(chunk_grids))>1024)
         @error "Don't use GPs with more than 1024 points in a chunk until implement more efficient factorization."
     end
-    if alg == :Sinc
+    if alg == :Sinc    # Setup workspace for Sync.  TODO: Put into functor
         filter_size=23
         kaiserB=13
         sinc_filter = SincInterpolation.create_filter_curve(filter_size*21; filter_size=filter_size, kaiserB=kaiserB)
@@ -124,6 +124,9 @@ function pack_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Uni
        idx_start = 0
        for c in 1:length(chunk_grids)
            idx = (idx_start+1):(idx_start+length(chunk_grids[c]))
+           if verbose
+               flush(stdout);  println("t= ",t, " c= ",c," idx= ", idx, " size(flux)= ",size(flux_matrix))
+           end
            if alg == :Linear
                interp_chunk_to_grid_linear!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c])
            elseif alg == :Sinc

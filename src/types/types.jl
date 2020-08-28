@@ -9,5 +9,7 @@ export SpectralTimeSeriesCommonWavelengths
 export make_vec_metadata_from_spectral_timeseries
 
 include("chunks.jl")
-export AbstractChuckOfSpectrum, ChuckOfSpectrum, ChunkList, ChunkListTimeseries
+export AbstractChuckOfSpectrum, ChuckOfSpectrum
+export AbstractChunkList, ChunkList
+export AbstractChunkListTimeseries, ChunkListTimeseries
 export length, num_chunks

@@ -32,24 +32,9 @@ line_list_df = vald_df |>
 #line_list_df = espresso_df |>
    @filter(lambda_range_with_data.min <= _.lambda_lo ) |>
    @filter( _.lambda_hi < lambda_range_with_data.max) |>
+   @filter( _.lambda_hi < 6000.0 ) |>
 #   @filter( _.lambda_lo >6157 || _.lambda_hi < 6155  ) |>   # Avoid "line" w/ large variability
    DataFrame
-
-#=
-# TODO: Once find good values, move this code to adjust width of chunks into read_mask_vald
-chunk_size_factor = 3       # TODO: Figure out what value to use.  Ask Alex
- max_line_offset = 0.5       # km/s
- max_ccf_Δv = 20            # km/s
- line_width = RvSpectML.predict_line_width(5780,v_rot=1.8)  # km/s
- chunk_half_width = max(chunk_size_factor*line_width+max_line_offset, max_ccf_Δv+max_line_offset)
- println("chunk_half_width = ", chunk_half_width)
- Δλoλ_fit_line = chunk_half_width*1000/RvSpectML.speed_of_light_mps
- println("# Δλ/λ = ",Δλoλ_fit_line)
- line_list_df.lambda_hi .= line_list_df.lambda*(1 + Δλoλ_fit_line)
- line_list_df.lambda_lo .= line_list_df.lambda/(1 + Δλoλ_fit_line)
-
-=#
-chunk_list_df = line_list_df
 
 find_overlapping_chunks(line_list_df)
 
@@ -80,7 +65,7 @@ using Plots
 if make_plots
    #order_idx = 20:22
    # plt = RvSpectML.plot_spectrum_chunks(order_list_timeseries, order_idx)
-   chunk_idx = 20:21
+   chunk_idx = 23
    for c in chunk_idx
        t = 1
        #if(sum(chunk_list_df.line_depths[c])<0.25) continue end

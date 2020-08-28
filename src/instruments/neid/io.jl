@@ -105,7 +105,7 @@ function read_differential_extinctions!(fn::String, df::DataFrame, df_time_col::
     @assert any(isequal(:JD),propertynames(df_diff_ext))
     @assert any(isequal(:delta_vr),propertynames(df_diff_ext))
     diff_ext = LinearInterpolation(df_diff_ext.JD, df_diff_ext.delta_vr)
-    df[!,:diff_ext_rv] = diff_ext(df[!,df_time_col])
+    df[!,:diff_ext_rv] = diff_ext(df[!,df_time_col])/10 # cm/s -> m/s
     return df
 end
 

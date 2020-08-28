@@ -3,10 +3,10 @@ make_plots_orig_5 = isdefined(Main,:make_plots) ? make_plots : true
  make_plots = false
  include("neid_solar_3_calc_rvs_proj.jl")
  make_plots = make_plots_orig_5
-if make_plots
+ if make_plots
    using Plots
  end
- using MultivariateStats
+using MultivariateStats
  #using Stheno, TemporalGPs
 
 # Set parameters for plotting analysis
@@ -14,30 +14,57 @@ plt_order = 42
  plt_order_pix = 3301:3800
 
 
-# TODO: START the CCF calculation
-#=
-fm_perp = RvSpectML.compute_spectra_perp_doppler_shift(spectral_orders_matrix.flux,deriv_orders, ave_good_chunks_rvs )
-  idx_good_obs = 1:length(ave_good_chunks_rvs)
-  M = fit(PCA, fm_perp[:,idx_good_obs]; maxoutdim=10)
-  pca_out = MultivariateStats.transform(M,fm_perp[:,idx_good_obs])
-  frac_var_explained = 1.0.-cumsum(principalvars(M))./tvar(M)
-  if make_plots
-    plt = scatter(frac_var_explained, xlabel="Number of PCs", ylabel="Frac Variance Unexplained")
-    display(plt)
-  end
-  frac_var_explained
+espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks","G2.espresso.mas")
+espresso_df = RvSpectML.read_mask_espresso(espresso_filename)
 
-if make_plots
-  # plt_order = 42
-  # plt_order_pix = 3301:3800
-  RvSpectML.plot_basis_vectors(order_grids, f_mean_orders, deriv_orders, M.proj, idx_plt = spectral_orders_matrix.chunk_map[plt_order][plt_order_pix] )
+lambda_range_with_data = (min = maximum(d->minimum(d.λ),solar_data), max = minimum(d->maximum(d.λ),solar_data) )
+line_list_df = espresso_df |>
+     @filter(lambda_range_with_data.min <= _.lambda_lo ) |>
+    @filter( _.lambda_hi < lambda_range_with_data.max) |>
+#    @filter( _.lambda_hi < 6000.0 ) |>
+ #   @filter( _.lambda_lo >6157 || _.lambda_hi < 6155  ) |>   # Avoid "line" w/ large variability
+    DataFrame
+
+mask_entry_doppler_factor = 1+2*mean(log.(order_list_timeseries.chunk_list[1].data[1].λ[2:end]./order_list_timeseries.chunk_list[1].data[1].λ[1:end-1]))
+my_mask = hcat(line_list_df.lambda./mask_entry_doppler_factor,line_list_df.lambda.*mask_entry_doppler_factor, line_list_df.weight)
+Δv_grid = RvSpectML.CCFTophat.calc_ccf_Δv_grid()
+
+function calc_ccf_chunk(chunk::AbstractChuckOfSpectrum, mask )
+  res = RvSpectML.CCFTophat.ccf_1D(chunk.λ,chunk.flux, mask)
 end
 
-if make_plots
-  RvSpectML.plot_basis_scores(plt_times, ave_good_chunks_rvs, pca_out )
+function calc_ccf_chunklist(chunk_list::AbstractChunkList, mask )
+  mapreduce(chunk->calc_ccf_chunk(chunk, mask), +, chunk_list.data)
 end
 
-if make_plots
-  RvSpectML.plot_basis_scores_cor( ave_good_chunks_rvs, pca_out)
+function calc_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries, mask )
+  mapreduce(cl->calc_ccf_chunklist(cl, mask),hcat,clt.chunk_list)
 end
-=#
+
+
+@time ccfs = calc_ccf_chunklist_timeseries(order_list_timeseries, my_mask)
+
+#maximum(abs2.(ccfs.-ccfs_comp))
+
+if make_plots
+  plot(Δv_grid,ccfs,label=:none)
+  xlabel("Δv (m/s)")
+  ylabel("CCF")
+end
+
+rvs_ccf_gauss = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(Δv_grid,ccfs[:,i],fit_type = "gaussian") for i in 1:length(order_list_timeseries) ]
+rvs_ccf_quad  = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(Δv_grid,ccfs[:,i], fit_type = "quadratic") for i in 1:length(order_list_timeseries) ]
+rvs_ccf_cent  = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(Δv_grid,ccfs[:,i], fit_type = "centroid") for i in 1:length(order_list_timeseries) ]
+rvs_ccf_best  = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(Δv_grid,ccfs[:,i], fit_type = "bestfit") for i in 1:length(order_list_timeseries) ]
+
+make_plots = true
+if make_plots
+  plt_t = (order_list_timeseries.times .- minimum(order_list_timeseries.times) ) .* 24
+  plt = scatter(plt_t,rvs_ccf_gauss.-mean(rvs_ccf_gauss),label="Gaussian")
+  scatter!(plt,plt_t,rvs_ccf_quad.-mean(rvs_ccf_quad),label="Quadratic")
+  #scatter!(plt,plt_t,rvs_ccf_best.-mean(rvs_ccf_best),label="Best fit")
+  #scatter!(plt,plt_t,rvs_ccf_cent.mean(rvs_ccf_cent),label="Centroid")
+  xlabel!(plt,"Time (hr)")
+  ylabel!(plt,"RV (m/s)")
+  display(plt)
+end

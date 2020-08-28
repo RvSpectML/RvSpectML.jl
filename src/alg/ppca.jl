@@ -1,3 +1,5 @@
+module PPCA
+
 using LinearAlgebra: dot, Symmetric
 using Statistics: mean, std
 using Flux                           # For optimization
@@ -669,6 +671,7 @@ function regularization(m::PPCAGPBasis #=, ss::SpectraSet1D=# )  where { T<:Real
     regularization_scores(m.x) + regularization_basis(m) + regularization_mean(m, mu=1.0)
 end
 
+#= Old demo code
 
 ktmp = 1.0 * stretch(Matern52(), 1 /1.0)
 bGP = GP(1.0, ktmp, GPC())
@@ -778,3 +781,8 @@ plot!(plt8b,ppca_true.lambda,ppca_interp.W[:,3]./(sqrt(2)*std(ppca_interp.W[:,3]
 title!(plt4b,"Basis Vector Residuals before transform")
 title!(plt8b,"Basis Vector Residuals after transform")
 plot(plt4b, plt8b, layout =  @layout [a ; b ] )
+
+=#
+
+
+end # module

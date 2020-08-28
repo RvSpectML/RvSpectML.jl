@@ -6,7 +6,7 @@ make_plots_orig_4 = isdefined(Main,:make_plots) ? make_plots : true
  if make_plots
    using Plots
  end
- using MultivariateStats
+using MultivariateStats
 
 # Set parameters for plotting analysis
 plt_order = 42
@@ -18,15 +18,15 @@ fm_perp = RvSpectML.compute_spectra_perp_doppler_shift(spectral_orders_matrix.fl
   pca_out = MultivariateStats.transform(M,fm_perp[:,idx_good_obs])
   frac_var_explained = 1.0.-cumsum(principalvars(M))./tvar(M)
   if make_plots
-    scatter(frac_var_explained, xlabel="Number of PCs", ylabel="Frac Variance Unexplained")
+    plt = scatter(frac_var_explained, xlabel="Number of PCs", ylabel="Frac Variance Unexplained")
+    display(plt)
   end
   frac_var_explained
-
 
 if make_plots
   # plt_order = 42
   # plt_order_pix = 3301:3800
-  RvSpectML.plot_basis_vectors(order_grids, fm_mean_orders, deriv_orders, M.proj, idx_plt = spectral_orders_matrix.chunk_map[plt_order][plt_order_pix] )
+  RvSpectML.plot_basis_vectors(order_grids, f_mean_orders, deriv_orders, M.proj, idx_plt = spectral_orders_matrix.chunk_map[plt_order][plt_order_pix] )
 end
 
 if make_plots

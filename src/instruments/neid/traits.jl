@@ -9,7 +9,7 @@ min_pixel(::NEID1D) = 1
 max_pixel(::NEID1D) = 90*9216 # TODO: Update once know size of NEID's 1d extracted spectra
 
 import RvSpectML: orders_to_use_default, min_col_default, max_col_default
-orders_to_use_default(::NEID2D) = 1:60
+orders_to_use_default(::NEID2D) = 1:52
 min_col_default(::NEID2D) = 451
 max_col_default(::NEID2D) = 9216 - (min_col_default(NEID2D())-1)
 

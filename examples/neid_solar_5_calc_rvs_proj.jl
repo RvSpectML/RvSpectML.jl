@@ -62,7 +62,7 @@ println("Computing RVs using dflux/dlnlambda from chunks.")
 # Analyze spectra as a set of (large sections of) orders
 order_grids = map(c->RvSpectML.make_grid_for_chunk(order_list_timeseries,c,oversample_factor=oversample_fac_orders), 1:num_chunks(order_list_timeseries) )
 
-spectral_orders_matrix = RvSpectML.pack_chunk_list_timeseries_to_matrix(order_list_timeseries,order_grids)
+@time spectral_orders_matrix = RvSpectML.pack_chunk_list_timeseries_to_matrix(order_list_timeseries,order_grids)
 
 if 2 <= num_spectra_to_bin <=20
     spectral_orders_matrix = RvSpectML.bin_consecutive_spectra(spectral_orders_matrix,num_spectra_to_bin)

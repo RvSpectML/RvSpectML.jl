@@ -10,7 +10,7 @@ using MultivariateStats
 
 # Set parameters for plotting analysis
 plt_order = 42
- plt_order_pix = 3301:3800
+ plt_order_pix = 4500:5000
 
 fm_perp = RvSpectML.compute_spectra_perp_doppler_shift(spectral_orders_matrix.flux,deriv_orders, ave_good_chunks_rvs )
   idx_good_obs = 1:length(ave_good_chunks_rvs)
@@ -24,7 +24,7 @@ fm_perp = RvSpectML.compute_spectra_perp_doppler_shift(spectral_orders_matrix.fl
   frac_var_explained
 
 if make_plots
-  # plt_order = 42
+  plt_order = 40
   # plt_order_pix = 3301:3800
   RvSpectML.plot_basis_vectors(order_grids, f_mean_orders, deriv_orders, M.proj, idx_plt = spectral_orders_matrix.chunk_map[plt_order][plt_order_pix] )
 end
@@ -32,6 +32,7 @@ end
 if make_plots
   RvSpectML.plot_basis_scores(plt_times, ave_good_chunks_rvs, pca_out )
 end
+
 
 if make_plots
   RvSpectML.plot_basis_scores_cor( ave_good_chunks_rvs, pca_out)

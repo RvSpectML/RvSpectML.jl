@@ -27,7 +27,7 @@ lambda_range_with_data = (min = maximum(d->minimum(d.λ),solar_data), max = mini
 line_list_df = vald_df |>
    @filter(lambda_range_with_data.min <= _.lambda_lo ) |>
    @filter( _.lambda_hi < lambda_range_with_data.max) |>
-#   @filter( _.lambda_hi < 6000.0 ) |>
+   @filter( _.lambda_hi < 6000.0 ) |>
 #   @filter( _.lambda_lo >6157 || _.lambda_hi < 6155  ) |>   # Avoid "line" w/ large variability
    DataFrame
 
@@ -37,17 +37,7 @@ chunk_list_df = RvSpectML.merge_lines(line_list_df)
 @assert find_overlapping_chunks(chunk_list_df) == nothing
 
 size(solar_data)
-chunk_list_df = chunk_list_df[10:end,:]
-
-#=
-for (r,row) in enumerate(eachrow(chunk_list_df) )
-   t = 1 # for t in 1:size(solar_data,1)
-      line_best = RvSpectML.find_line_best(row.lambda_lo,row.lambda_hi,solar_data[1])
-      println("# r= ",r," t= ",t,": line_best = ",line_best, " λ=(",row.lambda_lo,", ",row.lambda_hi,")")
-      flush(stdout)
-      @assert length(line_best.order) >= 1
-end
-=#
+chunk_list_df = chunk_list_df[1:end,:]
 
 # TODO:  FIX:  Problem with ESPRESSO mask having lots of lines getting meged into humongous chunks that don't fit into the order!
 chunk_list_timeseries = RvSpectML.make_chunk_list_timeseries(solar_data,chunk_list_df)

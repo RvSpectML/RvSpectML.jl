@@ -1,7 +1,7 @@
 # Run code for previous steps with plotting turned off.
 make_plots_orig_5 = isdefined(Main,:make_plots) ? make_plots : true
  make_plots = false
- include("neid_solar_4_calc_rvs_proj.jl")
+ include("neid_solar_5_calc_rvs_proj.jl")
  make_plots = make_plots_orig_5
  if make_plots
    using Plots

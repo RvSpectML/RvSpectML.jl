@@ -22,8 +22,6 @@ using DataFrames, CSV, Query
 
 vald_filename = joinpath(ancilary_data_path,"VALD_Fe1_DP_rejectTelluricSlope0.0_badLineFilterESPRESSO-strict-NEID-BIS_overlapcutoff6e-05_depthcutoff0.05_allowBlends0_wavesReiners_depthssolar_nbin1depth0.mas")
 vald_df = RvSpectML.read_mask_vald(vald_filename)
-#espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks","G2.espresso.mas")
-#espresso_df = RvSpectML.read_mask_espresso(espresso_filename)
 
 lambda_range_with_data = (min = maximum(d->minimum(d.λ),solar_data), max = minimum(d->maximum(d.λ),solar_data) )
 line_list_df = vald_df |>
@@ -74,22 +72,3 @@ if make_plots
    display(plt)
 
 end
-
-#= Goofing around to see how well chunks line up
-chunk_idx = 13:20
-xmin = minimum(chunk_list_df.lambda_lo[chunk_idx])
-xmax = maximum(chunk_list_df.lambda_hi[chunk_idx])
-plt = plot(legend=:none)
-#xlims!(xmin,xmax)
-for c in chunk_idx
-    t = 1
-    #if(sum(chunk_list_df.line_depths[c])<0.25) continue end
-    λ_mid = sqrt(chunk_list_df.lambda_hi[c]*chunk_list_df.lambda_lo[c])
-    println("c= ",c , " λs= ",chunk_list_df.line_λs[c]," depths= ",chunk_list_df.line_depths[c])
-    #println("  λlo= ",chunk_list_df.lambda_lo[c]," λhi= ",chunk_list_df.lambda_hi[c], " Δλ= ",chunk_list_df.lambda_hi[c]-chunk_list_df.lambda_lo[c])
-    plot!(plt,chunk_list_timeseries.chunk_list[t].data[c].λ.-λ_mid,chunk_list_timeseries.chunk_list[t].data[c].flux)
-end
-#plot!(plt,solar_data[1].λ,solar_data[1].flux)
-#xlims!(4560,4565)
-display(plt)
-=#

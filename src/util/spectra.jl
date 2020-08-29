@@ -47,7 +47,7 @@ end
 """  Calculate total SNR in (region of) spectra. """
 function calc_snr(flux::AbstractArray{T1},var::AbstractArray{T2}) where {T1<:Real, T2<:Real}
     @assert size(flux) == size(var)
-    sqrt(sum(flux./var))   # TODO: Generalize & Test when weights are far from equal
+    sqrt(sum(flux.^2 ./ var))   # TODO: Test when weights are far from equal
 end
 
 """ Calc normalization of spectra based on average flux in a ChunkList. """
@@ -79,7 +79,12 @@ function normalize_spectra!(chunk_timeseries::ACLT, spectra::AS) where { ACLT<:A
     return chunk_timeseries
 end
 
+"""   bin_consecutive_spectra
+Bins consecutive spectra from a SpectralTimeSeriesCommonWavelengths object
 
+WARNING:  Simply takes consecutive spectra, so some bins may be from spectra that weren't taken close together.
+TODO:  Create version that pays attention to timestamps.
+"""
 function bin_consecutive_spectra(spectra::AbstractSpectralTimeSeriesCommonWavelengths, n::Integer)
   local num_in = size(spectra.flux,2)
   @assert num_in >= n
@@ -101,11 +106,21 @@ function bin_consecutive_spectra(spectra::AbstractSpectralTimeSeriesCommonWavele
   return typeof(spectra)(spectra.λ,flux_out,var_out,spectra.chunk_map,spectra.inst,metadata_out)
 end
 
+"""   bin_times()
+Bins times from a SpectralTimeSeriesCommonWavelengths object using the groupings from time_idx in the metadata.
+"""
 function bin_times(spectra::AbstractSpectralTimeSeriesCommonWavelengths, times::AT, n::Integer) where { T<:Real, AT<:AbstractVector{T} }
     @assert haskey(spectra.metadata,:time_idx)
     map(idx->mean(times[idx]), spectra.metadata[:time_idx])
 end
 
+"""   bin_times( times, n )
+Computes mean times from conseuctive bins of n times (to go with bin_consecutive_spectra).
+Returns floor(length(times)/n) elements.
+
+WARNING:  Simply takes consecutive times, so some bins may be from spectra that weren't taken close together.
+TODO:  Create version that pays attention to timestamps.
+"""
 function bin_times(times::AT, n::Integer) where { T<:Real, AT<:AbstractVector{T} }
     local num_in = length(times)
     @assert num_in >= n

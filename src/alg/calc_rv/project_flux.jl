@@ -47,7 +47,7 @@ function calc_rvs_from_taylor_expansion(spectra::STS; mean::MT = calc_mean_spect
   else # Pixels inverse variance weighted
       # TODO:  CHECK/FIX? math for inverse variance weighting.
       # Or maybe the math is right, but it's just a bad idea to have different weighting within one line/chunk
-      @info "Warning: I think this is either wrong or a bad idea."
+      @info "Warning: I think this is either wrong or a bad idea.  Need to check."
       norm = sum(abs2.(deriv[idx])./spectra.var[idx,:])
       rv = sum((spectra.flux[idx,:].-mean[idx]).*deriv[idx]./spectra.var[idx,:],dims=1).*(speed_of_light_mps/norm)
       σ_rv = sqrt.(sum(abs2.(deriv)./spectra.var[idx,:],dims=1)).*(speed_of_light_mps/norm)

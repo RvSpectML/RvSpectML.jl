@@ -1,4 +1,6 @@
 """
+Various utilities for manipulating spectra
+
 Author: Eric Ford
 Created: August 2020
 Contact: https://github.com/eford/

@@ -1,11 +1,13 @@
 """
-[]**RvSpectML.jl**](https://github.com/eford/RvSpectML.jl) is a Julia package for measuring radial velocities (RVs) from stellar spectroscopic timeseries via machine learning (ML).
-
-Author: Eric Ford and collaborators
+Author: Eric Ford and collaborators (see header of each file)
 Created: August 2020
 Contact: https://github.com/eford/RvSpectML.jl
 """
 
+"""
+[**RvSpectML.jl**](https://github.com/eford/RvSpectML.jl) is a Julia package for measuring radial velocities (RVs) from stellar spectroscopic timeseries via machine learning (ML).
+
+"""
 module RvSpectML
 
 # Packages we know we'll use in many places

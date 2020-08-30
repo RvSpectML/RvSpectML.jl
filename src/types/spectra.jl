@@ -1,3 +1,10 @@
+"""
+Code declaring Spectra1DBasic, Spectra1DBasic, SpectralTimeSeriesCommonWavelengths and their abstract versions.
+
+Author: Eric Ford
+Created: August 2020
+"""
+
 #=
 const min_orders_in_spectra = 1
 const max_orders_in_spectra = 128
@@ -66,8 +73,10 @@ function Spectra2DBasic(λ::A1, flux::A2, var::A3, inst::InstT;
 end
 
 
+""" Abstract type for a time series of spectra that share a common wavelength grid. """
 abstract type AbstractSpectralTimeSeriesCommonWavelengths <: AbstractSpectra1D   end
 
+""" Time series of spectra that share a common wavelength grid. """
 struct SpectralTimeSeriesCommonWavelengths{T1<:Real,T2<:Real,T3<:Real,AA1<:AbstractArray{T1,1},AA2<:AbstractArray{T2,2},AA3<:AbstractArray{T3,2},
             AA4<:AbstractArray{UnitRange{Int64},1}, InstT<:AbstractInstrument } <: AbstractSpectralTimeSeriesCommonWavelengths
     λ::AA1
@@ -90,6 +99,7 @@ function SpectralTimeSeriesCommonWavelengths(λ::A1, flux::A2, var::A3, chunk_ma
     SpectralTimeSeriesCommonWavelengths{eltype(λ),eltype(flux),eltype(var),typeof(λ),typeof(flux),typeof(var),typeof(chunk_map),typeof(inst)}(λ,flux,var,chunk_map,inst,metadata)
 end
 
+""" Extract the metadata from a time series of spectra and return it as an array. """
 function make_vec_metadata_from_spectral_timeseries(spec_arr::AA) where { AS<:AbstractSpectra, AA<:AbstractArray{AS,1} }
     map(s->s.metadata,spec_arr)
 end

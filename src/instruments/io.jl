@@ -1,3 +1,10 @@
+"""
+Shared code for file io.  Currently, a convenience wrapper for FITSIO.
+
+Author: Eric Ford
+Created: August 2020
+"""
+
 using DataFrames, CSV, FITSIO
 
 """Read manifest containing filename, bjd, target, and optionally additional metadata from CSV file. """

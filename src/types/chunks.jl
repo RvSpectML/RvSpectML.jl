@@ -1,3 +1,10 @@
+"""
+Code declaring ChuckOfSpectrum, ChunkList, ChunkListTimeseries, and their abstract versions.
+
+Author: Eric Ford
+Created: August 2020
+"""
+
 """ Abstract type for any ChunkOfSpectrum """
 abstract type AbstractChuckOfSpectrum end
 

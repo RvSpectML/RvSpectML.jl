@@ -4,7 +4,7 @@ using Test
 @testset "Utils" begin
     @test RvSpectML.calc_doppler_factor(10) ≈ 1.0000000333564094
     @test RvSpectML.calc_snr(16*ones(100),4*ones(100)) ≈ 80
-    @test RvSpectML.predict_line_width(5780) ≈ 9.88342046054907
+    @test RvSpectML.predict_intrinsic_stellar_line_width(5780) ≈ 9.88342046054907
     @test RvSpectML.allequal([1,1,1,1])
     @test !RvSpectML.allequal([1,2,3,4])
 end

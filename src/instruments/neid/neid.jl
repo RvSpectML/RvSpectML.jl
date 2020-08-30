@@ -1,12 +1,13 @@
 """
-   Functions & traits for the NEID spectrograph
+   Delegates loading functions & traits for the NEID spectrograph
    https://neid.psu.edu/
 Author: Eric Ford and collaborators
 Created: August 2020
 """
 
 module NEID
-using RvSpectML
+using ..RvSpectML
+import ..RvSpectML: AbstractInstrument, AbstractInstrument1D, AbstractInstrument2D
 using DataFrames, FITSIO
 
 #type NEID <: AbstractInstrument end
@@ -24,6 +25,7 @@ include("traits.jl")
 export min_order, max_order, min_pixel_in_order, max_pixel_in_order
 export orders_to_use_default, min_col_default, max_col_default
 export metadata_symbols_default, metadata_strings_default
+export default_ccf_v_width
 
 include("io.jl")
 export make_manifest, read_metadata, read_data, read_solar_data

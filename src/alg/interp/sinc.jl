@@ -1,10 +1,13 @@
 """
-   Sinc interpolation functionality
+   Module for performing Sinc interpolation
 From
 https://github.com/christiangil/GP-Research/blob/master/julia/src/interpolation_functions.jl
 https://github.com/christiangil/GP-Research/blob/master/julia/src/general_functions.jl
-"""
 
+Authors: Joe Ninan (original)
+         Christian Gilbertson (Converted to Julia and optimized)
+         Eric Ford (Further adapted/optimizations)
+"""
 module SincInterpolation
 
 using Base.Math

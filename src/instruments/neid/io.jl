@@ -1,3 +1,10 @@
+"""
+   IO functions for the NEID spectrograph
+   https://neid.psu.edu/
+Author: Eric Ford and collaborators
+Created: August 2020
+"""
+
 using DataFrames, FITSIO
 using CSV, Interpolations
 

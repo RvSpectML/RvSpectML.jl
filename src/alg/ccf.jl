@@ -1,4 +1,5 @@
 """
+    Code to compute CCF
 Author: Michael Palumbo
 Created: December 2019
 Contact: mlp95@psu.edu
@@ -16,7 +17,9 @@ export AbstractLineList, BasicLineList
 export calc_ccf_v_grid, ccf_1D, ccf_1D!
 export calc_ccf_chunk, calc_ccf_chunklist, calc_ccf_chunklist_timeseries
 
+import ..RvSpectML
 import ..RvSpectML: AbstractChuckOfSpectrum, AbstractChunkList, AbstractChunkListTimeseries
+import ..RvSpectML: AbstractInstrument #, default_ccf_v_width
 
 using ThreadedIterables
 
@@ -77,18 +80,33 @@ abstract type AbstractLineList end
 """ A basic line list for passing to compute CCFs.
 Contains (views into) arrays specifying the minimum and maximum wavelength range and weight for each line. """
 struct BasicLineList{T<:Real, AA<:AbstractArray{T,1} } <: AbstractLineList
+    λ::AA
+    weight::AA
+end
+
+""" BasicLineList( λ, weight ) """
+function BasicLineList{T}(λ::AA, w::AA) where { T<:Real, AA<:AbstractArray{T,1} }
+    @assert length(λ) == length(w)
+    @assert length(λ) >= 1
+    @assert 0.0 .<= w .<= 1.0
+    BasicLineList{eltype(w),typeof(w)}(λ,w)
+end
+
+""" A line list for passing to compute CCFs with variable line widths.
+Contains (views into) arrays specifying the minimum and maximum wavelength range and weight for each line. """
+struct VarWidthLineList{T<:Real, AA<:AbstractArray{T,1} } <: AbstractLineList
     λ_lo::AA
     λ_hi::AA
     weight::AA
 end
 
-""" BasicLineList( λ_lo, λ_hi, weight ) """
-function BasicLineList{T}(lo::AA, hi::AA, w::AA) where { T<:Real, AA<:AbstractArray{T,1} }
+""" VarWidthLineList( λ_lo, λ_hi, weight ) """
+function VarWidthLineList{T}(lo::AA, hi::AA, w::AA) where { T<:Real, AA<:AbstractArray{T,1} }
     @assert length(lo) == length(hi) == length(w)
     @assert length(lo) >= 1
     @assert 0.0 .<= λ_hi.-λ_lo .<= 2.0
     @assert 0.0 .<= w .<= 1.0
-    BasicLineList{eltype(w),typeof(w)}(lo,hi,w)
+    VarWidthLineList{eltype(w),typeof(w)}(lo,hi,w)
 end
 
 import Base.length
@@ -100,22 +118,31 @@ length(ll::AbstractLineList) = length(ll.weight)
 abstract type AbstractCCFMaskShape  end
 
 """   TopHatCCFMask
-The standard tophat mask with one parameter, it's width.
+The standard tophat mask with one parameter, it's width as a velocity in m/s.
 Mask weights are stored separately in a line list.
 """
 struct TopHatCCFMask <: AbstractCCFMaskShape
-    width::Float64
+    half_width::Float64
 end
 
-""" TopHatCCFMask( ; width=default_v_width ) """
+""" TopHatCCFMask( ; half_width=default_v_width ) """
 function TopHatCCFMask(w::Real=default_v_width)
     @assert 0 < w < default_v_max
-    TopHatCCFMask(w)
+    TopHatCCFMask(w/2)
 end
+
+""" TopHatCCFMask( inst  ) """
+function TopHatCCFMask(inst::AbstractInstrument; scale_factor::Real = 1)
+    w = scale_factor * RvSpectML.default_ccf_v_width(inst) # / c_ms
+    TopHatCCFMask(w/2)
+end
+
+λ_min(m::TopHatCCFMask,λ::Real) = λ/calc_doppler_factor(m.half_width)
+λ_max(m::TopHatCCFMask,λ::Real) = λ*calc_doppler_factor(m.half_width)
 
 """ Functor for returning 1 for any Δv <= width.  """
 function (m::TopHatCCFMask)(Δv::Real)
-    return abs2(Δv)<=abs2(width) ? 1 : 0
+    return abs2(Δv)<=abs2(m.half_width) ? 1 : 0
 end
 
 """
@@ -126,14 +153,14 @@ The mask is computed from a line_list and mask_shape (default: tophat).
 
 TODO: Implement/test other mask_shapes.
 """
-function project_mask!(projection::A2, λs::A1, line_list::ALL; shift_factor::Real=one(T1),
+function project_mask_opt!(projection::A2, λs::A1, line_list::ALL; shift_factor::Real=one(T1),
             mask_shape::ACMS = TopHatCCFMask() ) where {
                 T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,2},
                 ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
 
     # find bin edges
     λsle = find_bin_edges_opt(λs)  # Read as λ's left edges
-    # TODO: OPT: Can get remove this allocation and compute these as needed
+    # TODO: OPT: Can get remove this allocation and compute these as needed, at least for tophat mask.  But might be useful to keep for more non-const masks.
 
     # allocate memory for mask projection
     nm = length(line_list) # size(mask, 1)
@@ -151,21 +178,25 @@ function project_mask!(projection::A2, λs::A1, line_list::ALL; shift_factor::Re
     λsre_cur = λsle[p+1] # Current pixel's right edge
     m = 1
     on_mask = false
-    mask_lo = line_list.λ_lo[m] * shift_factor   # current line's lower limit
-    mask_hi = line_list.λ_hi[m] * shift_factor   # current line's upper limit
+    #mask_lo = line_list.λ_lo[m] * shift_factor   # current line's lower limit
+    #mask_hi = line_list.λ_hi[m] * shift_factor   # current line's upper limit
+    mask_lo = λ_min(mask_shape,line_list.λ[m]) * shift_factor   # current line's lower limit
+    mask_hi = λ_max(mask_shape,line_list.λ[m]) * shift_factor   # current line's upper limit
+
     mask_weight = line_list.weight[m]            # current liine's weight
     # loop through lines in mask, weight mask by amount in each wavelength bin
     while m <= nm
         if !on_mask
             if λsre_cur > mask_lo
-                if λsre_cur > mask_hi   # Pixel overshot this mask entry, add at weight.  # TODO: Figure out the logica of this case.
+                if λsre_cur > mask_hi   # Pixel overshot this mask entry, so weight based on mask filling only a portion of the pixel,
                     projection[p] += mask_weight * (mask_hi - mask_lo) / (λsre_cur - λsle_cur)
                     m += 1
                     if m<=length(line_list)      # Move to next line
-                        mask_lo = line_list.λ_lo[m] * shift_factor
-                        mask_hi = line_list.λ_hi[m] * shift_factor
+                        mask_lo = λ_min(mask_shape,line_list.λ[m]) * shift_factor
+                        mask_hi = λ_max(mask_shape,line_list.λ[m]) * shift_factor
                         mask_weight = line_list.weight[m]
                     else         # We're out of lines, so exit
+
                         break
                     end
                 else                       # Right edge of current pixel has entered the mask for this line, but left edge hasn't
@@ -186,8 +217,8 @@ function project_mask!(projection::A2, λs::A1, line_list::ALL; shift_factor::Re
                 on_mask = false                 # Indicate that we're done with this line
                 m += 1                          # Move to next line
                 if m<=length(line_list)
-                    mask_lo = line_list.λ_lo[m] * shift_factor
-                    mask_hi = line_list.λ_hi[m] * shift_factor
+                    mask_lo = λ_min(mask_shape,line_list.λ[m]) * shift_factor
+                    mask_hi = λ_max(mask_shape,line_list.λ[m]) * shift_factor
                     mask_weight =  line_list.weight[m]
                 else                            # We're done with all lines, can return early
                     break
@@ -237,7 +268,7 @@ function ccf_1D!(ccf_out::A1, λ::A2, flux::A3, line_list::ALL, #mask_shape1::A3
     for i in 1:size(ccf_out,1)
         # project shifted mask on wavelength domain
         doppler_factor = calc_doppler_factor(v_grid[i])
-        project_mask!(mask_projections, λ, line_list, shift_factor=doppler_factor)
+        project_mask_opt!(mask_projections, λ, line_list, shift_factor=doppler_factor)
 
         # compute the ccf value at the current velocity shift
         ccf_out[i] = sum(flux .* mask_projections)
@@ -407,7 +438,7 @@ function find_bin_edges_opt(fws::A) where { T<:Real, A<:AbstractArray{T,1} }
     return fwse
 end
 
-#=
+
 function find_bin_edges_compare(fws::A) where { T<:Real, A<:AbstractArray{T,1} }
     fwse = (fws[2:end] + fws[1:end-1]) ./ 2.0
     le = 2.0 * fws[1] - fwse[1]
@@ -416,7 +447,67 @@ function find_bin_edges_compare(fws::A) where { T<:Real, A<:AbstractArray{T,1} }
     fwsre = vcat(fwse, re)
     return fwsle, fwsre
 end
-=#
+
+
+
+function project_mask_compare!(projection::A2, λs::A1, mask_in::ALL; shift_factor::Real=one(T1),
+            mask_shape::ACMS = TopHatCCFMask() ) where {
+                T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,2},
+                ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+
+#function project_mask_compare(fws::A1, mask::A2; shift_factor::Real=one(T1)) where { T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,2} }
+    # find bin edges
+    fwsle, fwsre = find_bin_edges_compare(λs)
+
+    # allocate memory for line_list projection
+    nm = length(mask_in)
+    nx = size(fwsle, 1)
+    ny = size(fwsle, 2)
+    projection = zeros(nx, ny)
+    #flush(stdout);  println("size(projection) = ", size(projection), " size(fws) = ", size(fws), " size(mask) = ", size(mask), " shift_factr = ", shift_factor)
+
+    # shift the mask
+    mask_shifted = zeros(length(mask_in),3)
+    mask_shifted[:,1] = mask_in.λ_lo  .* shift_factor  # view(mask,:,1) .* shift_factor
+    mask_shifted[:,2] = mask_in.λ_hi  .* shift_factor  # view(mask,:,2) .* shift_factor
+    mask_shifted[:,3] = mask_in.weight                 # view(mask,:,3)
+    local mask = mask_shifted
+
+    # set indexing variables
+    p = 1
+    m = 1
+    on_mask = false
+
+    # loop through lines in mask, weight mask by amount in each wavelength bin
+    while m <= nm
+        if !on_mask
+            if fwsre[p] > mask[m,1]
+                if fwsre[p] > mask[m,2]
+                    projection[p] += mask[m,3] * (mask[m,2] - mask[m,1]) / (fwsre[p] - fwsle[p])
+                    m += 1
+                else
+                    projection[p] += mask[m,3] * (fwsre[p] - mask[m,1]) / (fwsre[p] - fwsle[p])
+                    on_mask = true
+                    p+=1
+                end
+            else
+                p+=1
+            end
+        else
+            if fwsre[p] > mask[m,2]
+                projection[p] += mask[m,3] * (mask[m,2] - fwsle[p]) / (fwsre[p] - fwsle[p])
+                on_mask = false
+                m += 1
+            else
+                projection[p] += mask[m,3]
+                p += 1
+            end
+        end
+        if p>length(projection) break end
+    end
+    return projection
+end
+
 
 #=
 # set some CCF parameters

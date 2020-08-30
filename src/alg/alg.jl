@@ -1,3 +1,5 @@
+""" Delegates loading of code with modules, types, functions and parameters for various algorithms """
+
 include("interp/interp.jl")
 export pack_chunk_list_timeseries_to_matrix
 

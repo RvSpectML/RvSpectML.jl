@@ -1,3 +1,12 @@
+"""
+Delegates loading of code for different interpolation aglorithms (in their own modules).
+Also wraps these modules, so they're called easily by `pack_chunk_list_timeseries_to_matrix`.
+
+Author: Eric Ford
+Created: August 2020
+"""
+
+
 include("linear.jl")
 import .LinearInterpolation
 export interp_chunk_to_grid_linear!
@@ -9,6 +18,7 @@ export interp_chunk_to_grid_sinc!
 include("gp.jl")
 import .GPInterpolation
 export interp_chunk_to_grid_gp!
+
 
 
 """

@@ -1,3 +1,8 @@
+"""
+Module for performing a Probilistic PCA analysis
+
+Author: Eric Ford
+"""
 module PPCA
 
 using LinearAlgebra: dot, Symmetric

@@ -1,7 +1,12 @@
 """
-   gp_kernels.jl
+   Kernels for GPs
+
+Author: Eric Ford
+Adapted from: https://github.com/eford/RvSpectraKitLearn.jl/blob/master/src/deriv_spectra_gp.jl
+
 Could update to use KernelFunctions.jl, etc.
-For now, something gets the job done with minimal dependancies.
+If upgrade to make use of other packages, please keep this so we ahve somet that gets the job done with minimal dependancies.
+Author: Eric Ford
 """
 
 function kernel_matern32(d::T; rho::T=one(T), sigmasq::T =one(T)) where { T<:Real }

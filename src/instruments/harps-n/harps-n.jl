@@ -1,5 +1,7 @@
 """
-   Functions & traits for the HARPS-N spectrograph
+   Delegates loading functions & traits for the HARPS-N spectrograph
+Author: Eric Ford
+Created: August 2020
 """
 module HARPSN
 using RvSpectML

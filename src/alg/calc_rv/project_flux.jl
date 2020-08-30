@@ -1,3 +1,8 @@
+"""
+Code for estimating the radial velocity based on projecting the flux onto the derivative of a template spectrum.
+
+Author: Eric Ford
+"""
 
 """ Return mean flux (averaging over observations at different times, variance weighted) based on a common set of wavelengths.
    Inputs: flux & var (2d: pixel, time)

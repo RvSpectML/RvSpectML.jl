@@ -1,4 +1,8 @@
 """
+Code for creating and manipulating chunklists (i.e., list of views into a spectrum).
+For example, creating a list of views into the orders of a spectrum to be analyzed or
+creating a list of views into chunks around entries in a line list.  
+
 Author: Eric Ford
 Created: August 2020
 Contact: https://github.com/eford/

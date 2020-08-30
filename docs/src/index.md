@@ -6,39 +6,65 @@ CurrentModule = RvSpectML
 ```@contents
 ```
 
+## Modules
+```@autodocs
+Modules = [RvSpectML, RvSpectML.CCF, RvSpectML.RVFromCCF ] #, RvSpectML.PPCA ]
+Order = [:module]
+```
+
+```@autodocs
+Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation ]
+Order = [:module]
+```
+
+### Instrument-specific Modules
+```@autodocs
+Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID  ]
+Order = [:module]
+```
+
+
+
 ## Exported Functions
 ### General purpose
 ```@autodocs
 Modules = [RvSpectML ]
 Private = false
-Order = [:function]
+Order = [:function ]
+```
+
+#### RV-Related Algorithms
+```@autodocs
+Modules = [RvSpectML.CCF, RvSpectML.RVFromCCF ] #, RvSpectML.PPCA ]
+Private = false
+Order = [:function ]
+```
+
+#### Interpolation Algorithms
+```@autodocs
+Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation ]
+Private = false
+Order = [:function ]
 ```
 
 ### Instrument-specific
 ```@autodocs
 Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID  ]
 Private = false
-Order = [:module,:function]
-```
-## Private Functions
-### General purpose
-```@autodocs
-Modules = [RvSpectML ]
-Public = false
 Order = [:function]
 ```
 
-### Instrument specific
-```@autodocs
-Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID  ]
-Public = false
-Order = [:module, :function]
-```
 
-## Types
+## Exported Types
 ### General purpose
 ```@autodocs
-Modules = [RvSpectML ]
+Modules = [RvSpectML, RvSpectML.CCF, RvSpectML.RVFromCCF ]
+Private = false
+Order = [:type]
+```
+```@autodocs
+
+Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation ]
 Private = false
 Order = [:type]
 ```
@@ -46,8 +72,31 @@ Order = [:type]
 ### Instrument specific
 ```@autodocs
 Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID  ]
+Private = false
 Order = [:type]
 ```
+
+## Private Types & Functions
+### General purpose
+```@autodocs
+Modules = [RvSpectML, RvSpectML.CCF, RvSpectML.RVFromCCF ]
+Public = false
+Order = [:type, :function ]
+```
+
+```@autodocs
+Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation ]
+Public = false
+Order = [:type, :function]
+```
+
+### Instrument specific
+```@autodocs
+Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID  ]
+Public = false
+Order = [:type, :function]
+```
+
 
 ## Index
 ```@index

@@ -1,3 +1,4 @@
+""" Generic functions on spectra that are to be overloaded for each instrument.  """
 
 # Declare functions that should be specialized for each instrument here, so they can be imported into their instrument's module.
 function min_order end
@@ -13,6 +14,8 @@ function max_col_default end
 
 function metadata_symbols_default end
 function metadata_strings_default end
+
+function default_ccf_v_width end
 
 # Trait-based functions that provide defaults (can be overwritten by instrument-specific versions)
 orders_all(inst::AbstractInstrument2D) = min_order(inst):max_order(inst)

@@ -3,8 +3,12 @@ Author: Michael Palumbo
 Created: December 2019
 Contact: mlp95@psu.edu
 Based on code by Alex Wise (aw@psu.edu)
+Optimizations by Eric Ford
 """
 
+"""
+Module for estimating the radial velocity based on the CCF
+"""
 module RVFromCCF
 
 export measure_rv_from_ccf
@@ -125,6 +129,7 @@ function rv_from_ccf_quadratic(vels::A1, ccf::A2) where  {T1<:Real, A1<:Abstract
 
     # do the polyfit
     pfit = Polynomials.fit(vels[inds], ccf[inds], 2)
+    @assert length(Polynomials.coeffs(pfit)) >= 3   # just in case fails to fit a quadratic
 
     # get center from coeffs
     c, b, a = Polynomials.coeffs(pfit)

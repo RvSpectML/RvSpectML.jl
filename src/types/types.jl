@@ -1,3 +1,5 @@
+""" Delegates loading of code specifying types essential to the package.  """
+
 include("instruments.jl")
 export AbstractInstrument, AbstractInstrument1D, AbstractInstrument2D
 export Generic1D, Generic2D   # WARNING: Might remove these in future

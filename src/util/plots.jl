@@ -1,6 +1,16 @@
+"""
+Convenience code for plotting spectra, associated data types and results of analysis
+
+Author: Eric Ford
+Created: August 2020
+"""
+
 using Plots
 export plot_spectrum_chunks
 
+""" plot_spectrum_chunks( chunklist, chunks )
+Returns a plot based of flux versus wavelength for selected chunks from the spectra in chunklist.
+"""
 function plot_spectrum_chunks(clt::CLT, chunks::Union{Integer,AbstractUnitRange};
     time_idx::Union{Integer,AbstractUnitRange}=1, color = nothing,
     plt::PT = Plots.plot(legend=:none)) where {CLT<:AbstractChunkListTimeseries, PT<:AbstractPlot}
@@ -23,6 +33,10 @@ function plot_spectrum_chunks(clt::CLT, chunks::Union{Integer,AbstractUnitRange}
     plt
 end
 
+"""" get_λs( grids::Vector{AbstractRange}, r::AbstractUnitRange )
+Return range of wavelengths corresponding to indices in r from a vector of ranges.
+Useful for extracting wavelengths from a chunklist.
+"""
 function get_λs(grids::V1, r::AR) where { T1<:AbstractRange, V1<:AbstractVector{T1}, AR<:AbstractUnitRange }
   local idx_offset = 1
   #println("first(r) = ",first(r), "   last(r) = ",last(r) )
@@ -39,6 +53,7 @@ function get_λs(grids::V1, r::AR) where { T1<:AbstractRange, V1<:AbstractVector
   return
 end
 
+# Move these to PCA file/module?
 
 function plot_basis_vectors(λ::VR1, f_mean::V1, deriv::V2, proj::A3;
                               num_basis::Integer = 4, idx_plt::AR = 1:length(f_mean) ) where {

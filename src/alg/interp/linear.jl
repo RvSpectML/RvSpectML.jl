@@ -1,3 +1,9 @@
+"""
+Module with wrappers for performing linear interpolation..
+
+Author: Eric Ford
+"""
+
 module LinearInterpolation
 
 export make_interpolator_linear_flux, make_interpolator_linear_var

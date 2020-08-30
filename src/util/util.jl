@@ -1,5 +1,6 @@
 """
-Author: Eric Ford
+Authors: Various
+Compiled by: Eric Ford (see each function for credits)
 Created: August 2020
 Contact: https://github.com/eford/
 """
@@ -26,6 +27,17 @@ Return a Gaussian absorption line profile evaluated at x.
 function absorption_line(x::T; mid=zero(T), width=one(T), depth=one(T)) where T<:AbstractFloat
     return one(T) - depth * exp(-((x-mid)/width)^2.0/2.0)
 end
+
+"""
+Estimate line width based on stellar Teff (K) and optionally v_rot (km/s).  Output in km/s.
+"""
+function predict_intrinsic_stellar_line_width(Teff::Real; v_rot::Real=zero(Teff))
+    @assert 3000 < Teff < 10000 # K
+    @assert 0 <= v_rot <=100 # km/s
+    line_width_thermal = 13*sqrt(Teff/1e4) # km/s
+    line_width = sqrt(v_rot^2+line_width_thermal^2) # km/s
+end
+
 
 """
    searchsortednearest(a<:AbstractVector, x::Real)
@@ -57,7 +69,7 @@ function searchsortednearest(x::T, a::AbstractVector{T}) where T
     return searchsortednearest(a, x)
 end
 
-function searchsortednearest(a::AbstractVector{T1}, x::AbstractVector{T2}) where { T1<:Real, T2<:Real }
+function searchsortednearest(a::AbstractVector{T1}, x::AbstractVector{T2}) where { T1, T2 }
    len_x = length(x)
    len_a = length(a)
    idxs = zeros(Int64, len_x)
@@ -90,4 +102,41 @@ end
         x[i] == e1 || return false
     end
     return true
+end
+
+
+""" findargminmax(a)
+Return (argmin, min, argmax, max)
+Adapapted from https://github.com/JuliaLang/julia/blob/697e782ab86bfcdd7fd15550241fe162c51d9f98/base/array.jl#L2191
+"""
+findargminmax(a) = _findminmax(a, :)
+function _findminmax(a, ::Colon)
+    p = pairs(a)
+    y = iterate(p)
+    if y === nothing
+        throw(ArgumentError("collection must be non-empty"))
+    end
+    (mi, m), s = y
+    i = mi
+	argmin = mi
+	valmin = m
+	argmax = mi
+	valmax = m
+    while true
+        y = iterate(p, s)
+        y === nothing && break
+        valmin != valmin && break
+		valmax != valmax && break
+        (i, ai), s = y
+        if ai != ai || isless(valmin, ai)
+            valmin = ai
+            argmin = i
+        end
+		if ai != ai || isless(ai, valmax)
+			valmax = ai
+			argmax = i
+		end
+
+    end
+    return (argmin=argmin, min=valmin, argmax=argmax, max=valmax)
 end

@@ -1,3 +1,10 @@
+"""
+Code for creating, loading and maniuplating line lists and masks.
+
+Author: Eric Ford
+Created: August 2020
+"""
+
 using DataFrames, CSV
 
 abstract type AbstractCalcChunkWidth end
@@ -58,38 +65,6 @@ function read_mask_vald(fn::String; calcΔ::CCWT = default_calc_chunk_width) whe
     return df
 end
 
-"""  Convert vacuum wavelength (in Å) to air wavelength
-Ref: Donald Morton (2000, ApJ. Suppl., 130, 403) via
-     https://www.astro.uu.se/valdwiki/Air-to-vacuum%20conversion
-"""
-function λ_vac_to_air(λ_vac::Real)
-    @assert 3500 < λ_vac < 13000  # Making sure in Å for optical/NIR spectra.
-    local s = 10000/λ_vac
-    local n = 1 + 0.0000834254 + 0.02406147 / (130 - s^2) + 0.00015998 / (38.9 - s^2)
-    return λ_vac/n
-end
-
-""" Convert air wavelength (in Å) to vacuum wavelength
-Ref: https://www.astro.uu.se/valdwiki/Air-to-vacuum%20conversion
-     VALD3 tools use the following solution derived by N. Piskunov
-"""
-function λ_air_to_vac(λ_air::Real)
-    @assert 3500 < λ_air < 13000  # Making sure in Å for optical/NIR spectra.
-    local s = 10000/λ_air
-    local n = 1 + 0.00008336624212083 + 0.02408926869968 / (130.1065924522 - s^2) + 0.0001599740894897 / (38.92568793293 - s^2)
-    λ_air*n
-end
-
-"""Estimate line width based on stellar Teff (K) and optionally v_rot (km/s).  Output in km/s."""
-function predict_line_width(Teff::Real; v_rot::Real=zero(Teff))
-    @assert 3000 < Teff < 10000 # K
-    @assert 0 <= v_rot <=100 # km/s
-    line_width_thermal = 13*sqrt(Teff/1e4) # km/s
-    line_width = sqrt(v_rot^2+line_width_thermal^2) # km/s
-end
-
-
-
 
 """ Return indices of any chunks in df that have overlapping lambda_hi[i] and lambda_lo[i+1].  """
 function find_overlapping_chunks(df::DataFrame; verbose::Bool = true)
@@ -112,7 +87,7 @@ end
     - lambda_lo & lambda_hi: boundaries for chunk
     - lambda & line_depths: arrays with info about each line
 """
-function merge_lines(line_list::DataFrame)
+function merge_chunks(line_list::DataFrame)
     @assert hasproperty(line_list,:lambda_lo)
     @assert hasproperty(line_list,:lambda_hi)
     @assert hasproperty(line_list,:lambda)

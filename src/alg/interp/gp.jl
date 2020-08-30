@@ -1,9 +1,14 @@
 """
-   gp.jl
-Basic code for brute-force Gaussian Process Regression
+Author: Eric Ford
 Adapted from: https://github.com/eford/RvSpectraKitLearn.jl/blob/master/src/deriv_spectra_gp.jl
-Could update GaussianProcesses.jl, Stheno.jl, TemporalGPs., KernelFunctions.jl, etc.
-For now, something gets the job done with minimal dependancies.
+
+Uses brute-force, but could update GaussianProcesses.jl, Stheno.jl, TemporalGPs., KernelFunctions.jl, etc.
+Note:  If make faster version using pacakge(s) that take advantage of specific kernels,
+       please keep this around since it gets the job done with has minimal dependancies.
+"""
+
+"""
+Module for interpolating via Gaussian Process Regression.
 """
 module GPInterpolation
 using PDMats

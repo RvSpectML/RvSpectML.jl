@@ -29,7 +29,7 @@ tstart = now()
  @time ccfs = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan)
  println("# CCF runtime: ", now()-tstart)
 
-make_plots = false
+make_plots = true
  rvs_ccf_gauss = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs[:,i],fit_type = "gaussian") for i in 1:length(order_list_timeseries) ]
  rvs_ccf_quad  = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs[:,i], fit_type = "quadratic") for i in 1:length(order_list_timeseries) ]
  rvs_ccf_cent  = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs[:,i], fit_type = "centroid") for i in 1:length(order_list_timeseries) ]

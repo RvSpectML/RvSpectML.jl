@@ -30,7 +30,7 @@ if 2 <= num_spectra_to_bin <=20
   plt_times = (times_binned.-minimum(chunk_list_timeseries.times)).*24
   spectra_matrix = spectra_binned
 end
-
+make_plots = true
 if make_plots
    idx_chunk_min = 20
    idx_chunk_max = 20

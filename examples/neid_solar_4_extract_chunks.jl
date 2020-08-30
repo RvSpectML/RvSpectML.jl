@@ -22,6 +22,7 @@ using DataFrames, CSV, Query
 
 vald_filename = joinpath(ancilary_data_path,"VALD_Fe1_DP_rejectTelluricSlope0.0_badLineFilterESPRESSO-strict-NEID-BIS_overlapcutoff6e-05_depthcutoff0.05_allowBlends0_wavesReiners_depthssolar_nbin1depth0.mas")
  vald_df = RvSpectML.read_mask_vald(vald_filename)
+ lambda_range_with_data = (min = maximum(d->minimum(d.λ),solar_data), max = minimum(d->maximum(d.λ),solar_data) )
  orig_chunk_list_df = vald_df |>
     @filter(lambda_range_with_data.min <= _.lambda ) |>
     @filter( _.lambda < lambda_range_with_data.max) |>

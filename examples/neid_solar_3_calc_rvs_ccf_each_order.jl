@@ -8,12 +8,6 @@ include("neid_solar_1_read.jl")
  order_list_timeseries = RvSpectML.filter_bad_chunks(order_list_timeseries,verbose=true)
  RvSpectML.normalize_spectra!(order_list_timeseries,solar_data);
 
-
-make_plots = true
-if make_plots
-   using Plots
-end
-
 # Read & filter the line list file
 espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks","G2.espresso.mas")
  espresso_df = RvSpectML.read_linelist_espresso(espresso_filename)
@@ -27,12 +21,17 @@ espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks","G2.espresso.mas")
 # Setup to run CCF
 mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=1.6)
  line_list = RvSpectML.CCF.BasicLineList(line_list_df.lambda, line_list_df.weight)
- ccf_plan = RvSpectML.CCF.BasicCCFPlan()
+ ccf_plan = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list)
  v_grid = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan)
 
 tstart = now()    # Compute CCFs for each order
- @time order_ccfs = RvSpectML.CCF.calc_order_ccf_chunklist_timeseries(order_list_timeseries, line_list, mask_shape=mask_shape, plan=ccf_plan)
+ @time order_ccfs = RvSpectML.CCF.calc_order_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan) # line_list, mask_shape=mask_shape, plan=ccf_plan)
  println("# Order CCFs runtime: ", now()-tstart)
+
+  make_plots = true
+ if make_plots
+    using Plots
+  end
 
 if make_plots
    t_idx = 1

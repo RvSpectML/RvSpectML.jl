@@ -19,4 +19,5 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/eford/RvSpectML.jl",
+    devbranch="main, 
 )

@@ -19,7 +19,7 @@ export calc_ccf_chunk, calc_ccf_chunklist, calc_ccf_chunklist_timeseries
 
 import ..RvSpectML
 import ..RvSpectML: AbstractChuckOfSpectrum, AbstractChunkList, AbstractChunkListTimeseries
-import ..RvSpectML: AbstractInstrument #, default_ccf_v_width
+import ..RvSpectML: AbstractInstrument
 
 using ThreadedIterables
 
@@ -34,45 +34,6 @@ const default_v_center = 0.0    # m/s
 const default_v_step = 250.0    # m/s
 const default_v_max = 15.0e3    # m/s
 const default_v_width = 410.0   # m/s
-
-"""A struct implementing a specific plans describing where the CCF is to be evaluated should be a subtype of AbstractCCFPlan. """
-abstract type AbstractCCFPlan end
-
-""" Basic plan for computing the CCF roughly between v_center-v_max and v_center+v_max with step size v_step. """
-struct BasicCCFPlan <: AbstractCCFPlan
-    v_center::Float64
-    v_step::Float64
-    v_max::Float64
-
-    function BasicCCFPlan(midpoint::Real,step::Real, max::Real)
-        @assert 1.0e3 <= max <=100.0e3    # Reasonable range m/s, designed to prevent mistakes
-        @assert 1 < step < 1000           # Reasonable range m/s
-        @assert abs(midpoint) < max
-        new(midpoint,step,max)
-    end
-
-end
-
-"""   BasicCCFPlan
-# Optional arguments:
-- midpoint: (default_v_center)
-- step: (default_v_step)
-- max: (default_v_max)
-"""
-function BasicCCFPlan(;midpoint::Real=default_v_center,
-            step::Real=default_v_step, max::Real=default_v_max )
-    BasicCCFPlan(midpoint,step,max)
-end
-
-""" calc_ccf_v_grid( plan )
-Return range with 2n+1 points between -v_max and v_max where CCF is to be evaluated.
-Units based on those in plan.
-"""
-function calc_ccf_v_grid(p::AP where AP<:BasicCCFPlan )
-    n = ceil(Int, p.v_max/p.v_step)
-    range(p.v_center-n*p.v_step, p.v_center+n*p.v_step, length=2*n+1)
-end
-
 
 """A struct implementing a line list should be a subtype of AbstractLineList. """
 abstract type AbstractLineList end
@@ -118,7 +79,7 @@ length(ll::AbstractLineList) = length(ll.weight)
 abstract type AbstractCCFMaskShape  end
 
 """   TopHatCCFMask
-The standard tophat mask with one parameter, it's width as a velocity in m/s.
+The standard tophat mask with one parameter, it's half width as a velocity in m/s.
 Mask weights are stored separately in a line list.
 """
 struct TopHatCCFMask <: AbstractCCFMaskShape
@@ -145,6 +106,50 @@ function (m::TopHatCCFMask)(Δv::Real)
     return abs2(Δv)<=abs2(m.half_width) ? 1 : 0
 end
 
+
+
+"""A struct implementing a specific plans describing where the CCF is to be evaluated should be a subtype of AbstractCCFPlan. """
+abstract type AbstractCCFPlan end
+
+""" Basic plan for computing the CCF roughly between v_center-v_max and v_center+v_max with step size v_step. """
+struct BasicCCFPlan{MST<:AbstractCCFMaskShape, LLT<:AbstractLineList} <: AbstractCCFPlan
+    v_center::Float64
+    v_step::Float64
+    v_max::Float64
+    mask_shape::MST
+    line_list::LLT
+
+    function BasicCCFPlan(midpoint::Real,step::Real, max::Real,
+                          mask_shape::MST, line_list::LLT ) where { MST<:AbstractCCFMaskShape, LLT<:AbstractLineList }
+        @assert 1.0e3 <= max <=100.0e3    # Reasonable range m/s, designed to prevent mistakes
+        @assert 1 < step < 1000           # Reasonable range m/s
+        @assert abs(midpoint) < max
+        new{MST,LLT}(midpoint,step,max, mask_shape, line_list)
+    end
+
+end
+
+"""   BasicCCFPlan
+# Optional arguments:
+- midpoint: (default_v_center)
+- step: (default_v_step)
+- max: (default_v_max)
+"""
+function BasicCCFPlan(;midpoint::Real=default_v_center, step::Real=default_v_step, max::Real=default_v_max,
+                       mask_shape::MST, line_list::LLT ) where { MST<:AbstractCCFMaskShape, LLT<:AbstractLineList }
+    BasicCCFPlan(midpoint,step,max, mask_shape, line_list)
+end
+
+""" calc_ccf_v_grid( plan )
+Return range with 2n+1 points between -v_max and v_max where CCF is to be evaluated.
+Units based on those in plan.
+"""
+function calc_ccf_v_grid(p::PlanT where PlanT<:BasicCCFPlan )
+    n = ceil(Int, p.v_max/p.v_step)
+    range(p.v_center-n*p.v_step, p.v_center+n*p.v_step, length=2*n+1)
+end
+
+
 """
     project_mask!( output, λs, line_list; shift_factor, mask_shape )
 
@@ -153,20 +158,21 @@ The mask is computed from a line_list and mask_shape (default: tophat).
 
 TODO: Implement/test other mask_shapes.
 """
-function project_mask_opt!(projection::A2, λs::A1, line_list::ALL; shift_factor::Real=one(T1),
-            mask_shape::ACMS = TopHatCCFMask() ) where {
+function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::Real=one(T1) ) where {
+    #     }, line_list::ALL
+    #        mask_shape::ACMS = TopHatCCFMask() ) where {
                 T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,2},
-                ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+                PlanT<:AbstractCCFPlan } # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
 
     # find bin edges
     λsle = find_bin_edges_opt(λs)  # Read as λ's left edges
     # TODO: OPT: Can get remove this allocation and compute these as needed, at least for tophat mask.  But might be useful to keep for more non-const masks.
 
     # allocate memory for mask projection
-    nm = length(line_list) # size(mask, 1)
+    nm = length(plan.line_list) # size(mask, 1)
     nx = size(λsle, 1)-2
     ny = size(λsle, 2)
-    @assert ny == 1              # TODO:  Ask Alex what purpose of this is.  Maybe running CCF with multiple masks from the same lines at once?
+    @assert ny == 1                   # TODO:  Ask Alex what purpose of this is.  Maybe running CCF with multiple masks from the same lines at once?
     @assert size(projection,1) == nx
     @assert size(projection,2) == ny
     #projection = zeros(nx, ny)
@@ -180,10 +186,10 @@ function project_mask_opt!(projection::A2, λs::A1, line_list::ALL; shift_factor
     on_mask = false
     #mask_lo = line_list.λ_lo[m] * shift_factor   # current line's lower limit
     #mask_hi = line_list.λ_hi[m] * shift_factor   # current line's upper limit
-    mask_lo = λ_min(mask_shape,line_list.λ[m]) * shift_factor   # current line's lower limit
-    mask_hi = λ_max(mask_shape,line_list.λ[m]) * shift_factor   # current line's upper limit
+    mask_lo = λ_min(plan.mask_shape,plan.line_list.λ[m]) * shift_factor   # current line's lower limit
+    mask_hi = λ_max(plan.mask_shape,plan.line_list.λ[m]) * shift_factor   # current line's upper limit
 
-    mask_weight = line_list.weight[m]            # current liine's weight
+    mask_weight = plan.line_list.weight[m]            # current liine's weight
     # loop through lines in mask, weight mask by amount in each wavelength bin
     while m <= nm
         if !on_mask
@@ -191,10 +197,10 @@ function project_mask_opt!(projection::A2, λs::A1, line_list::ALL; shift_factor
                 if λsre_cur > mask_hi   # Pixel overshot this mask entry, so weight based on mask filling only a portion of the pixel,
                     projection[p] += mask_weight * (mask_hi - mask_lo) / (λsre_cur - λsle_cur)
                     m += 1
-                    if m<=length(line_list)      # Move to next line
-                        mask_lo = λ_min(mask_shape,line_list.λ[m]) * shift_factor
-                        mask_hi = λ_max(mask_shape,line_list.λ[m]) * shift_factor
-                        mask_weight = line_list.weight[m]
+                    if m<=length(plan.line_list)      # Move to next line
+                        mask_lo = λ_min(plan.mask_shape,plan.line_list.λ[m]) * shift_factor
+                        mask_hi = λ_max(plan.mask_shape,plan.line_list.λ[m]) * shift_factor
+                        mask_weight = plan.line_list.weight[m]
                     else         # We're out of lines, so exit
 
                         break
@@ -216,10 +222,10 @@ function project_mask_opt!(projection::A2, λs::A1, line_list::ALL; shift_factor
                 projection[p] += mask_weight * (mask_hi - λsle_cur) / (λsre_cur - λsle_cur)
                 on_mask = false                 # Indicate that we're done with this line
                 m += 1                          # Move to next line
-                if m<=length(line_list)
-                    mask_lo = λ_min(mask_shape,line_list.λ[m]) * shift_factor
-                    mask_hi = λ_max(mask_shape,line_list.λ[m]) * shift_factor
-                    mask_weight =  line_list.weight[m]
+                if m<=length(plan.line_list)
+                    mask_lo = λ_min(plan.mask_shape,plan.line_list.λ[m]) * shift_factor
+                    mask_hi = λ_max(plan.mask_shape,plan.line_list.λ[m]) * shift_factor
+                    mask_weight = plan.line_list.weight[m]
                 else                            # We're done with all lines, can return early
                     break
                 end
@@ -250,10 +256,13 @@ Compute the cross correlation function of a spectrum with a mask.
 - mask_shape: shape of mask to use (TopHatCCFMask())
 - plan:  parameters for computing ccf (BasicCCFPlan())
 """
-function ccf_1D!(ccf_out::A1, λ::A2, flux::A3, line_list::ALL, #mask_shape1::A3
-                ; mask_shape::ACMS = TopHatCCFMask(), plan::AP = BasicCCFPlan() ) where {
+function ccf_1D!(ccf_out::A1, λ::A2, flux::A3,
+    #, line_list::ALL, #mask_shape1::A3
+                #; mask_shape::ACMS = TopHatCCFMask(),
+                plan::PlanT = BasicCCFPlan() ) where {
                 T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1}, T3<:Real, A3<:AbstractArray{T3,1},
-                ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape, AP<:AbstractCCFPlan }
+                PlanT<:AbstractCCFPlan } # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+                # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape, AP<:AbstractCCFPlan }
     # make sure wavelengths and spectrum are 1D arrays
     @assert ndims(λ) == 1
     @assert ndims(flux) == 1
@@ -268,7 +277,7 @@ function ccf_1D!(ccf_out::A1, λ::A2, flux::A3, line_list::ALL, #mask_shape1::A3
     for i in 1:size(ccf_out,1)
         # project shifted mask on wavelength domain
         doppler_factor = calc_doppler_factor(v_grid[i])
-        project_mask_opt!(mask_projections, λ, line_list, shift_factor=doppler_factor)
+        project_mask_opt!(mask_projections, λ, plan, shift_factor=doppler_factor) #line_list)
 
         # compute the ccf value at the current velocity shift
         ccf_out[i] = sum(flux .* mask_projections)
@@ -291,13 +300,16 @@ Compute the cross correlation function of a spectrum with a mask.
 # Returns:
 - 1-d array of size length(calc_ccf_v_grid(plan))
 """
-function ccf_1D(λ::A2, flux::A3, line_list::ALL, #mask_shape1::A3
-                ; mask_shape::ACMS = TopHatCCFMask(), plan::AP = BasicCCFPlan() ) where {
+function ccf_1D(λ::A2, flux::A3, #line_list::ALL, #mask_shape1::A3
+                plan::PlanT = BasicCCFPlan() ) where {
+                #; mask_shape::ACMS = TopHatCCFMask(), plan::PlanT = BasicCCFPlan() ) where {
                 T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1}, T3<:Real, A3<:AbstractArray{T3,1},
-                ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape, AP<:AbstractCCFPlan }
+                #ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape, AP<:AbstractCCFPlan }
+                PlanT<:AbstractCCFPlan } # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+
     v_grid = calc_ccf_v_grid(plan)
     ccf_out = zeros(size(v_grid))
-    ccf_1D!(ccf_out, λ, flux, line_list, mask_shape=mask_shape, plan=plan )
+    ccf_1D!(ccf_out, λ, flux, plan )
     return ccf_out
 end
 
@@ -333,12 +345,14 @@ Convenience function to compute CCF for one chunk of spectrum.
 CCF for one chunk of spectrum, evaluated using mask_shape and plan
 """
 function calc_ccf_chunk(chunk::AbstractChuckOfSpectrum,
-                            line_list::ALL; mask_shape::ACMS = TopHatCCFMask(),
-                                plan::AbstractCCFPlan = BasicCCFPlan() ) where {
-                                    ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+                            #line_list::ALL; mask_shape::ACMS = TopHatCCFMask(),
+                                plan::PlanT = BasicCCFPlan() ) where {
+                                    PlanT<:AbstractCCFPlan } # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+                                    # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
   v_grid = calc_ccf_v_grid(plan)
   ccf_out = zeros(size(v_grid))
-  ccf_1D!(ccf_out, chunk.λ, chunk.flux, line_list, mask_shape=mask_shape, plan=plan)
+  #ccf_1D!(ccf_out, chunk.λ, chunk.flux, line_list, mask_shape=mask_shape, plan=plan)
+  ccf_1D!(ccf_out, chunk.λ, chunk.flux, plan)
   return ccf_out
 end
 
@@ -354,10 +368,12 @@ Convenience function to compute CCF based on a spectrum's chunklist.
 CCF summed over all chunks in a spectrum's chunklist, evaluated using mask_shape and plan.
 """
 function calc_ccf_chunklist(chunk_list::AbstractChunkList,
-                            line_list::ALL; mask_shape::ACMS = TopHatCCFMask(),
-                                plan::AbstractCCFPlan = BasicCCFPlan() ) where {
-                                    ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
-  mapreduce(chunk->calc_ccf_chunk(chunk, line_list,mask_shape=mask_shape, plan=plan), +, chunk_list.data)
+                            #line_list::ALL; mask_shape::ACMS = TopHatCCFMask(),
+                                plan::PlanT = BasicCCFPlan() ) where {
+                                    #ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+                                            PlanT<:AbstractCCFPlan } # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+  #mapreduce(chunk->calc_ccf_chunk(chunk, line_list,mask_shape=mask_shape, plan=plan), +, chunk_list.data)
+  mapreduce(chunk->calc_ccf_chunk(chunk, plan), +, chunk_list.data)
 end
 
 """  calc_ccf_chunk( chunklist_timeseries, line_list )
@@ -373,10 +389,12 @@ Uses multiple threads if avaliable.
 CCF summed over all chunks in a spectrum's chunklist, evaluated using mask_shape and plan.
 """
 function calc_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries,
-                            line_list::ALL; mask_shape::ACMS = TopHatCCFMask(),
-                                plan::AbstractCCFPlan = BasicCCFPlan() ) where {
-                                    ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
-  @threaded  mapreduce(cl->calc_ccf_chunklist(cl, line_list, mask_shape=mask_shape, plan=plan),hcat,clt.chunk_list)
+                            # line_list::ALL; mask_shape::ACMS = TopHatCCFMask(),
+                                plan::PlanT = BasicCCFPlan() ) where {
+                            #        ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+                                    PlanT<:AbstractCCFPlan } # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+#  @threaded  mapreduce(cl->calc_ccf_chunklist(cl, line_list, plan),hcat,clt.chunk_list)
+  @threaded  mapreduce(cl->calc_ccf_chunklist(cl, plan),hcat,clt.chunk_list)
 end
 
 """  calc_ccf_chunk( chunklist_timeseries, line_list )
@@ -391,10 +409,12 @@ CCF evaluated using mask_shape and plan.
 # Return:
 A 2-d array containing the CCF at each (velocity, chunk)
 """
-function calc_order_ccfs_chunklist(chunk_list::AbstractChunkList, line_list::ALL; mask_shape::ACMS = TopHatCCFMask(),
-    plan::AbstractCCFPlan = BasicCCFPlan() ) where {
-        ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
-    mapreduce(chunk->calc_ccf_chunk(chunk, line_list, mask_shape=mask_shape, plan=plan), hcat, chunk_list.data)
+function calc_order_ccfs_chunklist(chunk_list::AbstractChunkList, # line_list::ALL; mask_shape::ACMS = TopHatCCFMask(),
+    plan::PlanT = BasicCCFPlan() ) where {
+                        PlanT<:AbstractCCFPlan } # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+        # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+    #mapreduce(chunk->calc_ccf_chunk(chunk, line_list, mask_shape=mask_shape, plan=plan), hcat, chunk_list.data)
+    mapreduce(chunk->calc_ccf_chunk(chunk, plan), hcat, chunk_list.data)
 end
 
 """  calc_ccf_chunk( chunklist_timeseries, line_list )
@@ -411,15 +431,18 @@ Uses multiple threads if avaliable.
 A 3-d array containing the CCF at each (velocity, chunk, spectrum)
 """
 function calc_order_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries,
-                            line_list::ALL; mask_shape::ACMS = TopHatCCFMask(),
-                                plan::AbstractCCFPlan = BasicCCFPlan() ) where {
-                                    ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+                plan::PlanT = BasicCCFPlan() ) where {
+        #                    line_list::ALL; mask_shape::ACMS = TopHatCCFMask(),
+    #                            plan::AbstractCCFPlan = BasicCCFPlan() ) where {
+#                                    ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+                    PlanT<:AbstractCCFPlan } # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
   nvs = length(calc_ccf_v_grid(plan))
   norders = length(clt.chunk_list[1].data)
   nobs =  length(clt.chunk_list)
   order_ccfs = zeros(nvs, norders, nobs)
   Threads.@threads for i in 1:nobs
-      order_ccfs[:,:,i] .= calc_order_ccfs_chunklist(clt.chunk_list[i], line_list,  mask_shape=mask_shape, plan=plan)
+      #order_ccfs[:,:,i] .= calc_order_ccfs_chunklist(clt.chunk_list[i], line_list,  mask_shape=mask_shape, plan=plan)
+      order_ccfs[:,:,i] .= calc_order_ccfs_chunklist(clt.chunk_list[i], plan)
   end
   return order_ccfs
 end
@@ -450,10 +473,13 @@ end
 
 
 
-function project_mask_compare!(projection::A2, λs::A1, mask_in::ALL; shift_factor::Real=one(T1),
-            mask_shape::ACMS = TopHatCCFMask() ) where {
+function project_mask_compare!(projection::A2, λs::A1, plan::PlanT = BasicCCFPlan() ) where {
+    #mask_in::ALL; shift_factor::Real=one(T1),
+            #mask_shape::ACMS = TopHatCCFMask() ) where {
                 T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,2},
-                ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+                PlanT<:AbstractCCFPlan } # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+                #plan::PlanT = BasicCCFPlan() ) where {
+                #ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
 
 #function project_mask_compare(fws::A1, mask::A2; shift_factor::Real=one(T1)) where { T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,2} }
     # find bin edges
@@ -468,9 +494,9 @@ function project_mask_compare!(projection::A2, λs::A1, mask_in::ALL; shift_fact
 
     # shift the mask
     mask_shifted = zeros(length(mask_in),3)
-    mask_shifted[:,1] = mask_in.λ_lo  .* shift_factor  # view(mask,:,1) .* shift_factor
-    mask_shifted[:,2] = mask_in.λ_hi  .* shift_factor  # view(mask,:,2) .* shift_factor
-    mask_shifted[:,3] = mask_in.weight                 # view(mask,:,3)
+    mask_shifted[:,1] = plan.mask_shape.λ_lo  .* shift_factor  # view(mask,:,1) .* shift_factor
+    mask_shifted[:,2] = plan.mask_shape.λ_hi  .* shift_factor  # view(mask,:,2) .* shift_factor
+    mask_shifted[:,3] = plan.mask_shape.weight                 # view(mask,:,3)
     local mask = mask_shifted
 
     # set indexing variables

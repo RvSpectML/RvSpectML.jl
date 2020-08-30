@@ -1,7 +1,7 @@
 """
 Code for creating and manipulating chunklists (i.e., list of views into a spectrum).
 For example, creating a list of views into the orders of a spectrum to be analyzed or
-creating a list of views into chunks around entries in a line list.  
+creating a list of views into chunks around entries in a line list.
 
 Author: Eric Ford
 Created: August 2020
@@ -57,7 +57,7 @@ Create a range with equal spacing between points with end points set based on un
 - chunk index:
 - oversample_factor: (1)
 """
-function make_grid_for_chunk(timeseries::ACLT, c::Integer; oversample_factor::Real = 1.0, spacing::Symbol = :Linear ) where { ACLT<:AbstractChunkListTimeseries }
+function make_grid_for_chunk(timeseries::ACLT, c::Integer; oversample_factor::Real = 1.0, spacing::Symbol = :Linear, remove_rv_est::Bool = false ) where { ACLT<:AbstractChunkListTimeseries }
     num_obs = length(timeseries.chunk_list)
     @assert num_obs >= 1
     @assert 1<= c <= length(first(timeseries.chunk_list).data)
@@ -67,8 +67,10 @@ function make_grid_for_chunk(timeseries::ACLT, c::Integer; oversample_factor::Re
         @warn "There's some issues with end points exceeding the bounds.  Round off error?  May cause bounds errors."
     end
     # Create grid, so that chunks at all times include the grid's minimum and maximum wavelength.
-    λ_min = maximum(minimum(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
-    λ_max = minimum(maximum(timeseries.chunk_list[t].data[c].λ) for t in 1:num_obs)
+    if remove_rv_est   @assert haskey(first(timeseries.metadata),:rv_est)   end
+    boost_factor = [ remove_rv_est ? calc_doppler_factor(timeseries.metadata[t][:rv_est]) : 1 for t in 1:num_obs ]
+    λ_min = maximum(minimum(timeseries.chunk_list[t].data[c].λ)*boost_factor[t] for t in 1:num_obs)
+    λ_max = minimum(maximum(timeseries.chunk_list[t].data[c].λ)*boost_factor[t] for t in 1:num_obs)
     Δλ_grid_obs = mean(log(timeseries.chunk_list[t].data[c].λ[end]/
                            timeseries.chunk_list[t].data[c].λ[1]   )/
                          (length(timeseries.chunk_list[t].data[c].λ)-1) for t in 1:num_obs)

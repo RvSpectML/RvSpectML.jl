@@ -20,16 +20,16 @@ espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks","G2.espresso.mas")
 
 # Setup to run CCF
 mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=1.6)
- line_list = RvSpectML.CCF.BasicLineList(line_list_df.lambda, line_list_df.weight)
- ccf_plan = RvSpectML.CCF.BasicCCFPlan()
- v_grid = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan)
+line_list = RvSpectML.CCF.BasicLineList(line_list_df.lambda, line_list_df.weight)
+ccf_plan = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list)
+v_grid = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan)
 
 # Compute CCF's & measure RVs
 tstart = now()
- @time ccfs = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, line_list, mask_shape=mask_shape, plan=ccf_plan)
+ @time ccfs = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan)
  println("# CCF runtime: ", now()-tstart)
 
-make_plots = true
+make_plots = false
  rvs_ccf_gauss = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs[:,i],fit_type = "gaussian") for i in 1:length(order_list_timeseries) ]
  rvs_ccf_quad  = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs[:,i], fit_type = "quadratic") for i in 1:length(order_list_timeseries) ]
  rvs_ccf_cent  = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs[:,i], fit_type = "centroid") for i in 1:length(order_list_timeseries) ]
@@ -42,7 +42,8 @@ make_plots = true
   ylabel!("CCF")
  end
 
-if make_plots
+make_plots = true
+ if make_plots
    t_idx = 1
    using Plots
    plot(v_grid,ccfs[:,t_idx],label=:none)

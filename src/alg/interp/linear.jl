@@ -12,10 +12,11 @@ using Interpolations
 using ..RvSpectML
 
 """ Return interpolator for fluxes in spectra. """
+
 function make_interpolator_linear_flux(spectra::Union{AS,AC}) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectrum}
     Interpolations.LinearInterpolation(spectra.λ, spectra.flux)
 end
-
+#; boost_λ::Real = 1
 """ Return interpolator for variances in spectra. """
 function make_interpolator_linear_var(spectra::Union{AS,AC}) where { AS<:AbstractSpectra, AC<:AbstractChuckOfSpectrum}
     Interpolations.LinearInterpolation(spectra.λ, spectra.var)

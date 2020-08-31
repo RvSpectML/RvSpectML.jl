@@ -182,6 +182,35 @@ function findall_line(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,2},v
     return locs
 end
 
+function findall_line(goal::Real,lambda::AbstractArray{T1,1},var::AbstractArray{T2,1}; Δ::Real = Δλoλ_fit_line_default) where {T1<:Real, T2<:Real}
+    @assert lambda[1] <= goal <= lambda[end]
+    @assert size(lambda) == size(var)
+    @assert Δ >= zero(Δ)
+    locs = find_cols_to_fit(lambda,goal,Δ=Δ)
+    locs_good_idx = findall(t->!any(isnan.(var[t])),locs)
+    if length(locs) != length(locs_good_idx)
+        locs = locs[locs_good_idx]
+    end
+    return locs
+end
+
+function findall_line(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,1},var::AbstractArray{T2,1}; Δ::Real = Δλoλ_edge_pad_default, verbose::Bool = false) where {T1<:Real, T2<:Real}
+    @assert lambda[1] <= goal_lo < goal_hi <= lambda[end]
+#=    if verbose
+        for i in 1:5
+        println("# i= ",i," min(order)= ",minimum(lambda[:,i])," max(order)= ",maximum(lambda[:,i]), "   goal_lo= ",goal_lo, " goal_hi = ",goal_hi)
+        end
+    end
+    flush(stdout)
+    =#
+    locs = find_cols_to_fit(lambda,goal_lo, goal_hi,Δ=Δ)
+    locs_good_idx = findall(t->!any(isnan.(var[t])),locs)
+    if length(locs) != length(locs_good_idx)
+        locs = locs[locs_good_idx]
+    end
+    return locs
+end
+
 function findall_line(goal::Real,spectra::AS; Δ::Real = Δλoλ_fit_line_default) where {AS<:AbstractSpectra}
     findall_line(goal,spectra.λ,spectra.var, Δ=Δ)
 end
@@ -210,6 +239,29 @@ function find_line_best(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,2}
     end
     #scores = map( t->sum( flux[t[1],t[2]] ./ var[t[1],t[2]])/sum( 1.0 ./ var[t[1],t[2]]), locs)
     scores = map( t->calc_snr(flux[t[1],t[2]],var[t[1],t[2]]), locs)
+    idx_best = findmax(scores)
+    locs[idx_best[2]]
+end
+
+function find_line_best(goal::Real,lambda::AbstractArray{T1,1},flux::AbstractArray{T2,1},var::AbstractArray{T3,1}; Δ::Real = Δλoλ_fit_line_default) where {T1<:Real, T2<:Real, T3<:Real}
+    locs = findall_line(goal,lambda,var,Δ=Δ)
+    if length(locs) == 0   return  missing end
+    #scores = map( t->sum( flux[t[1],t[2]] ./ var[t[1],t[2]])/sum( 1.0 ./ var[t[1],t[2]]), locs)
+    return locs
+    scores = map( t->calc_snr(flux[t[1],t[2]],var[t[1],t[2]]), locs)
+    idx_best = findmax(scores)
+    locs[idx_best[2]]
+end
+
+function find_line_best(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,1},flux::AbstractArray{T2,1},var::AbstractArray{T3,1}; Δ::Real = Δλoλ_edge_pad_default) where {T1<:Real, T2<:Real, T3<:Real}
+    locs = findall_line(goal_lo,goal_hi,lambda,var,Δ=Δ)
+    if length(locs) == 0
+        println("=>(",goal_lo, ", ",goal_hi, ")  Δ=",Δ)
+        return  missing
+    end
+    return locs
+    #scores = map( t->sum( flux[t[1],t[2]] ./ var[t[1],t[2]])/sum( 1.0 ./ var[t[1],t[2]]), locs)
+    scores = map( t->calc_snr(flux[t],var[t]), locs)
     idx_best = findmax(scores)
     locs[idx_best[2]]
 end

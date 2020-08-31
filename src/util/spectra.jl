@@ -52,6 +52,10 @@ function calc_snr(flux::AbstractArray{T1},var::AbstractArray{T2}) where {T1<:Rea
     sqrt(sum(flux.^2 ./ var))   # TODO: Test when weights are far from equal
 end
 
+function calc_snr(flux::Real,var::Real)
+    flux / sqrt(var)   # TODO: Test when weights are far from equal
+end
+
 """ Calc normalization of spectra based on average flux in a ChunkList. """
 function calc_normalization(chunk_list::ACL) where { ACL<:AbstractChunkList}
     total_flux = sum(sum(Float64.(chunk_list.data[c].flux))

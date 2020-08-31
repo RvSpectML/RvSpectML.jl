@@ -1,44 +1,108 @@
 using RvSpectML
+ using DataFrames, Query
  using Statistics
  using Dates
 
 make_plots = true
-include("neid_solar_1_read.jl")
+#=include("neid_solar_1_read.jl")
  order_list_timeseries = RvSpectML.make_order_list_timeseries(solar_data)
  order_list_timeseries = RvSpectML.filter_bad_chunks(order_list_timeseries,verbose=true)
  RvSpectML.normalize_spectra!(order_list_timeseries,solar_data);
-
- espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks","G2.espresso.mas")
+=#
+espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks","G2.espresso.mas")
   espresso_df = RvSpectML.read_linelist_espresso(espresso_filename)
-  lambda_range_with_data = (min = maximum(d->minimum(d.λ),solar_data), max = minimum(d->maximum(d.λ),solar_data) )
+  #lambda_range_with_data = (min = maximum(d->minimum(d.λ),solar_data), max = minimum(d->maximum(d.λ),solar_data) )
   line_list_df = espresso_df |>
-      @filter(lambda_range_with_data.min <= _.lambda ) |>
-      @filter( _.lambda < lambda_range_with_data.max) |>
+      #@filter(lambda_range_with_data.min <= _.lambda ) |>
+      #@filter( _.lambda < lambda_range_with_data.max) |>
       DataFrame
+
+
+inst = RvSpectML.TheoreticalInstrument.TheoreticalInstrument1D()
+ spec = RvSpectML.TheoreticalInstrument.generate_spectrum(line_list_df, inst)
+ period = 30
+ times = range(0.0, stop=2*period, length=17)
+ rvs_true = -825 .+ 1 .* sin.(2π.*times./period)
+ spectra = RvSpectML.TheoreticalInstrument.generate_spectra_timeseries(times, line_list_df, inst, rvs_true)
+
+lambda_range_with_data = (min = maximum(d->minimum(d.λ),spectra), max = minimum(d->maximum(d.λ),spectra) )
+ espresso_mask_df = RvSpectML.read_mask_espresso(espresso_filename)
+ chunk_list_df = espresso_mask_df |>
+  @filter(lambda_range_with_data.min <= _.lambda ) |>
+  @filter( _.lambda < lambda_range_with_data.max) |>
+  DataFrame
+
+order_list_timeseries = RvSpectML.make_chunk_list_timeseries(spectra, chunk_list_df)
+
+order_list_timeseries = RvSpectML.filter_bad_chunks(order_list_timeseries,verbose=true)
+#RvSpectML.normalize_spectra!(order_list_timeseries,spectra);
+
 
 # Setup to run CCF
 mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=1.6)
- line_list = RvSpectML.CCF.BasicLineList(line_list_df.lambda, line_list_df.weight)
- ccf_plan = RvSpectML.CCF.BasicCCFPlan()
- v_grid = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan)
+  line_list = RvSpectML.CCF.BasicLineList(line_list_df.lambda, line_list_df.weight)
+  ccf_plan = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list)
+  v_grid = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan)
 
 # Compute CCF's & measure RVs
 tstart = now()
- ccfs = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, line_list, mask_shape=mask_shape, plan=ccf_plan)
+ ccfs = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan)
  println("# CCF runtime: ", now()-tstart)
- rvs_ccf_gauss = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs[:,i],fit_type = "gaussian") for i in 1:length(order_list_timeseries) ]
+
+#plot(v_grid,ccfs)
+
+rvs_ccf_gauss = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs[:,i],fit_type = "gaussian") for i in 1:length(order_list_timeseries) ]
+#plot(times, rvs_ccf_gauss.-mean(rvs_ccf_gauss))
+ #rvs_ccf_quad = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs[:,i],fit_type = "quadratic") for i in 1:length(order_list_timeseries) ]
+ #plot!(times, rvs_ccf_quad.-mean(rvs_ccf_quad))
+ println(" # RV mean: ", mean(rvs_ccf_gauss), "  max-min: ", maximum(rvs_ccf_gauss)-minimum(rvs_ccf_gauss) )
 
 # Store estimated RVs in metadata
 map(i->order_list_timeseries.metadata[i][:rv_est] = rvs_ccf_gauss[i]-mean(rvs_ccf_gauss), 1:length(order_list_timeseries) )
 
 oversample_fac_orders = 1
  order_grids = map(c->RvSpectML.make_grid_for_chunk(order_list_timeseries,c,oversample_factor=oversample_fac_orders, remove_rv_est=false), 1:num_chunks(order_list_timeseries) )
-tstart = now()
+
+start = now()
  @time spectral_orders_matrix = RvSpectML.pack_chunk_list_timeseries_to_matrix(order_list_timeseries,order_grids, alg=:Linear)
  println("# Pack into matrix runtime: ", now()-tstart)
 
 order_grids_2 = map(c->RvSpectML.make_grid_for_chunk(order_list_timeseries,c,oversample_factor=oversample_fac_orders, remove_rv_est=true), 1:num_chunks(order_list_timeseries) )
-spectral_orders_matrix_2 = RvSpectML.pack_shifted_chunk_list_timeseries_to_matrix(order_list_timeseries,order_grids_2, alg=:Linear)
+ @time spectral_orders_matrix_2 = RvSpectML.pack_shifted_chunk_list_timeseries_to_matrix(order_list_timeseries,order_grids_2, alg=:Linear)
+order_grids_3 = map(c->RvSpectML.make_grid_for_chunk(order_list_timeseries,c,oversample_factor=oversample_fac_orders, remove_rv_est=true), 1:num_chunks(order_list_timeseries) )
+ @time spectral_orders_matrix_3 = RvSpectML.pack_shifted_chunk_list_timeseries_to_matrix(order_list_timeseries,order_grids_3, alg=:Sinc)
+
+f_mean = calc_mean_spectrum(spectral_orders_matrix.flux,spectral_orders_matrix.var)
+ deriv = calc_mean_dfluxdlnlambda(spectral_orders_matrix.flux,spectral_orders_matrix.var,spectral_orders_matrix.λ,spectral_orders_matrix.chunk_map)
+ (rvs_1, σ_rvs_1) = RvSpectML.calc_rvs_from_taylor_expansion(spectral_orders_matrix,mean=f_mean,deriv=deriv)
+
+
+f_mean_2 = calc_mean_spectrum(spectral_orders_matrix_2.flux,spectral_orders_matrix_2.var)
+ deriv_2 = calc_mean_dfluxdlnlambda(spectral_orders_matrix_2.flux,spectral_orders_matrix_2.var,spectral_orders_matrix_2.λ,spectral_orders_matrix_2.chunk_map)
+ (rvs_2, σ_rvs_2) = RvSpectML.calc_rvs_from_taylor_expansion(spectral_orders_matrix_2,mean=f_mean_2,deriv=deriv_2)
+
+
+f_mean_3 = calc_mean_spectrum(spectral_orders_matrix_3.flux,spectral_orders_matrix_3.var)
+ deriv_3 = calc_mean_dfluxdlnlambda(spectral_orders_matrix_3.flux,spectral_orders_matrix_3.var,spectral_orders_matrix_3.λ,spectral_orders_matrix_3.chunk_map)
+ (rvs_3, σ_rvs_3) = RvSpectML.calc_rvs_from_taylor_expansion(spectral_orders_matrix_3,mean=f_mean_3,deriv=deriv_3)
+
+ using Plots
+  scatter(times,rvs_1)
+  #scatter!(times,rvs_2)
+  scatter!(times,rvs_3)
+
+0
+
+
+
+scatter(spectral_orders_matrix_2.λ[1:300],spectral_orders_matrix_2.flux[1:300,1],markersize=1.5)
+scatter!(spectral_orders_matrix.λ[1:300],spectral_orders_matrix.flux[1:300,1],markersize=1.5)
+
+
+spectral_orders_matrix_2.flux
+spectral_orders_matrix_2.λ[1:1000]
+
+end
 
 using Plots
 size(spectral_orders_matrix.flux)

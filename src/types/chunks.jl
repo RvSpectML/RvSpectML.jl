@@ -32,18 +32,37 @@ function ChuckOfSpectrum(λ::A1, flux::A2, var::A3, order::Integer, pixels::AUR)
     ChuckOfSpectrum{T1,T2,T3}(view(λ,pixels,order),view(flux,pixels,order),view(var,pixels,order))
 end
 
+function ChuckOfSpectrum(λ::A1, flux::A2, var::A3, pixels::AUR) where {  T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,1}, A2<:AbstractArray{T2,1}, A3<:AbstractArray{T3,1}, AUR<:AbstractUnitRange }
+    @assert size(λ) == size(flux)
+    @assert size(λ) == size(var)
+    @assert 1 <= first(pixels) < last(pixels) <= size(λ,1)
+    ChuckOfSpectrum{T1,T2,T3}(view(λ,pixels),view(flux,pixels),view(var,pixels))
+end
+
 
 function ChuckOfSpectrum(λ::A1, flux::A2, var::A3, loc::NamedTuple{(:pixels, :order),Tuple{AUR,I1}}) where {  T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2}, AUR<:AbstractUnitRange, I1<:Integer }
     ChuckOfSpectrum(λ,flux,var,loc.order,loc.pixels)
 end
 
-function ChuckOfSpectrum(spectra::AS, order::Integer, pixels::AUR) where { AS<:AbstractSpectra, AUR<:AbstractUnitRange }
+function ChuckOfSpectrum(spectra::AS, order::Integer, pixels::AUR) where { AS<:AbstractSpectra2D, AUR<:AbstractUnitRange }
     ChuckOfSpectrum(spectra.λ,spectra.flux,spectra.var,order,pixels)
 end
 
-function ChuckOfSpectrum(spectra::AS, loc::NamedTuple{(:pixels, :order),Tuple{AUR,I1}}) where {  AS<:AbstractSpectra, AUR<:AbstractUnitRange, I1<:Integer }
+function ChuckOfSpectrum(spectra::AS, loc::NamedTuple{(:pixels, :order),Tuple{AUR,I1}}) where {  AS<:AbstractSpectra2D, AUR<:AbstractUnitRange, I1<:Integer }
     ChuckOfSpectrum(spectra.λ,spectra.flux,spectra.var,loc.order,loc.pixels)
 end
+
+function ChuckOfSpectrum(spectra::AS, pixels::AUR) where { AS<:AbstractSpectra1D, AUR<:AbstractUnitRange }
+    ChuckOfSpectrum(spectra.λ,spectra.flux,spectra.var,pixels)
+end
+
+#function ChuckOfSpectrum(spectra::AS, loc::AUR) where {  AS<:AbstractSpectra1D, AUR<:AbstractUnitRange }
+#    ChuckOfSpectrum(spectra.λ,spectra.flux,spectra.var,loc)
+#end
+
+
+
+AbstractSpectra2D
 
 abstract type AbstractChunkList end
 

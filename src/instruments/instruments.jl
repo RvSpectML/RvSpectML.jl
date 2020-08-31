@@ -29,6 +29,10 @@ include("param.jl")
 For each instrument/data file type, users need to create a sub-type of either AbstractInstrument2D or AbstractInstrument1D and
 to implement the functions in neid/traits.jl for each instrument trait.
 =#
+
+include("theory/theory.jl")
+export TheoreticalInstrument, TheoreticalInstrument1D, TheoreticalInstrument2D, AnyTheoreticalInstrument
+
 include("neid/neid.jl")
 export NEID, NEID1D, NEID2D, AnyNEID
 

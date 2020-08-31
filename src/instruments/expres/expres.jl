@@ -6,7 +6,8 @@ Author: Eric Ford and collaborators
 Created: August 2020
 """
 module EXPRES
-using RvSpectML
+using ..RvSpectML
+import ..RvSpectML: AbstractInstrument, AbstractInstrument1D, AbstractInstrument2D
 using DataFrames, FITSIO
 using Dates  # If need to use datetime2julian() to get jd.  Need to check about getting BJD.
 
@@ -16,13 +17,14 @@ struct EXPRES2D <: AbstractInstrument2D end
 const AnyEXPRES = Union{EXPRES1D,EXPRES2D}
 export EXPRES1D, EXPRES2D, AnyEXPRES
 
-#include("traits.jl")
+include("traits.jl")
 export min_order, max_order, min_pixel_in_order, max_pixel_in_order
 export orders_to_use_default, min_col_default, max_col_default
 export metadata_symbols_default, metadata_strings_default
+export default_ccf_v_width
 
-#include("io.jl")
-export make_manifest, read_data, read_solar_data
+include("io.jl")
+export make_manifest, read_data
 # read_header not exported to avoid conflict with FITSIO.read_header
 
 end

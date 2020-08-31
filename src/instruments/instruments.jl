@@ -39,8 +39,9 @@ export NEID, NEID1D, NEID2D, AnyNEID
 include("expres/expres.jl")
 export EXPRES, EXPRES1D, EXPRES2D, AnyEXPRES
 
-include("harps-n/harps-n.jl")
-export HARPSN, HARPSN1D, HARPSN2D, AnyHARPSN
+# TODO: Add more instruments:  HARPS-N, HPF, etc.
+#include("harps-n/harps-n.jl")
+#export HARPSN, HARPSN1D, HARPSN2D, AnyHARPSN
 
 export min_order, max_order, min_pixel_in_order, max_pixel_in_order, min_col_default, max_col_default
 export orders_all, pixels_all, max_pixels_in_spectra       # generic implementations avaliable

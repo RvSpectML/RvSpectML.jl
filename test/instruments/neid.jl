@@ -15,8 +15,8 @@ using Test
             @test min_pixel_in_order(n2) == 1
             @test max_pixel_in_order(n2) > 1
             @test length(orders_to_use_default(n2)) >= 1
-            @test min_col_default(n2) >=1
-            @test max_col_default(n2) <= 10000
+            @test min_col_default(n2,1) >=1
+            @test max_col_default(n2,1) <= 10000
             @test length(metadata_symbols_default(n2)) >= 1
             @test length(metadata_strings_default(n2)) >= 1
         end

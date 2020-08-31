@@ -17,8 +17,8 @@ max_pixel(inst::TheoreticalInstrument1D) = 128*8192
 
 import ..RvSpectML: orders_to_use_default, min_col_default, max_col_default
 orders_to_use_default(inst::TheoreticalInstrument2D) = min_order(inst):max_order(inst)
-min_col_default(::TheoreticalInstrument2D) = 1
-max_col_default(::TheoreticalInstrument2D) = max_pixel_in_order(inst)
+min_col_default(::TheoreticalInstrument2D, ord::Integer) = 1
+max_col_default(::TheoreticalInstrument2D, ord::Integer) = max_pixel_in_order(inst)
 
 #import ..RvSpectML: metadata_symbols_default, metadata_strings_default
 #metadata_symbols_default(::AnyD) = Symbol[:bjd, :target, :ssbz]

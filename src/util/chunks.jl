@@ -18,22 +18,18 @@ Return a ChunkList with a region of spectrum from each order in orders_to_use.
 - orders_to_use: Range or Array (orders_to_use(inst))
 - pixels_to_use: Array of Ranges (each from min_col to max_col)
 or
-- min_col: (min_col_default(inst)) and
-- max_col: (max_col_default(inst))
+- min_col: (min_col_default(inst,order)) and
+- max_col: (max_col_default(inst,order))
 """
 function make_orders_into_chunks
 end
 
 function make_orders_into_chunks(spectra::AS, inst::AbstractInstrument;
-        min_col::Integer = min_col_default(spectra.inst), # min_col_neid_default,
-        max_col::Integer = max_col_default(spectra.inst), #max_col_neid_default ,
         orders_to_use = orders_to_use_default(spectra.inst) # 1:size(spectra.flux,2),
         ) where {AS<:AbstractSpectra }
     @assert eltype(orders_to_use) <: Integer
     @assert all( min_order(spectra.inst) .<= orders_to_use .<= max_order(spectra.inst) )
-    @assert min_col >= min_pixel_in_order(spectra.inst)
-    @assert max_col <= max_pixel_in_order(spectra.inst)
-    pixels_to_use=fill(min_col:max_col,length(orders_to_use))
+    pixels_to_use = map(ord->min_col_default(spectra.inst,ord):max_col_default(spectra.inst,ord),orders_to_use)
     make_orders_into_chunks(spectra,orders_to_use=orders_to_use, pixels_to_use=pixels_to_use)
 end
 
@@ -44,9 +40,9 @@ function make_orders_into_chunks(spectra::AS;
     #@assert all( min_order(inst) .<= orders_to_use .<= max_order(inst) )
     #@assert minimum(pixels_to_use) >= min_pixel_in_order(inst)
     #@assert maximum(pixels_to_use) <= max_pixel_in_order(inst)
-    ChunkList( map(order->
-                    ChuckOfSpectrum(spectra,(pixels=pixels_to_use[order],order=order)),
-                    orders_to_use ))
+    ChunkList( map(order_idx->
+                    ChuckOfSpectrum(spectra,(pixels=pixels_to_use[order_idx],order=orders_to_use[order_idx])),
+                    1:length(orders_to_use) ))
 end
 
 

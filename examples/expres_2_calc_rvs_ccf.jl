@@ -21,7 +21,7 @@ espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks","G2.espresso.mas")
 # Setup to run CCF
 mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=1.6)
  line_list = RvSpectML.CCF.BasicLineList(line_list_df.lambda, line_list_df.weight)
- ccf_plan = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list)
+ ccf_plan = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=-5e3)
  v_grid = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan)
 
 # Compute CCF's & measure RVs

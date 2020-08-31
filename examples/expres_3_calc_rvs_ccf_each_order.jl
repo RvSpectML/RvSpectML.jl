@@ -21,7 +21,7 @@ espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks","G2.espresso.mas")
 # Setup to run CCF
 mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=1.6)
  line_list = RvSpectML.CCF.BasicLineList(line_list_df.lambda, line_list_df.weight)
- ccf_plan = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list)
+ ccf_plan = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=-5e3)
  v_grid = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan)
 
 # Compute CCF's & measure RVs
@@ -36,8 +36,8 @@ end
 
 if make_plots
  t_idx = 1
- order_idx = 30:40
- plot(v_grid,order_ccfs[:,order_idx,t_idx],label=:none)
+ order_idx = 1:33
+ plot(v_grid,order_ccfs[:,order_idx,t_idx]./maximum(order_ccfs[:,order_idx,t_idx],dims=1),label=:none)
  xlabel!("v (m/s)")
  ylabel!("CCF")
  end
@@ -50,23 +50,22 @@ rvs_ccf_gauss = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,order_ccfs[:,j,
 if make_plots
      using Plots
     nbin = 4
-    plt_t = (order_list_timeseries.times .- minimum(order_list_timeseries.times) ) .* 24
+    plt_t = (order_list_timeseries.times .- minimum(order_list_timeseries.times) )
     times_binned = RvSpectML.bin_times(plt_t, nbin)
     plt = plot()
-    plot!(plt,plt_t,rvs_ccf_gauss[:,1],label=:none)
-    plot!(plt,plt_t,rvs_ccf_gauss[:,10],label=:none)
-    plot!(plt,plt_t,rvs_ccf_gauss[:,20],label=:none)
-    plot!(plt,plt_t,rvs_ccf_gauss[:,30],label=:none)
-    plot!(plt,plt_t,rvs_ccf_gauss[:,30],label=:none)
-    plot!(plt,plt_t,rvs_ccf_gauss[:,40],label=:none)
-    plot!(plt,plt_t,rvs_ccf_gauss[:,50],label=:none)
-    plot!(plt,plt_t,rvs_ccf_gauss[:,60],label=:none)
-    xlabel!("Time (hours)")
+    scatter!(plt,plt_t,rvs_ccf_gauss[:,1],label=:none)
+    scatter!(plt,plt_t,rvs_ccf_gauss[:,5],label=:none)
+    scatter!(plt,plt_t,rvs_ccf_gauss[:,10],label=:none)
+    scatter!(plt,plt_t,rvs_ccf_gauss[:,15],label=:none)
+    scatter!(plt,plt_t,rvs_ccf_gauss[:,20],label=:none)
+    scatter!(plt,plt_t,rvs_ccf_gauss[:,25],label=:none)
+    scatter!(plt,plt_t,rvs_ccf_gauss[:,30],label=:none)
+    xlabel!("Time (days)")
     ylabel!("v (m/s)")
  end
 
 if make_plots
-    order_idx = 5:10:70
+    order_idx = 1:33;
     plt = plot()
     for i in order_idx
        rms = std(rvs_ccf_gauss[:,i])
@@ -79,5 +78,4 @@ if make_plots
     xlabel!("Time (hours)")
     ylabel!("v (m/s)")
     display(plt)
-    end
  end

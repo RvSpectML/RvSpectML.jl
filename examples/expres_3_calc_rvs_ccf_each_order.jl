@@ -29,6 +29,16 @@ tstart = now()    # Compute CCFs for each order
  @time order_ccfs = RvSpectML.CCF.calc_order_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan) # line_list, mask_shape=mask_shape, plan=ccf_plan)
  println("# Order CCFs runtime: ", now()-tstart)
 
+save_to_file = false
+if save_to_file
+   using CSV
+   inst = EXPRES.EXPRES2D()
+   for (i, order) in enumerate(EXPRES.orders_to_use_default(inst))
+      t = Tables.table(order_ccfs[:,i,:]',header=Symbol.(v_grid))
+      CSV.write("101501_ccf_order=" * string(order) * ".csv",t)
+   end
+end
+
 make_plots = true
  if make_plots
   using Plots

@@ -79,7 +79,7 @@ if make_plots
 #=
 # TODO: Need to update code below
 # Try using Alex's clean lines
-vald_filename = joinpath(ancilary_data_path,"VALD_Fe1_DP_rejectTelluricSlope0.0_badLineFilterESPRESSO-strict-NEID-BIS_overlapcutoff6e-05_depthcutoff0.05_allowBlends0_wavesReiners_depthssolar_nbin1depth0.mas")
+vald_filename = joinpath(ancilary_solar_data_path,"VALD_Fe1_DP_rejectTelluricSlope0.0_badLineFilterESPRESSO-strict-NEID-BIS_overlapcutoff6e-05_depthcutoff0.05_allowBlends0_wavesReiners_depthssolar_nbin1depth0.mas")
  vald_df = RvSpectML.read_mask_vald(vald_filename)
  ssn_out = RvSpectML.searchsortednearest(line_list_df.lambda,vald_df.lambda)
  line_list_clean = line_list_df[ssn_out,:]

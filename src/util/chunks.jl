@@ -297,31 +297,46 @@ function filter_bad_chunks(chunk_list_timeseries::ACLT, line_list::DataFrame; ve
     @assert(length(chunk_list_timeseries)>=1)
     @assert(hasproperty(line_list,:lambda_lo))
     @assert(hasproperty(line_list,:lambda_hi))
+    inst = chunk_list_timeseries.inst
     idx_keep = trues(num_chunks(chunk_list_timeseries))
     for t in 1:length(chunk_list_timeseries)
         idx_bad_λ = findall(c->any(isnan.(chunk_list_timeseries.chunk_list[t].data[c].λ)),1:num_chunks(chunk_list_timeseries))
         idx_bad_flux = findall(c->any(isnan.(chunk_list_timeseries.chunk_list[t].data[c].flux)),1:num_chunks(chunk_list_timeseries))
         idx_bad_var = findall(c->any(isnan.(chunk_list_timeseries.chunk_list[t].data[c].var)),1:num_chunks(chunk_list_timeseries))
+        idx_not_sorted = findall(c->!issorted(chunk_list_timeseries.chunk_list[t].data[c].λ),1:num_chunks(chunk_list_timeseries))
         idx_keep[idx_bad_λ] .= false
         idx_keep[idx_bad_flux] .= false
         idx_keep[idx_bad_var] .= false
-        if verbose && (length(idx_bad_λ)+length(idx_bad_flux)+length(idx_bad_var) > 0)
-               println("# Removing chunks", vcat(idx_bad_λ,idx_bad_flux,idx_bad_var), " at time ", t, " due to NaNs (",length(idx_bad_λ),",",length(idx_bad_flux),",",length(idx_bad_var),").")
+        idx_keep[idx_not_sorted] .= false
+        if verbose && (length(idx_bad_λ)+length(idx_bad_flux)+length(idx_bad_var)+length(idx_not_sorted))
+               flush(stdout)
+               println("# Removing chunks", vcat(idx_bad_λ,idx_bad_flux,idx_bad_var), " at time ", t, " due to NaNs (",
+                            length(idx_bad_λ),",",length(idx_bad_flux),",",length(idx_bad_var),") and ",
+                            length(idx_not_sorted), " for not being sorted.")
         end
-
+        #=
+        # TODO: Move these kinds of checks to a traits/plan-based system
+        if hasproperty(chunk_list_timeseries.metadata[t],:pixel_mask)
+            idx_keep[.!chunk_list_timeseries.metadata[t][:pixel_mask]] .= false
+        end
+        if hasproperty(chunk_list_timeseries.metadata[t],:excalibur_mask)
+            idx_keep[.!chunk_list_timeseries.metadata[t][:excalibur_mask]] .= false
+        end
+        =#
     end
     chunks_to_remove = findall(.!idx_keep)
     if length(chunks_to_remove) == 0
         println("# No lines to remove.")
         return (chunk_timeseries=chunk_list_timeseries, line_list=line_list)
     else
-        println("# Removing ", length(chunks_to_remove), " chunks due to NaNs.")
+        println("# Removing ", length(chunks_to_remove), " chunks.")
         map(c->println("# ",c,": ",line_list.lambda_lo[c]," - ",line_list.lambda_hi[c]),chunks_to_remove)
         new_line_list = line_list[findall(idx_keep),:]
         new_chunk_list_timeseries = [ChunkList(chunk_list_timeseries.chunk_list[t].data[idx_keep]) for t in 1:length(chunk_list_timeseries) ]
-        return (chunk_timeseries=ChunkListTimeseries(chunk_list_timeseries.times,new_chunk_list_timeseries), line_list=new_line_list)
+        return (chunk_timeseries=ChunkListTimeseries(chunk_list_timeseries.times,new_chunk_list_timeseries, inst=inst, metadata=chunk_list_timeseries.metadata), line_list=new_line_list)
     end
 end
+
 
 function filter_bad_chunks(chunk_list_timeseries::ACLT; verbose::Bool = false) where { ACLT<:AbstractChunkListTimeseries }
     @assert(length(chunk_list_timeseries)>=1)
@@ -336,7 +351,6 @@ function filter_bad_chunks(chunk_list_timeseries::ACLT; verbose::Bool = false) w
         if verbose && (length(idx_bad_λ)+length(idx_bad_flux)+length(idx_bad_var) > 0)
                println("# Removing chunks", vcat(idx_bad_λ,idx_bad_flux,idx_bad_var), " at time ", t, " due to NaNs (",length(idx_bad_λ),",",length(idx_bad_flux),",",length(idx_bad_var),").")
         end
-
     end
     chunks_to_remove = findall(.!idx_keep)
     if length(chunks_to_remove) == 0
@@ -348,6 +362,7 @@ function filter_bad_chunks(chunk_list_timeseries::ACLT; verbose::Bool = false) w
             map(c->println("# ",c,": ",findall(.!idx_keep)))
         end
         new_chunk_list_timeseries = [ChunkList(chunk_list_timeseries.chunk_list[t].data[idx_keep]) for t in 1:length(chunk_list_timeseries) ]
-        return ChunkListTimeseries(chunk_list_timeseries.times[idx_keep],new_chunk_list_timeseries, inst=chunk_list_timeseries.inst, metadata=chunk_list_timeseries.metadata[idx_keep])
+        #return ChunkListTimeseries(chunk_list_timeseries.times[idx_keep],new_chunk_list_timeseries, inst=chunk_list_timeseries.inst, metadata=chunk_list_timeseries.metadata[idx_keep])
+        return ChunkListTimeseries(chunk_list_timeseries.times,new_chunk_list_timeseries, inst=chunk_list_timeseries.inst, metadata=chunk_list_timeseries.metadata)
     end
 end

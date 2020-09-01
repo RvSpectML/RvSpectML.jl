@@ -85,13 +85,141 @@ function normalize_spectra!(chunk_timeseries::ACLT, spectra::AS) where { ACLT<:A
     return chunk_timeseries
 end
 
-"""   bin_consecutive_spectra
+"""   bin_times_consecutive( times, n )
+Computes mean times from conseuctive bins of n times (to go with bin_consecutive_spectra).
+Returns floor(length(times)/n) elements.
+
+WARNING:  Simply takes consecutive times, so some bins may be from spectra that weren't taken close together.
+TODO:  Create version that pays attention to timestamps.
+"""
+function bin_times_consecutive(times::AT, n::Integer) where { T<:Real, AT<:AbstractVector{T} }
+    local num_in = length(times)
+    @assert num_in >= n
+    local num_out = floor(Int,num_in//n)
+    local times_out = Vector{eltype(times)}(undef,num_out)
+    local time_idx_out  = Array{UnitRange,1}(undef,num_out)
+    local idx_start = 1
+    for i in 1:num_out
+      idx_stop = min(idx_start+n-1,num_in)
+      times_out[i] = mean(times[idx_start:idx_stop])
+      time_idx_out[i] = idx_start:idx_stop
+      idx_start = idx_stop + 1
+    end
+    return times_out
+end
+
+bin_rvs_consecutive(rvs::AT, n::Integer) where { T<:Real, AT<:AbstractVector{T} } = bin_times_consecutive(rvs,n)
+
+"""   bin_spectra_nightly
+Bins spectra from a SpectralTimeSeriesCommonWavelengths object with a maximum spacing between observation times
+"""
+function bin_spectra_nightly(spectra::AbstractSpectralTimeSeriesCommonWavelengths, times::AT) where { T<:Real, AT<:AbstractVector{T} }
+    Δt_threshold = 0.5
+    bin_spectra_max_Δt(spectra,times,Δt_threshold)
+end
+
+function bin_times_nightly(times::AT)  where { T<:Real, AT<:AbstractVector{T} }
+    Δt_threshold = 0.5
+    bin_times_max_Δt(times,Δt_threshold)
+end
+
+function bin_rvs_nightly(;times::AT2, rvs::AT1)  where { T1<:Real, AT1<:AbstractVector{T1}, T2<:Real, AT2<:AbstractVector{T2}  }
+    Δt_threshold = 0.5
+    bin_rvs_max_Δt(times,rvs,Δt_threshold=Δt_threshold)
+end
+
+function bin_times_and_rvs_nightly(;times::AT1, rvs::AT2 )  where { T1<:Real, AT1<:AbstractVector{T1}, T2<:Real, AT2<:AbstractVector{T2}  }
+    Δt_threshold = 0.5
+    bin_times_and_rvs_max_Δt(times=times, rvs=rvs,  Δt_threshold=Δt_threshold)
+end
+
+function bin_times_max_Δt(times::AT, Δt_threshold::Real = 0.5)  where { T<:Real, AT<:AbstractVector{T} }
+    local bin_idx = make_bin_indices_for_binning_max_Δt(times,Δt_threshold=Δt_threshold)
+    local bin_labels = unique(bin_idx)
+    local binned_times = zeros(length(bin_labels))
+    for (i,label) in enumerate(bin_labels)
+        binned_times[i] = mean(times[findall(isequal(label),bin_idx)])
+    end
+    return binned_times
+end
+
+function bin_rvs_max_Δt(;times::AT1, rvs::AT2, Δt_threshold::Real = 0.5)  where { T1<:Real, AT1<:AbstractVector{T1}, T2<:Real, AT2<:AbstractVector{T2}  }
+    local bin_idx = make_bin_indices_for_binning_max_Δt(times,Δt_threshold=Δt_threshold)
+    local bin_labels = unique(bin_idx)
+    local binned_rvs = zeros(length(bin_labels))
+    for (i,label) in enumerate(bin_labels)
+        binned_rvs[i] = mean(rvs[findall(isequal(label),bin_idx)])
+    end
+    return binned_rvs
+end
+
+function bin_times_and_rvs_max_Δt(;times::AT1, rvs::AT2, Δt_threshold::Real = 0.5)  where { T1<:Real, AT1<:AbstractVector{T1}, T2<:Real, AT2<:AbstractVector{T2}  }
+    local bin_idx = make_bin_indices_for_binning_max_Δt(times,Δt_threshold=Δt_threshold)
+    local bin_labels = unique(bin_idx)
+    local binned_times = zeros(length(bin_labels))
+    local binned_rvs = zeros(length(bin_labels))
+    for (i,label) in enumerate(bin_labels)
+        local idx = findall(isequal(label),bin_idx)
+        binned_times[i] = mean(times[idx])
+        binned_rvs[i] = mean(rvs[idx])
+    end
+    return (times=binned_times, rvs=binned_rvs)
+end
+
+function make_bin_indices_for_binning_max_Δt(times::AT; Δt_threshold::Real = 0.5)  where { T<:Real, AT<:AbstractVector{T} }
+    @assert length(times) >= 1
+    Δt_threshold = 0.5
+    n = length(times)
+    bin_indices = ones(Int,n)
+    bin = 1
+    bin_start_time = times[1]
+    for i in 2:n
+        if times[i]-bin_start_time > Δt_threshold
+            bin += 1
+            bin_start_time = times[i]
+        end
+        bin_indices[i] = bin
+    end
+    return bin_indices
+end
+
+"""   bin_spectra_max_Δt
+Bins spectra from a SpectralTimeSeriesCommonWavelengths object with a maximum spacing between observation times
+"""
+function bin_spectra_max_Δt(spectra::AbstractSpectralTimeSeriesCommonWavelengths, times::AT, Δt::Real) where { T<:Real, AT<:AbstractVector{T} }
+  local num_in = size(spectra.flux,2)
+  @assert length(times) >= 1
+  @assert Δt>=zero(Δt)
+  local bin_idx = make_bin_indices_for_binning_max_Δt(times,Δt_threshold=Δt)
+  local bin_labels = unique(bin_idx)
+  local num_out = length(bin_labels)
+  @assert num_in >= num_out
+  local binned_times = zeros(num_out)
+  local flux_out = Array{eltype(spectra.flux),2}(undef,size(spectra.flux,1),num_out)
+  local var_out  = Array{eltype(spectra.flux),2}(undef,size(spectra.var ,1),num_out)
+  local time_ave = Array{eltype(times),1}(undef,num_out)
+  local time_idx_out = Array{UnitRange,1}(undef,num_out)
+  for (i,label) in enumerate(bin_labels)
+      idx_to_bin = findall(isequal(label),bin_idx)
+      time_ave[i] = mean(times[idx_to_bin])
+      flux_out[:,i] .= vec(sum(spectra.flux[:,idx_to_bin],dims=2))
+      var_out[:,i]  .= vec(sum((spectra.var[:,idx_to_bin]),dims=2))
+      if length(idx_to_bin) > 1
+          @assert all(idx_to_bin[2:end].-idx_to_bin[1:end-1] .== 1)
+      end
+      time_idx_out[i] = first(idx_to_bin):last(idx_to_bin)
+  end
+  metadata_out = MetadataT(:time_idx=>time_idx_out, :bjd=>time_ave)
+  return typeof(spectra)(spectra.λ,flux_out,var_out,spectra.chunk_map,spectra.inst,metadata_out)
+end
+
+"""   bin_spectra_consecutive
 Bins consecutive spectra from a SpectralTimeSeriesCommonWavelengths object
 
 WARNING:  Simply takes consecutive spectra, so some bins may be from spectra that weren't taken close together.
 TODO:  Create version that pays attention to timestamps.
 """
-function bin_consecutive_spectra(spectra::AbstractSpectralTimeSeriesCommonWavelengths, n::Integer)
+function bin_spectra_consecutive(spectra::AbstractSpectralTimeSeriesCommonWavelengths, n::Integer)
   local num_in = size(spectra.flux,2)
   @assert num_in >= n
   local num_out = floor(Int,num_in//n)
@@ -119,31 +247,6 @@ function bin_times(spectra::AbstractSpectralTimeSeriesCommonWavelengths, times::
     @assert haskey(spectra.metadata,:time_idx)
     map(idx->mean(times[idx]), spectra.metadata[:time_idx])
 end
-
-"""   bin_times( times, n )
-Computes mean times from conseuctive bins of n times (to go with bin_consecutive_spectra).
-Returns floor(length(times)/n) elements.
-
-WARNING:  Simply takes consecutive times, so some bins may be from spectra that weren't taken close together.
-TODO:  Create version that pays attention to timestamps.
-"""
-function bin_times(times::AT, n::Integer) where { T<:Real, AT<:AbstractVector{T} }
-    local num_in = length(times)
-    @assert num_in >= n
-    local num_out = floor(Int,num_in//n)
-    local times_out = Vector{eltype(times)}(undef,num_out)
-    local time_idx_out  = Array{UnitRange,1}(undef,num_out)
-    local idx_start = 1
-    for i in 1:num_out
-      idx_stop = min(idx_start+n-1,num_in)
-      times_out[i] = mean(times[idx_start:idx_stop])
-      time_idx_out[i] = idx_start:idx_stop
-      idx_start = idx_stop + 1
-    end
-    return times_out
-end
-
-
 
 #=
 # Find indicies for pixels around lines

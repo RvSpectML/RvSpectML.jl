@@ -1,7 +1,7 @@
 # Run code for previous steps with plotting turned off.
 make_plots_orig_4 = isdefined(Main,:make_plots) ? make_plots : true
  make_plots = false
- include("neid_solar_4_extract_chunks.jl")
+ include("expres_4_extract_chunks.jl")
  make_plots = make_plots_orig_4
  if make_plots
    using Plots
@@ -10,28 +10,30 @@ make_plots_orig_4 = isdefined(Main,:make_plots) ? make_plots : true
 # Set parameters for this analysis
 oversample_fac_chunks = 2
  oversample_fac_orders = 1
- num_spectra_to_bin = 4   # 1 results in no binning in time
+ bin_spectra = true   # 1 results in no binning in time
  idx_chunk_min = 20
  idx_chunk_max = 21
  plt_order = 42
  plt_order_pix = 3301:3800
 
 chunk_grids = map(c->RvSpectML.make_grid_for_chunk(chunk_list_timeseries,c,oversample_factor=oversample_fac_chunks), 1:num_chunks(chunk_list_timeseries) )
- @time spectra_matrix = RvSpectML.pack_chunk_list_timeseries_to_matrix(chunk_list_timeseries,chunk_grids, alg=:Sinc, oversample_factor=oversample_fac_chunks)
+ @time spectra_matrix = RvSpectML.pack_chunk_list_timeseries_to_matrix(chunk_list_timeseries,chunk_grids, alg=:Sinc, oversample_factor=oversample_fac_chunks, verbose=true)
  f_mean = calc_mean_spectrum(spectra_matrix.flux,spectra_matrix.var)
  deriv = calc_mean_dfluxdlnlambda(spectra_matrix.flux,spectra_matrix.var,spectra_matrix.λ,spectra_matrix.chunk_map)
- plt_times = (chunk_list_timeseries.times .-minimum(chunk_list_timeseries.times)).*24
+ plt_times = (chunk_list_timeseries.times .-minimum(chunk_list_timeseries.times))
 
-if 2 <= num_spectra_to_bin <=20
-  spectra_binned = RvSpectML.bin_spectra_consecutive(spectra_matrix,num_spectra_to_bin)
+if bin_spectra
+  spectra_binned = RvSpectML.bin_spectra_nightly(spectra_matrix,chunk_list_timeseries.times)
   f_mean = calc_mean_spectrum(spectra_binned.flux,spectra_binned.var)
   deriv = calc_mean_dfluxdlnlambda(spectra_binned.flux,spectra_binned.var,spectra_binned.λ,spectra_binned.chunk_map)
-  times_binned = RvSpectML.bin_times_consecutive(chunk_list_timeseries.times,num_spectra_to_bin)
-  plt_times = (times_binned.-minimum(chunk_list_timeseries.times)).*24
+  times_binned = RvSpectML.bin_times_nightly(chunk_list_timeseries.times)
+  plt_times = (times_binned.-minimum(chunk_list_timeseries.times))
   spectra_matrix = spectra_binned
+  spectra_binned
 end
+
 make_plots = true
-if make_plots
+ if make_plots
    idx_chunk_min = 20
    idx_chunk_max = 20
    global idx_plt = (first(spectra_matrix.chunk_map[idx_chunk_min]):last(spectra_matrix.chunk_map[idx_chunk_max]))
@@ -43,7 +45,7 @@ if make_plots
    plot!(plt1,spectra_matrix.λ[idx_plt], deriv[idx_plt]./std(deriv[idx_plt]), label="Standardized deriv", linecolor=:green)
    display(plt1)
    #plot!(spectra_matrix.λ[idx_plt],./std_in_plt,linecolor=:red, label="Standardized mean spectrum")
-end
+ end
 
 println("Computing RVs using dflux/dlnlambda from chunks.")
  (rvs_1, σ_rvs_1) = RvSpectML.calc_rvs_from_taylor_expansion(spectra_matrix,mean=f_mean,deriv=deriv)
@@ -64,14 +66,14 @@ order_grids = map(c->RvSpectML.make_grid_for_chunk(order_list_timeseries,c,overs
 
 @time spectral_orders_matrix = RvSpectML.pack_chunk_list_timeseries_to_matrix(order_list_timeseries,order_grids)
 
-if 2 <= num_spectra_to_bin <=20
-    spectral_orders_matrix = RvSpectML.bin_spectra_consecutive(spectral_orders_matrix,num_spectra_to_bin)
+if bin_spectra
+    spectral_orders_matrix = RvSpectML.bin_spectra_nightly(spectral_orders_matrix,chunk_list_timeseries.times)
   end
   f_mean_orders = calc_mean_spectrum(spectral_orders_matrix.flux,spectral_orders_matrix.var)
   deriv_orders = calc_mean_dfluxdlnlambda(spectral_orders_matrix.flux,spectral_orders_matrix.var,spectral_orders_matrix.λ,spectral_orders_matrix.chunk_map)
 
 if make_plots
-  plt_order = 40
+  plt_order = 20
   plt_order_pix = 3501:3800
   idx_plt = spectral_orders_matrix.chunk_map[plt_order][plt_order_pix]
   plt_λ = RvSpectML.get_λs(order_grids, idx_plt)
@@ -121,10 +123,10 @@ chunk_rms_cut_off = quantile(rms_order_rvs,0.9)
 
 if make_plots
    plt = plot()
-   scatter!(plt,plt_times, rvs_1, yerr=σ_rvs_1, label="Equal weighted chunks", markersize=3, color=:blue, legend=:topleft)
-   scatter!(plt,plt_times, ave_order_rvs,label="Ave Order RVs", markersize=3, color=:green)
+   scatter!(plt,plt_times, rvs_1, yerr=σ_rvs_1, label="Equal weighted chunks", markersize=3, color=:blue, legend=:topright)
+   #scatter!(plt,plt_times, ave_order_rvs,label="Ave Order RVs", markersize=3, color=:green)
    scatter!(plt,plt_times, ave_good_chunks_rvs, yerr=sigma_good_chunks_rvs, label="Ave good chunks", markersize=3, color=:red)
-   xlabel!("Time (hours)")
+   xlabel!("Time (days)")
    ylabel!("RV (m/s)")
    display(plt)
 end

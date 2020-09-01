@@ -42,6 +42,8 @@ if make_plots
  ylabel!("CCF")
  end
 
+ccf_contrast = vec(minimum(mean(order_ccfs,dims=3),dims=1).-maximum(mean(order_ccfs,dims=3),dims=1))
+
 rvs_ccf_gauss = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,order_ccfs[:,j,i],fit_type = "gaussian")  for i in 1:length(order_list_timeseries), j in 1:size(order_ccfs,2) ]
   for i in 1:size(rvs_ccf_gauss,2)
     rvs_ccf_gauss[:,i] .-= mean(rvs_ccf_gauss[:,i])
@@ -51,7 +53,7 @@ if make_plots
      using Plots
     nbin = 4
     plt_t = (order_list_timeseries.times .- minimum(order_list_timeseries.times) )
-    times_binned = RvSpectML.bin_times(plt_t, nbin)
+    times_binned = RvSpectML.bin_times_nightly(plt_t)
     plt = plot()
     scatter!(plt,plt_t,rvs_ccf_gauss[:,1],label=:none)
     scatter!(plt,plt_t,rvs_ccf_gauss[:,5],label=:none)
@@ -69,7 +71,7 @@ if make_plots
     plt = plot()
     for i in order_idx
        rms = std(rvs_ccf_gauss[:,i])
-       rvs_binned = RvSpectML.bin_times(rvs_ccf_gauss[:,i], nbin)
+       rvs_binned = RvSpectML.bin_times_nightly(rvs_ccf_gauss[:,i], nbin)
        rms_binned = std(rvs_binned)
        println("  order = ", i, " RMS(order) = ", rms, "  RMS_binned = ", rms_binned)
        scatter!(plt,times_binned, rvs_binned,label=:none)

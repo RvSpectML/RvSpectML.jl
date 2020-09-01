@@ -24,7 +24,7 @@ num_spectra_to_use = 20
 df_files_use = df_files |>
   @filter( _.target == "Solar" ) |>
   @filter(bjd_first_good <= _.bjd < bjd_last_good) |>
-  @take(num_spectra_to_use) |>
+#  @take(num_spectra_to_use) |>
   DataFrame
 
 if verbose println("# Reading in FITS files.")  end

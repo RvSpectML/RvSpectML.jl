@@ -24,15 +24,22 @@ function make_manifest(data_path::String)
     df_files
 end
 
+function jd2mjd(jd::Real)
+    @assert jd > 2400000.5  # There's no EPRV data from that long ago!
+    mjd = jd - 2400000.5
+    return mjd
+end
+
+
 """Create Dict containing filename and default metadata from file."""
 function read_metadata(fn::String)
     dict1 = read_metadata_from_fits(fn,hdu=1,fields=metadata_symbols_default(EXPRES2D()),fields_str=metadata_strings_default(EXPRES2D()))
     global have_issued_expres_bjd_warning
     if !have_issued_expres_bjd_warning
-        @warn "Currently, bjd field contains julian date of geometric midpoint of exposure for EXPRES observations, and is NOT corrected to be at solar system barycenter."
+        @warn "Currently, bjd field contains modified julian date of geometric midpoint of exposure for EXPRES observations, and is NOT corrected to be at solar system barycenter.\n  We need to fix this at some point."
         have_issued_expres_bjd_warning = true
     end
-    dict1[:bjd] = datetime2julian(DateTime(dict1[:midpoint]))
+    dict1[:bjd] = jd2mjd(datetime2julian(DateTime(dict1[:midpoint])))
     dict1[:Filename] = fn
     dict2 = read_metadata_from_fits(fn,hdu=2,fields=metadata_hdu2_symbols_default(EXPRES2D()),fields_str=metadata_hdu2_strings_default(EXPRES2D()))
     dict = merge(dict1,dict2)

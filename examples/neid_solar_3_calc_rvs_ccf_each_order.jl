@@ -51,7 +51,7 @@ if make_plots
     using Plots
    nbin = 4
    plt_t = (order_list_timeseries.times .- minimum(order_list_timeseries.times) ) .* 24
-   times_binned = RvSpectML.bin_times(plt_t, nbin)
+   times_binned = RvSpectML.bin_times_consecutive(plt_t, nbin)
    plt = plot()
    plot!(plt,plt_t,rvs_ccf_gauss[:,1],label=:none)
    plot!(plt,plt_t,rvs_ccf_gauss[:,10],label=:none)
@@ -70,7 +70,7 @@ if make_plots
    plt = plot()
    for i in order_idx
       rms = std(rvs_ccf_gauss[:,i])
-      rvs_binned = RvSpectML.bin_times(rvs_ccf_gauss[:,i], nbin)
+      rvs_binned = RvSpectML.bin_rvs_consecutive(rvs_ccf_gauss[:,i], nbin)
       rms_binned = std(rvs_binned)
       println("  order = ", i, " RMS(order) = ", rms, "  RMS_binned = ", rms_binned)
       scatter!(plt,times_binned, rvs_binned,label=:none)

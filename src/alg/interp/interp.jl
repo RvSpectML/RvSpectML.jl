@@ -110,12 +110,17 @@ function interp_chunk_to_shifted_grid_sinc( chunk::AC, grid::AR, boost_factor::R
     return (flux=flux_out, var=var_out)
 end
 
-function interp_chunk_to_grid_sinc!( flux_out::AbstractArray{T1,1}, var_out::AbstractArray{T2,1}, chunk::AC, grid::AR ) where {
+function interp_chunk_to_grid_sinc!( flux_out::AbstractArray{T1,1}, var_out::AbstractArray{T2,1}, chunk::AC, grid::AR; Filter::AbstractVector = zeros(0) ) where {
     T1<:Real, T2<:Real, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
-    flux_out .= SincInterpolation.spectra_interpolate(grid,chunk.λ,chunk.flux)
-    var_out .= SincInterpolation.spectra_interpolate(grid,chunk.λ,chunk.var)
+    if length(Filter) >= 1
+        flux_out .= SincInterpolation.spectra_interpolate(grid,chunk.λ,chunk.flux,Filter=Filter)
+        var_out .= SincInterpolation.spectra_interpolate(grid,chunk.λ,chunk.var,Filter=Filter)
+    else
+        flux_out .= SincInterpolation.spectra_interpolate(grid,chunk.λ,chunk.flux)
+        var_out .= SincInterpolation.spectra_interpolate(grid,chunk.λ,chunk.var)
+    end
     return flux_out
 end
 
@@ -209,8 +214,8 @@ function pack_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Uni
        idx_start = 0
        for c in 1:length(chunk_grids)
            idx = (idx_start+1):(idx_start+length(chunk_grids[c]))
-           if verbose
-               flush(stdout);  println("t= ",t, " c= ",c," idx= ", idx, " size(flux)= ",size(flux_matrix))
+           if verbose && !issorted(timeseries.chunk_list[t].data[c].λ)
+               flush(stdout);  println("t= ",t, " c= ",c," idx= ", idx, " size(flux)= ",size(flux_matrix), " issorted(λ)=", issorted(timeseries.chunk_list[t].data[c].λ))
            end
            if alg == :Linear
                interp_chunk_to_grid_linear!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c])

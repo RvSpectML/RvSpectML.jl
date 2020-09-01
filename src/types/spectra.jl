@@ -91,8 +91,8 @@ function SpectralTimeSeriesCommonWavelengths(λ::A1, flux::A2, var::A3, chunk_ma
         metadata::MetadataT = MetadataT() ) where {
           T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,1}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2},
           A4<:AbstractArray{UnitRange{Int64},1}, InstT<:AbstractInstrument }
-          println("len(λ) = ", length(λ))
-          println("size(flux) = ", size(flux))
+    #println("len(λ) = ", length(λ))
+    #println("size(flux) = ", size(flux))
     @assert length(λ) == size(flux,1)
     @assert length(λ) == size(var,1)
     @assert 1 <= length(λ)

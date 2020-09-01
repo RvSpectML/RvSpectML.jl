@@ -43,5 +43,5 @@ metadata_strings_default(::AnyEXPRES) = String["MIDPOINT", "OBJECT", "AEXPTIME",
 metadata_hdu2_symbols_default(::AnyEXPRES) = Symbol[:Hα_indicator, :Hα_width, :ccf_width, :σ_ccf_width]
 metadata_hdu2_strings_default(::AnyEXPRES) = String["HALPHA", "HWIDTH", "CCFFWHM", "CCFFWHME"]
 
-import ..RvSpectML: default_ccf_v_width
-default_ccf_v_width(::AnyEXPRES) = 448.0   # TODO: Update value for EXPRES
+import ..RvSpectML: default_ccf_mask_v_width
+default_ccf_mask_v_width(::AnyEXPRES) = 448.0   # TODO: Update value for EXPRES

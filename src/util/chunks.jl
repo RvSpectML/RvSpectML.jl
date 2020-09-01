@@ -65,8 +65,8 @@ function make_grid_for_chunk(timeseries::ACLT, c::Integer; oversample_factor::Re
     # Create grid, so that chunks at all times include the grid's minimum and maximum wavelength.
     if remove_rv_est   @assert haskey(first(timeseries.metadata),:rv_est)   end
     boost_factor = [ remove_rv_est ? calc_doppler_factor(timeseries.metadata[t][:rv_est]) : 1 for t in 1:num_obs ]
-    λ_min = maximum(minimum(timeseries.chunk_list[t].data[c].λ)*boost_factor[t] for t in 1:num_obs)
-    λ_max = minimum(maximum(timeseries.chunk_list[t].data[c].λ)*boost_factor[t] for t in 1:num_obs)
+    λ_min = maximum(minimum(timeseries.chunk_list[t].data[c].λ)/boost_factor[t] for t in 1:num_obs)
+    λ_max = minimum(maximum(timeseries.chunk_list[t].data[c].λ)/boost_factor[t] for t in 1:num_obs)
     Δλ_grid_obs = mean(log(timeseries.chunk_list[t].data[c].λ[end]/
                            timeseries.chunk_list[t].data[c].λ[1]   )/
                          (length(timeseries.chunk_list[t].data[c].λ)-1) for t in 1:num_obs)
@@ -88,6 +88,16 @@ function make_grid_for_chunk(timeseries::ACLT, c::Integer; oversample_factor::Re
         Δλ_grid_gen = (λ_max-λ_min)/ (num_pixels_gen-1)
         return range(λ_min,stop=λ_max,step=Δλ_grid_gen)
     end
+end
+
+""" Return a ChunkList of best regions of spectrum with lines in line_line.
+    line_list is a DataFrame containing :lambda_lo and :lambda_hi.
+    Pads edges by Δ.
+"""
+function make_chunk_list(spectra::AS, line_list::DataFrame; Δ::Real=Δλoλ_edge_pad_default) where { AS<:AbstractSpectra }
+    @assert hasproperty(line_list,:lambda_lo)
+    @assert hasproperty(line_list,:lambda_hi)
+    ChunkList(map(row->ChuckOfSpectrum(spectra,find_line_best(row.lambda_lo,row.lambda_hi,spectra,Δ=Δ)), eachrow(line_list) ))
 end
 
 function make_chunk_list_timeseries(spectra::AS,chunk_list_df::DataFrame) where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} }
@@ -240,6 +250,10 @@ function find_line_best(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,2}
 end
 
 function find_line_best(goal::Real,lambda::AbstractArray{T1,1},flux::AbstractArray{T2,1},var::AbstractArray{T3,1}; Δ::Real = Δλoλ_fit_line_default) where {T1<:Real, T2<:Real, T3<:Real}
+    cols = find_cols_to_fit(lambda,goal, Δ=Δ)
+    @assert(!any(isnan.(var[cols])))
+    return cols
+    #=
     locs = findall_line(goal,lambda,var,Δ=Δ)
     if length(locs) == 0   return  missing end
     #scores = map( t->sum( flux[t[1],t[2]] ./ var[t[1],t[2]])/sum( 1.0 ./ var[t[1],t[2]]), locs)
@@ -247,9 +261,15 @@ function find_line_best(goal::Real,lambda::AbstractArray{T1,1},flux::AbstractArr
     scores = map( t->calc_snr(flux[t[1],t[2]],var[t[1],t[2]]), locs)
     idx_best = findmax(scores)
     locs[idx_best[2]]
+    =#
 end
 
 function find_line_best(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,1},flux::AbstractArray{T2,1},var::AbstractArray{T3,1}; Δ::Real = Δλoλ_edge_pad_default) where {T1<:Real, T2<:Real, T3<:Real}
+    cols = find_cols_to_fit(lambda,goal_lo, goal_hi, Δ=Δ)
+    @assert(!any(isnan.(var[cols])))
+
+    return cols
+    #=
     locs = findall_line(goal_lo,goal_hi,lambda,var,Δ=Δ)
     if length(locs) == 0
         println("=>(",goal_lo, ", ",goal_hi, ")  Δ=",Δ)
@@ -260,6 +280,7 @@ function find_line_best(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,1}
     scores = map( t->calc_snr(flux[t],var[t]), locs)
     idx_best = findmax(scores)
     locs[idx_best[2]]
+    =#
 end
 
 function find_line_best(goal::Real,spectra::AS; Δ::Real = Δλoλ_fit_line_default) where {AS<:AbstractSpectra}
@@ -271,22 +292,6 @@ function find_line_best(goal_lo::Real,goal_hi::Real,spectra::AS; Δ::Real = Δλ
 end
 
 # Manipulation data in chunks of spectrua
-
-#=
-function make_chunk_list(spectra::AS, line_list::AA; Δ::Real=Δλoλ_fit_line_default) where { AS<:AbstractSpectra, R<:Real, AA<:AbstractArray{R,1} }
-   ChunkList(map(l->ChuckOfSpectrum(spectra,find_line_best(l,spectra,Δ=Δ)), line_list) )
-end
-=#
-
-""" Return a ChunkList of best regions of spectrum with lines in line_line.
-    line_list is a DataFrame containing :lambda_lo and :lambda_hi.
-    Pads edges by Δ.
-"""
-function make_chunk_list(spectra::AS, line_list::DataFrame; Δ::Real=Δλoλ_edge_pad_default) where { AS<:AbstractSpectra }
-    @assert hasproperty(line_list,:lambda_lo)
-    @assert hasproperty(line_list,:lambda_hi)
-    ChunkList(map(row->ChuckOfSpectrum(spectra,find_line_best(row.lambda_lo,row.lambda_hi,spectra,Δ=Δ)), eachrow(line_list) ))
-end
 
 """ Return (chunk_timeseries, line_list) that have been trimmed of any chunks that are bad based on any spectra in the chunk_timeseries.
     chunk_timeseries: ChunkListTimeseries

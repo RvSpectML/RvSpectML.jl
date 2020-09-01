@@ -10,7 +10,7 @@ make_plots_orig_4 = isdefined(Main,:make_plots) ? make_plots : true
 # Set parameters for this analysis
 oversample_fac_chunks = 2
  oversample_fac_orders = 1
- num_spectra_to_bin = 4   # 1 results in no binning in time
+ num_spectra_to_bin = 1   # 1 results in no binning in time
  idx_chunk_min = 20
  idx_chunk_max = 21
  plt_order = 42

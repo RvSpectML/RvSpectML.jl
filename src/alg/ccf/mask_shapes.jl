@@ -23,7 +23,7 @@ end
 
 """ TopHatCCFMask( inst  ) """
 function TopHatCCFMask(inst::AbstractInstrument; scale_factor::Real = 1)
-    w = scale_factor * RvSpectML.default_ccf_v_width(inst)
+    w = scale_factor * RvSpectML.default_ccf_mask_v_width(inst)
     TopHatCCFMask(w/2)
 end
 

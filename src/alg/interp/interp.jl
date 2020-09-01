@@ -39,8 +39,10 @@ function interp_chunk_to_shifted_grid_linear!( flux_out::AbstractArray{T1,1}, va
     T1<:Real, T2<:Real, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
-    lin_interp_flux = extrapolate(LinearInterpolation.make_interpolator_linear_flux(chunk))
-    lin_interp_var = extrapolat(LinearInterpolation.make_interpolator_linear_var(chunk))
+    lin_interp_flux = #LinearInterpolation.extrapolate(
+        LinearInterpolation.make_interpolator_linear_flux(chunk) #, Flat() )
+    lin_interp_var = #LinearInterpolation.extrapolate(
+        LinearInterpolation.make_interpolator_linear_var(chunk)  #, Flat() )
     flux_out .= lin_interp_flux(grid.*boost_factor)
     var_out .= lin_interp_var(grid.*boost_factor)
     return flux_out

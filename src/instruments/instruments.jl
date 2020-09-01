@@ -46,4 +46,4 @@ export HARPSN, HARPSN1D, HARPSN2D, AnyHARPSN
 export min_order, max_order, min_pixel_in_order, max_pixel_in_order, min_col_default, max_col_default
 export orders_all, pixels_all, max_pixels_in_spectra       # generic implementations avaliable
 export metadata_symbols_default, metadata_strings_default  # need to specialize
-export default_ccf_v_width
+export default_ccf_mask_v_width

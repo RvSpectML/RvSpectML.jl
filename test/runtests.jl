@@ -3,6 +3,6 @@ using Test
 
 @testset "RvSpectML.jl" begin
     include("util.jl")
-    include("alg/interp.jl")
-    include("instruments/neid.jl")
+    include("instruments/instruments.jl")
+    include("alg/alg.jl")
 end

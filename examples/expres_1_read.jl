@@ -13,8 +13,11 @@ expres_data_path = "."
 
  # TODO: USER:  Either the paths that specify where datafiles are stored here or in examples/data_paths.jl
  if verbose   println("# Creating manifest of files to process.")    end
- if isfile("data_paths.jl"))
-      include("data_paths.jl"))
+ if isdir("examples")
+    cd("examples")
+ end
+ if isfile("data_paths.jl")
+      include("data_paths.jl")
  end
  expres_data_path
 

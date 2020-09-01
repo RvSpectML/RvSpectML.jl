@@ -28,5 +28,5 @@ import ..RvSpectML: metadata_symbols_default, metadata_strings_default
 metadata_symbols_default(::AnyNEID) = Symbol[:bjd, :target, :ssbz]
 metadata_strings_default(::AnyNEID) = String["OBSJD", "SKY-OBJ", "SSBZ000"]
 
-import ..RvSpectML: default_ccf_v_width
-default_ccf_v_width(::AnyNEID) = 620.953
+import ..RvSpectML: default_ccf_mask_v_width
+default_ccf_mask_v_width(::AnyNEID) = 620.953

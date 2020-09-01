@@ -17,7 +17,8 @@ include("calc_rv/ccf_std.jl")
 export measure_rv_from_ccf
 
 include("calc_rv/project_flux.jl")
-export calc_mean_spectrum, calc_dfluxdlnlambda, calc_mean_dfluxdlnlambda
+export calc_dfluxdlnlambda, calc_d2fluxdlnlambda2
+export calc_mean_spectrum, calc_mean_dfluxdlnlambda, calc_mean_d2fluxdlnlambda2
 export calc_rvs_from_taylor_expansion, calc_chunk_rvs_from_taylor_expansion
 export compute_spectra_perp_doppler_shift
 

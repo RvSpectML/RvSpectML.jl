@@ -21,7 +21,7 @@ include("traits.jl")
 export min_order, max_order, min_pixel_in_order, max_pixel_in_order
 export orders_to_use_default, min_col_default, max_col_default
 export metadata_symbols_default, metadata_strings_default
-export default_ccf_v_width
+export default_ccf_mask_v_width
 
 include("io.jl")
 export make_manifest, read_data

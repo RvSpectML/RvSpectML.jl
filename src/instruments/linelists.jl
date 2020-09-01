@@ -27,7 +27,7 @@ function read_linelist_vald(fn::String) # ; calcΔ::CCWT = default_calc_chunk_wi
     local df = CSV.read(fn,DataFrame,threaded=false,header=["lambda_lo","lambda_hi","depth"])
     @assert hasproperty(df, :lambda_lo)
     @assert hasproperty(df, :lambda_hi)
-    @assert hasproperty(df, :weight)
+    @assert hasproperty(df, :depth)
     df[!,:lambda_lo] .= λ_air_to_vac.(df[!,:lambda_lo])
     df[!,:lambda_hi] .= λ_air_to_vac.(df[!,:lambda_hi])
     df[!,:lambda] = sqrt.(df[!,:lambda_lo].*df[!,:lambda_hi])

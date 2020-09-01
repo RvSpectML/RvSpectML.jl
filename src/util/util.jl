@@ -24,8 +24,8 @@ calc_doppler_factor(rv::Real, v_perp::Real) = (one(rv) + rv/speed_of_light_mps)/
 
 Return a Gaussian absorption line profile evaluated at x.
 """
-function absorption_line(x::T; mid=zero(T), width=one(T), depth=one(T)) where T<:AbstractFloat
-    return one(T) - depth * exp(-((x-mid)/width)^2.0/2.0)
+function absorption_line(x::T; mid=zero(T), width=one(T), depth=one(T)) where T<:Real
+    return one(T) - depth * exp(-0.5*((x-mid)/width)^2)
 end
 
 """
@@ -40,18 +40,23 @@ end
 
 
 """
-   searchsortednearest(a<:AbstractVector, x::Real)
-   searchsortednearest(a<:AbstractVector, x<:AbstractVector)
+   searchsortednearest(a<:AbstractVector, x::Real; assume_sorted = false )
+   searchsortednearest(a<:AbstractVector, x<:AbstractVector; assume_sorted = false )
 
    Find the index of vector a where the value of a is closest to x.
-   All vecotrs are assumed to already be sorted.
+   All vectors are assumed to already be sorted.  
+   To turn off assertions, set assume_sorted to true.
 
 Credit: traktofon @ https://discourse.julialang.org/t/findnearest-function/4143/4
 Vector Vector version by Christian Gilbertson?
+issorted assertion and optional assume_sorted added by Eric Ford
 """
 function searchsortednearest end
 
-function searchsortednearest(a::AbstractVector{T} where T<:Real, x::Real )
+function searchsortednearest(a::AbstractVector{T} where T<:Real, x::Real ; assume_sorted::Bool = false)
+   if !assume_sorted
+	   @assert issorted(a)
+   end
    idx = searchsortedfirst(a,x)
    if (idx==1); return idx; end
    if (idx>length(a)); return length(a); end
@@ -64,12 +69,16 @@ function searchsortednearest(a::AbstractVector{T} where T<:Real, x::Real )
    end
 end
 
-function searchsortednearest(x::T, a::AbstractVector{T}) where T
+function searchsortednearest(x::T, a::AbstractVector{T}; assume_sorted::Bool = false) where T
     @warn "Did you mean to reverse the order of x and a?"
-    return searchsortednearest(a, x)
+    return searchsortednearest(a, x, assume_sorted=assume_sorted)
 end
 
-function searchsortednearest(a::AbstractVector{T1}, x::AbstractVector{T2}) where { T1, T2 }
+function searchsortednearest(a::AbstractVector{T1}, x::AbstractVector{T2}; assume_sorted::Bool = false) where { T1, T2 }
+   if !assume_sorted
+	   @assert issorted(a)
+   	   @assert issorted(x)
+   end
    len_x = length(x)
    len_a = length(a)
    idxs = zeros(Int64, len_x)
@@ -128,11 +137,11 @@ function _findminmax(a, ::Colon)
         valmin != valmin && break
 		valmax != valmax && break
         (i, ai), s = y
-        if ai != ai || isless(valmin, ai)
+        if ai != ai || isless(ai, valmin)
             valmin = ai
             argmin = i
         end
-		if ai != ai || isless(ai, valmax)
+		if ai != ai || isless(valmax, ai)
 			valmax = ai
 			argmax = i
 		end

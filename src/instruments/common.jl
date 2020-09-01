@@ -15,7 +15,7 @@ function max_col_default end
 function metadata_symbols_default end
 function metadata_strings_default end
 
-function default_ccf_v_width end
+function default_ccf_mask_v_width end
 
 # Trait-based functions that provide defaults (can be overwritten by instrument-specific versions)
 orders_all(inst::AbstractInstrument2D) = min_order(inst):max_order(inst)

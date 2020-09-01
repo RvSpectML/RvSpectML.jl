@@ -11,8 +11,8 @@ using ..RvSpectML
 using DataFrames # , FITSIO
 
 
-default_theoretical_instrument_resolution = 100000
-default_theoretical_instrument_λ_min = 5000.0
+default_theoretical_instrument_resolution = 137500
+default_theoretical_instrument_λ_min = 4700.0
 default_theoretical_instrument_λ_max = 6000.0
 
 """ Trait for 1D spectra from a theoretical instrument """
@@ -60,7 +60,7 @@ include("traits.jl")
 export min_order, max_order, min_pixel_in_order, max_pixel_in_order
 export orders_to_use_default, min_col_default, max_col_default
 export metadata_symbols_default, metadata_strings_default
-export default_ccf_v_width
+export default_ccf_mask_v_width
 
 # Need to think about what to do for IO, if anything.
 #include("io.jl")

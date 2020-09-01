@@ -9,10 +9,13 @@ using DataFrames, Query
 
 # TODO: USER:  Either the paths that specify where datafiles are stored here or in examples/data_paths.jl
 if verbose   println("# Creating manifest of files to process.")    end
+if isdir("examples")
+   cd("examples")
+end
 solar_data_path = "20190918"
 ancilary_solar_data_path = "."
- if isfile("data_paths.jl"))
-    include("data_paths.jl"))
+ if isfile("data_paths.jl")
+    include("data_paths.jl")
  end
  solar_data_path
 

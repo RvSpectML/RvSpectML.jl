@@ -13,8 +13,8 @@ expres_data_path = "."
 
  # TODO: USER:  Either the paths that specify where datafiles are stored here or in examples/data_paths.jl
  if verbose   println("# Creating manifest of files to process.")    end
- if isfile(joinpath(pkgdir(RvSpectML),"examples","data_paths.jl"))
-      include(joinpath(pkgdir(RvSpectML),"examples","data_paths.jl"))
+ if isfile("data_paths.jl"))
+      include("data_paths.jl"))
  end
  expres_data_path
 

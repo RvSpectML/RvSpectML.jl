@@ -19,7 +19,7 @@ Order = [:module]
 
 ### Instrument-specific Modules
 ```@autodocs
-Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID  ]
+Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID, RvSpectML.TheoreticalInstrument  ]
 Order = [:module]
 ```
 
@@ -49,7 +49,7 @@ Order = [:function ]
 
 ### Instrument-specific
 ```@autodocs
-Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID  ]
+Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID, RvSpectML.TheoreticalInstrument  ]
 Private = false
 Order = [:function]
 ```
@@ -71,7 +71,7 @@ Order = [:type]
 
 ### Instrument specific
 ```@autodocs
-Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID  ]
+Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID, RvSpectML.TheoreticalInstrument  ]
 Private = false
 Order = [:type]
 ```
@@ -92,7 +92,7 @@ Order = [:type, :function]
 
 ### Instrument specific
 ```@autodocs
-Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID  ]
+Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID, RvSpectML.TheoreticalInstrument  ]
 Public = false
 Order = [:type, :function]
 ```

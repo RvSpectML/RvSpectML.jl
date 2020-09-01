@@ -81,7 +81,7 @@ if make_plots
     plt = plot()
     for i in order_idx
        rms = std(rvs_ccf_gauss[:,i])
-       rvs_binned = RvSpectML.bin_times_nightly(rvs_ccf_gauss[:,i], nbin)
+       rvs_binned = RvSpectML.bin_rvs_nightly(times=order_list_timeseries.times,rvs=rvs_ccf_gauss[:,i])
        rms_binned = std(rvs_binned)
        println("  order = ", i, " RMS(order) = ", rms, "  RMS_binned = ", rms_binned)
        scatter!(plt,times_binned, rvs_binned,label=:none)

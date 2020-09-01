@@ -17,13 +17,6 @@ function read_linelist_espresso(fn::String) #; calcΔ::CCWT = default_calc_chunk
     @assert hasproperty(df, :lambda)
     @assert hasproperty(df, :weight)
     df[!,:lambda] .= λ_air_to_vac.(df[!,:lambda])
-    #=
-    local Δ = calcΔ.(df[!,:lambda])
-    @assert all(Δ.>0)
-    df[!,:lambda_lo] = df[!,:lambda]./(1 .+ Δ)
-    df[!,:lambda_hi] = df[!,:lambda].*(1 .+ Δ)
-    df[!,:depth] = df[!,:weight]  # TODO: Decide out what we want to do about tracking depths and weights sepoarately
-    =#
     return df
 end
 
@@ -38,12 +31,6 @@ function read_linelist_vald(fn::String) # ; calcΔ::CCWT = default_calc_chunk_wi
     df[!,:lambda_lo] .= λ_air_to_vac.(df[!,:lambda_lo])
     df[!,:lambda_hi] .= λ_air_to_vac.(df[!,:lambda_hi])
     df[!,:lambda] = sqrt.(df[!,:lambda_lo].*df[!,:lambda_hi])
-    #=
-    local Δ = calcΔ.(df[!,:lambda])
-    @assert all(Δ.>0)
-    df[!,:lambda_lo] = df[!,:lambda]./(1 .+ Δ)
-    df[!,:lambda_hi] = df[!,:lambda].*(1 .+ Δ)
-    =#
     df[!,:weight] = df[!,:depth] # TODO: Decide out what we want to do about tracking depths and weights sepoarately
     return df
 end

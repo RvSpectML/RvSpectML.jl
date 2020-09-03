@@ -6,6 +6,50 @@ Created: August 2020
 Contact: https://github.com/eford/
 """
 
+""" make_template_spectra( chunk_list_timeseries, [ options ] )
+Combine portions of spectra in a ChunkListTimeseries into a template stored as a SpectralTimeSeriesCommonWavelengths.
+Optionally remove radial velocities before combining spectra based on the :rv_est field in metadata.
+# Inputs:
+- chunk_list_timeseries
+# Optional Parametes:
+- remove_rv_est (true)
+- oversample_factor (1)
+- smooth_factor (1)
+- alg (:TemporalGP)
+# Outputs
+- matrix:  timeseries interpolated to each wavelength in the form of a SpectralTimeSeriesCommonWavelengths
+- f_mean:  mean flux
+- var_mean: variance of mean flux (WARNING: Not computed accurately yet)
+- deriv:  dflux/dlnλ averaged over spectra
+- deriv2: d²flux/dlnλ² averaged over spectra
+"""
+function make_template_spectra( chunk_list_timeseries::ACLT; remove_rv_est::Bool = true, oversample_factor::Real = 1, smooth_factor::Real = 1, alg::Symbol = :TemporalGP ) where { ACLT<:AbstractChunkListTimeseries }
+    if remove_rv_est
+        @assert all(map(md->haskey(md,:rv_est), chunk_list_timeseries.metadata))
+    end
+    chunk_λ_grids = map(c->RvSpectML.make_grid_for_chunk(chunk_list_timeseries,c,oversample_factor=oversample_factor, remove_rv_est=remove_rv_est), 1:num_chunks(chunk_list_timeseries) )
+    local matrix, f_mean, var_mean, deriv, deriv2
+    if remove_rv_est
+        if alg == :TemporalGP
+            ( matrix, f_mean, var_mean, deriv, deriv2 )  = RvSpectML.pack_shifted_chunk_list_timeseries_to_matrix(chunk_list_timeseries,chunk_λ_grids, alg=alg, smooth_factor=smooth_factor )
+        else
+            if smooth_factor != one(smooth_factor)   @warn "Interpolation algorithm selected does not currently support smoothing."   end
+            ( matrix, f_mean, var_mean, deriv, deriv2 )  = RvSpectML.pack_shifted_chunk_list_timeseries_to_matrix(chunk_list_timeseries,chunk_λ_grids, alg=alg, smooth_factor=smooth_factor )
+        end
+    else
+        if alg == :TemporalGP
+            ( matrix, f_mean, var_mean, deriv, deriv2 )  = RvSpectML.pack_chunk_list_timeseries_to_matrix(chunk_list_timeseries,chunk_λ_grids, alg=alg, smooth_factor=smooth_factor )
+        else
+            if smooth_factor != one(smooth_factor)   @warn "Interpolation algorithm selected does not currently support smoothing."   end
+            ( matrix, f_mean, var_mean, deriv, deriv2 )  = RvSpectML.pack_chunk_list_timeseries_to_matrix(chunk_list_timeseries,chunk_λ_grids, alg=alg, smooth_factor=smooth_factor )
+        end
+    end
+    return ( matrix, f_mean, var_mean, deriv, deriv2 )
+end
+
+
+
+
 """   bin_times_consecutive( times, n )
 Computes mean times from conseuctive bins of n times (to go with bin_consecutive_spectra).
 Returns floor(length(times)/n) elements.

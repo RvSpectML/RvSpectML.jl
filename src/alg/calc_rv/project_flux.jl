@@ -16,9 +16,9 @@ function calc_dfluxdlnlambda(flux::AbstractArray{T1,1}, λ::AbstractArray{T2,1})
     @assert size(flux) == size(λ)
     @assert length(flux) >= 3
     dfdlogλ = Array{T1,1}(undef,length(flux))
-    dfdlogλ[1] = (flux[2]-flux[1])/(λ[2]-λ[1])*(λ[2]+λ[1])
-    dfdlogλ[2:end-1] .= 0.5*(flux[3:end].-flux[1:end-2])./(λ[3:end].-λ[1:end-2]).*(λ[3:end].+λ[1:end-2])
-    dfdlogλ[end] = (flux[end]-flux[end-1])/(λ[end]-λ[end-1])*(λ[end]+λ[end-1])
+    dfdlogλ[1] = 0.5 * (flux[2]-flux[1])/(λ[2]-λ[1])*(λ[2]+λ[1])
+    dfdlogλ[2:end-1] .= 0.5 .* (flux[3:end].-flux[1:end-2])./(λ[3:end].-λ[1:end-2]).*(λ[3:end].+λ[1:end-2])
+    dfdlogλ[end] = 0.5 * (flux[end]-flux[end-1])/(λ[end]-λ[end-1])*(λ[end]+λ[end-1])
     return dfdlogλ
 end
 
@@ -29,7 +29,7 @@ function calc_d2fluxdlnlambda2(flux::AbstractArray{T1,1}, λ::AbstractArray{T2,1
     logλ = log.(λ)
     d2fdlogλ2 = Array{T1,1}(undef,length(flux))
     #d2fdlogλ2[2:end-1] .= 0.25*(flux[3:end].+flux[1:end-2].-2.0.*flux[2:end-1])./(λ[3:end].+λ[1:end-2].-2.0*λ[2:end-1]).*(λ[3:end].+λ[end-2]).^2
-    d2fdlogλ2[2:end-1] .= 0.25*(flux[3:end].+flux[1:end-2].-2.0.*flux[2:end-1])./(logλ[3:end].+logλ[1:end-2].-2.0*logλ[2:end-1])
+    d2fdlogλ2[2:end-1] .= 0.5 * (flux[3:end].+flux[1:end-2].-2.0.*flux[2:end-1]).* ((λ[3:end].+λ[1:end-2])./(logλ[3:end].-logλ[1:end-2])).^2 
     d2fdlogλ2[end] = d2fdlogλ2[end-1]
     d2fdlogλ2[1] = d2fdlogλ2[2]
     return d2fdlogλ2
@@ -79,7 +79,7 @@ function calc_rvs_from_taylor_expansion(spectra::STS; mean::MT = calc_mean_spect
       rv = sum((spectra.flux[idx,:].-mean[idx]).*deriv[idx]./spectra.var[idx,:],dims=1).*(speed_of_light_mps/norm)
       σ_rv = sqrt.(sum(abs2.(deriv)./spectra.var[idx,:],dims=1)).*(speed_of_light_mps/norm)
    end
-   return (rv=vec(rv), σ_rv=vec(σ_rv))
+   return (rv=-vec(rv), σ_rv=vec(σ_rv))
 end
 
 function calc_rvs_from_taylor_expansion_alt(spectra::STS; mean::MT = calc_mean_spectrum(spectra),
@@ -109,7 +109,7 @@ function calc_rvs_from_taylor_expansion_alt(spectra::STS; mean::MT = calc_mean_s
       rv = sum((spectra.flux[idx,:].-mean[idx]).*deriv[idx]./spectra.var[idx,:],dims=1).*(speed_of_light_mps/norm)
       σ_rv = sqrt.(sum(abs2.(deriv)./spectra.var[idx,:],dims=1)).*(speed_of_light_mps/norm)
    end
-   return (rv=vec(rv), σ_rv=vec(σ_rv))
+   return (rv=-vec(rv), σ_rv=vec(σ_rv))
 end
 
 

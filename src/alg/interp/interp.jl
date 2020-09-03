@@ -50,8 +50,8 @@ function interp_chunk_to_shifted_grid_linear!( flux_out::AbstractArray{T1,1}, va
         LinearInterpolation.make_interpolator_linear_flux(chunk) #, Flat() )
     lin_interp_var = #LinearInterpolation.extrapolate(
         LinearInterpolation.make_interpolator_linear_var(chunk)  #, Flat() )
-    flux_out .= lin_interp_flux(grid.*boost_factor)
-    var_out .= lin_interp_var(grid.*boost_factor)
+    flux_out .= lin_interp_flux(grid./boost_factor)
+    var_out .= lin_interp_var(grid./boost_factor)
     return flux_out
 end
 
@@ -99,11 +99,11 @@ function interp_chunk_to_shifted_grid_sinc!( flux_out::AbstractArray{T1,1}, var_
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
     if length(Filter) >= 1
-        flux_out .= SincInterpolation.spectra_interpolate(grid.* boost_factor,chunk.λ,chunk.flux, Filter=Filter)
-        var_out .= SincInterpolation.spectra_interpolate(grid.*boost_factor,chunk.λ ,chunk.var, Filter=Filter)
+        flux_out .= SincInterpolation.spectra_interpolate(grid./ boost_factor,chunk.λ,chunk.flux, Filter=Filter)
+        var_out .= SincInterpolation.spectra_interpolate(grid./ boost_factor,chunk.λ ,chunk.var, Filter=Filter)
     else
-        flux_out .= SincInterpolation.spectra_interpolate(grid.* boost_factor,chunk.λ ,chunk.flux)
-        var_out .= SincInterpolation.spectra_interpolate(grid .* boost_factor,chunk.λ,chunk.var)
+        flux_out .= SincInterpolation.spectra_interpolate(grid./ boost_factor,chunk.λ ,chunk.flux)
+        var_out .= SincInterpolation.spectra_interpolate(grid ./ boost_factor,chunk.λ,chunk.var)
     end
     return flux_out
 end
@@ -164,7 +164,7 @@ function interp_chunk_to_shifted_grid_gp!( flux_out::AA1, var_out::AA2, chunk::A
     rho = 2*5000/speed_of_light_mps * mean(chunk.λ)
     sigmasq_kernel = 0.25 # Float64(mean(chunk.var))
     println(" rho = ", rho, "  σ²_kernel = ", sigmasq_kernel)
-    flux_out .= GPInterpolation.predict_mean(chunk.λ.*boost_factor, chunk.flux, grid, sigmasq_obs = chunk.var, kernel = GPs.matern52_sparse_kernel, rho=rho, sigmasq_cor=sigmasq_kernel ) # 	sigmasq_cor=1.0, rho=1
+    flux_out .= GPInterpolation.predict_mean(chunk.λ./boost_factor, chunk.flux, grid, sigmasq_obs = chunk.var, kernel = GPs.matern52_sparse_kernel, rho=rho, sigmasq_cor=sigmasq_kernel ) # 	sigmasq_cor=1.0, rho=1
     # TODO: Update var_out to actually use the right GP or at least do something more sensible
     #var_out .= GPInterpolation.predict_mean(chunk.λ, chunk.var, grid, sigmasq_obs = chunk.var, kernel = GPs.matern52_sparse_kernel, rho=5000/speed_of_light_mps) # 	sigmasq_cor=1.0, rho=1
     return flux_out
@@ -192,40 +192,41 @@ end
 function interp_chunk_to_grid_gp( chunk::AC, grid::AR ) where {  AC<:AbstractChuckOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     flux_out = Array{Float64,1}(undef,length(grid))
     var_out = Array{Float64,1}(undef,length(grid))
-    interp_chunk_to_grid_gp!(flux_out, var_out, chunk, grid)
+    interp_chunk_to_grid_gp!(flux_out, var_out, chunk, grid, )
     return (flux=flux_out, var=var_out)
 end
 
 
 
 
-function interp_chunk_to_shifted_grid_gp_temporal!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR, boost_factor::Real; smooth_factor::Real=1 ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_shifted_grid_gp_temporal!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR, boost_factor::Real; use_logx::Bool = true,  use_logy::Bool = false, smooth_factor::Real=1 ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
-    flux_out .= TemporalGPInterpolation.predict_mean(chunk.λ.*boost_factor, chunk.flux, grid, sigmasq_obs = chunk.var, smooth_factor=smooth_factor )
+    flux_out .= TemporalGPInterpolation.predict_mean(chunk.λ./boost_factor, chunk.flux, grid, sigmasq_obs = chunk.var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
     # TODO: Update var_out to actually use the right GP or at least do something more sensible
-    var_out .= TemporalGPInterpolation.predict_mean(chunk.λ.*boost_factor, chunk.var, grid, sigmasq_obs = chunk.var, smooth_factor=smooth_factor )
+    var_out .= TemporalGPInterpolation.predict_mean(chunk.λ./boost_factor, chunk.var, grid, sigmasq_obs = chunk.var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
     return flux_out
 end
 
-function interp_chunk_to_shifted_grid_gp_temporal( chunk::AC, grid::AR, boost_factor::Real; smooth_factor::Real=1 ) where {  AC<:AbstractChuckOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_shifted_grid_gp_temporal( chunk::AC, grid::AR, boost_factor::Real; use_logx::Bool = true,  use_logy::Bool = false,smooth_factor::Real=1 ) where {  AC<:AbstractChuckOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     flux_out = Array{Float64,1}(undef,length(grid))
     var_out = Array{Float64,1}(undef,length(grid))
-    interp_chunk_to_grid_gp!(flux_out, var_out, chunk, grid, boost_factor=boost_factor)
+    interp_chunk_to_grid_gp!(flux_out, var_out, chunk, grid, boost_factor=boost_factor, smooth_factor=smooth_factor)
     return (flux=flux_out, var=var_out)
 end
 
-function interp_chunk_to_grid_gp_temporal!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR ; use_logx::Bool = true,  use_logy::Bool = true, smooth_factor::Real=1 ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+
+function interp_chunk_to_grid_gp_temporal!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR ; use_logx::Bool = true,  use_logy::Bool = false, smooth_factor::Real=1 ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
     flux_out .= TemporalGPInterpolation.predict_mean(chunk.λ, chunk.flux, grid, sigmasq_obs = chunk.var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
     # TODO: Update var_out to actually use the right GP or at least do something more sensible
     var_out .= flux_out
-    var_out .= TemporalGPInterpolation.predict_mean(chunk.λ, chunk.var, grid, sigmasq_obs = chunk.var, smooth_factor=smooth_factor )
+    var_out .= TemporalGPInterpolation.predict_mean(chunk.λ, chunk.var, grid, sigmasq_obs = chunk.var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
     return flux_out
 end
 
-function interp_chunk_to_grid_gp_temporal( chunk::AC, grid::AR ; use_logx::Bool = true,  use_logy::Bool = true, smooth_factor::Real=1 ) where {  AC<:AbstractChuckOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_grid_gp_temporal( chunk::AC, grid::AR ; use_logx::Bool = true,  use_logy::Bool = false, smooth_factor::Real=1 ) where {  AC<:AbstractChuckOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     flux_out = Array{Float64,1}(undef,length(grid))
     var_out = Array{Float64,1}(undef,length(grid))
     interp_chunk_to_grid_gp!(flux_out, var_out, chunk, grid, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor)
@@ -307,8 +308,11 @@ function pack_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Uni
         #dmeanfluxdlnλ[idx] .= calc_dfluxdlnlambda(vec(sum(view(flux_matrix,idx,:),dims=2)),vec(sum(view(var_matrix,idx,:), dims=2)) ) ./mean_flux_in_chunk
         mean_flux[idx] ./= mean_flux_in_chunk
         mean_var[idx] ./= mean_flux_in_chunk
-        dfluxdlnλ[idx] ./= mean_flux_in_chunk
-        d2fluxdlnλ2[idx] ./= mean_flux_in_chunk
+        #dfluxdlnλ[idx] ./= mean_flux_in_chunk
+        #d2fluxdlnλ2[idx] ./= mean_flux_in_chunk
+        dfluxdlnλ[idx] .= calc_dfluxdlnlambda(mean_flux[idx],view(λ_vec,idx))
+        d2fluxdlnλ2[idx] .= calc_d2fluxdlnlambda2(mean_flux[idx],view(λ_vec,idx))
+
         #dmeanfluxdlnλ[idx] .= calc_dfluxdlnlambda(vec(sum(view(flux_matrix,idx,:),dims=2)),view(λ_vec,idx))  ./mean_flux_in_chunk
         idx_start += length(chunk_grids[c])
     end
@@ -403,14 +407,15 @@ function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_gr
         #println("Normalizing chunk ", c, " (",idx,") by ", mean_flux_in_chunk)
         #dmeanfluxdlnλ[idx] .= calc_dfluxdlnlambda(vec(sum(view(flux_matrix,idx,:),dims=2)),vec(sum(view(var_matrix,idx,:), dims=2)) ) ./mean_flux_in_chunk
         #sum_in_chunk = vec(sum(view(flux_matrix,idx,:),dims=2))
-        #dfluxdlnλ[idx] .= calc_dfluxdlnlambda(sum_in_chunk,view(λ_vec,idx))  ./mean_flux_in_chunk
-        #d2fluxdlnλ2[idx] .= calc_d2fluxdlnlambda2(sum_in_chunk,view(λ_vec,idx))  ./mean_flux_in_chunk
         mean_flux[idx] ./= mean_flux_in_chunk
         mean_var[idx] ./= mean_flux_in_chunk
-        dfluxdlnλ[idx] ./= mean_flux_in_chunk
-        d2fluxdlnλ2[idx] ./= mean_flux_in_chunk
+        #dfluxdlnλ[idx] ./= mean_flux_in_chunk
+        #d2fluxdlnλ2[idx] ./= mean_flux_in_chunk
+        dfluxdlnλ[idx] .= calc_dfluxdlnlambda(mean_flux[idx],view(λ_vec,idx))
+        d2fluxdlnλ2[idx] .= calc_d2fluxdlnlambda2(mean_flux[idx],view(λ_vec,idx))
         idx_start += length(chunk_grids[c])
     end
+
     #println("# mean flux post-normalize = ", mean(mean_flux))
     #flush(stdout)
     #mean_flux /= num_obs

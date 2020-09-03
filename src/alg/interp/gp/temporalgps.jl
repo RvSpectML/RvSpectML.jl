@@ -29,7 +29,9 @@ const Fx_PosteriorType = Distribution{Multivariate,Continuous}
 function construct_gp(; smooth_factor::Real = 1 ) #xobs::AA1, yobs::AA2, xpred::AA3; #= kernel::Function = matern52_sparse_kernel, =# sigmasq_obs::AA4 = 1e-16*ones(length(xobs)) #=, sigmasq_cor::Real=1.0, rho::Real=1.0)  =#
 			#, use_logx::Bool = true, use_logy::Bool = true )   where {
 				#T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, T3<:Real, AA3<:AbstractArray{T3,1}, T4<:Real, AA4<:AbstractArray{T4,1} }
-	gp_param_default = [.1639394167390819, 0.14584100679829712/5615] .* smooth_factor   # TODO Generalize.  Values fr fit to one order of one EXPRES spectra
+	#gp_param_default = [.1639394167390819, 0.14584100679829712/5615] .* smooth_factor   # TODO Generalize.  Values fr fit to one order of one EXPRES spectra
+
+	gp_param_default = [ 0.4890909216856761, 5.800274590507981e-5] .* smooth_factor   # TODO Generalize.  Values fr fit to one order of one EXPRES spectra
 	σ², l = gp_param_default
 	k = σ² * stretch(Matern52(), 1 / l)
 	f_naive = GP(k, GPC())
@@ -77,7 +79,7 @@ function predict_deriv(gp::AGP, xpred::AA3; use_logx::Bool = true, use_logy::Boo
   #if use_logy   m .= exp(m)   end
   dfluxdlnλ = zeros(size(m))
   dfluxdlnλ[1] = (m[2]-m[1])/(xpred_trans[2]-xpred_trans[1])
-  dfluxdlnλ[2:end-1] .= 0.5*(m[3:end].-m[1:end-2])./(xpred_trans[3:end].-xpred_trans[1:end-2]) # exp.(m[2:end-1]).*
+  dfluxdlnλ[2:end-1] .= (m[3:end].-m[1:end-2])./(xpred_trans[3:end].-xpred_trans[1:end-2]) # exp.(m[2:end-1]).*
   dfluxdlnλ[end] = (m[end]-m[end-1])/(xpred_trans[end]-xpred_trans[end-1])
   return dfluxdlnλ
 
@@ -94,7 +96,7 @@ function predict_deriv2(gp::AGP, xpred::AA3; use_logx::Bool = true, use_logy::Bo
 	m = predict_mean(gp,use_logy=use_logy)
 	#if use_logy   m .= exp(m)   end
 	d2fluxdlnλ2 = zeros(size(m))
-	d2fluxdlnλ2[2:end-1] .= 0.5*exp.(m[2:end-1]).*(m[3:end].+m[1:end-2].-2.0.*m[2:end-1])./(xpred_trans[3:end].-xpred_trans[1:end-2]).^2
+	d2fluxdlnλ2[2:end-1] .= (m[3:end].+m[1:end-2].-2.0.*m[2:end-1])./(xpred_trans[3:end].-xpred_trans[1:end-2]).^2
 	d2fluxdlnλ2[1] = d2fluxdlnλ2[2]
 	d2fluxdlnλ2[end] = d2fluxdlnλ2[end-1]
 

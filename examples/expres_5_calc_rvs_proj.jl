@@ -3,29 +3,32 @@ make_plots_orig_4 = isdefined(Main,:make_plots) ? make_plots : true
  make_plots = false
  include("expres_4_extract_chunks.jl")
  make_plots = make_plots_orig_4
- if make_plots
+
+if make_plots
    using Plots
  end
 
 # Set parameters for this analysis
 oversample_fac_chunks = 2
  oversample_fac_orders = 1
- bin_spectra = true   # 1 results in no binning in time
+ bin_spectra = false   # 1 results in no binning in time
  idx_chunk_min = 20
  idx_chunk_max = 21
  plt_order = 42
  plt_order_pix = 3301:3800
 
 chunk_grids = map(c->RvSpectML.make_grid_for_chunk(chunk_list_timeseries,c,oversample_factor=oversample_fac_chunks), 1:num_chunks(chunk_list_timeseries) )
- @time spectra_matrix = RvSpectML.pack_chunk_list_timeseries_to_matrix(chunk_list_timeseries,chunk_grids, alg=:Sinc, oversample_factor=oversample_fac_chunks, verbose=true)
- f_mean = calc_mean_spectrum(spectra_matrix.flux,spectra_matrix.var)
- deriv = calc_mean_dfluxdlnlambda(spectra_matrix.flux,spectra_matrix.var,spectra_matrix.λ,spectra_matrix.chunk_map)
- plt_times = (chunk_list_timeseries.times .-minimum(chunk_list_timeseries.times))
+@time (spectra_matrix, f_mean, var_mean, deriv, deriv2 ) = RvSpectML.pack_chunk_list_timeseries_to_matrix(chunk_list_timeseries,chunk_grids,
+      alg=:TemporalGP, oversample_factor=oversample_fac_chunks, smooth_factor=4, verbose=true )
+ #f_mean = calc_mean_spectrum(spectra_matrix.flux,spectra_matrix.var)
+ #deriv = calc_mean_dfluxdlnlambda(spectra_matrix.flux,spectra_matrix.var,spectra_matrix.λ,spectra_matrix.chunk_map)
+ #deriv = calc_dfluxdlnlambda(f_mean,var_mean)
+plt_times = (chunk_list_timeseries.times .-minimum(chunk_list_timeseries.times))
 
 if bin_spectra
   spectra_binned = RvSpectML.bin_spectra_nightly(spectra_matrix,chunk_list_timeseries.times)
-  f_mean = calc_mean_spectrum(spectra_binned.flux,spectra_binned.var)
-  deriv = calc_mean_dfluxdlnlambda(spectra_binned.flux,spectra_binned.var,spectra_binned.λ,spectra_binned.chunk_map)
+  #f_mean = calc_mean_spectrum(spectra_binned.flux,spectra_binned.var)
+  #deriv = calc_mean_dfluxdlnlambda(spectra_binned.flux,spectra_binned.var,spectra_binned.λ,spectra_binned.chunk_map)
   times_binned = RvSpectML.bin_times_nightly(chunk_list_timeseries.times)
   plt_times = (times_binned.-minimum(chunk_list_timeseries.times))
   spectra_matrix = spectra_binned
@@ -34,15 +37,22 @@ end
 
 make_plots = true
  if make_plots
-   idx_chunk_min = 20
-   idx_chunk_max = 20
+   idx_chunk_min = 30
+   idx_chunk_max = idx_chunk_min
    global idx_plt = (first(spectra_matrix.chunk_map[idx_chunk_min]):last(spectra_matrix.chunk_map[idx_chunk_max]))
+   idx_plt = idx_plt
    mean_in_plt = mean(f_mean[idx_plt])
    std_in_plt = stdm(f_mean[idx_plt],mean_in_plt)
    plt1 = plot()
-   scatter!(plt1,spectra_matrix.λ[idx_plt],(spectra_matrix.flux[idx_plt,:].-mean_in_plt)./std_in_plt,linecolor=:black, markersize=0, color=:black,label=:none)
-   plot!(plt1,spectra_matrix.λ[idx_plt],(f_mean[idx_plt].-mean_in_plt)./std_in_plt,linecolor=:red, label="Standardized mean spectrum")
-   plot!(plt1,spectra_matrix.λ[idx_plt], deriv[idx_plt]./std(deriv[idx_plt]), label="Standardized deriv", linecolor=:green)
+   #scatter!(plt1,spectra_matrix.λ[idx_plt],(spectra_matrix.flux[idx_plt,:].-mean_in_plt)./std_in_plt,linecolor=:black, markersize=0, color=:black,label=:none)
+   #plot!(plt1,spectra_matrix.λ[idx_plt],(f_mean[idx_plt].-mean_in_plt)./std_in_plt,linecolor=:red, label="Standardized mean spectrum")
+   #plot!(plt1,spectra_matrix.λ[idx_plt], deriv[idx_plt]./std(deriv[idx_plt]), label="Standardized deriv", linecolor=:green)
+   scatter!(plt1,spectra_matrix.λ[idx_plt],spectra_matrix.flux[idx_plt,:],linecolor=:black, markersize=0, color=:black,label=:none)
+   plot!(plt1,spectra_matrix.λ[idx_plt],f_mean[idx_plt],linecolor=:red, label="Standardized mean spectrum")
+   scatter!(plt1,spectra_matrix.λ[idx_plt],(spectra_matrix.flux[idx_plt,:].-f_mean[idx_plt]),linecolor=:blue, markersize=0, color=:blue,label=:none)
+   plot!(plt1,spectra_matrix.λ[idx_plt], (deriv[idx_plt])./(5*std(deriv[idx_plt])), label="Standardized deriv", linecolor=:green)
+   plot!(plt1,spectra_matrix.λ[idx_plt], (deriv2[idx_plt])./(5*std(deriv2[idx_plt])), label="Standardized 2nd deriv", linecolor=:cyan)
+   #ylims!(-2,2)
    display(plt1)
    #plot!(spectra_matrix.λ[idx_plt],./std_in_plt,linecolor=:red, label="Standardized mean spectrum")
  end

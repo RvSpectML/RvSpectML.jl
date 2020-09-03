@@ -12,20 +12,25 @@ make_plots = true
 espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks","G2.espresso.mas")
   espresso_df = RvSpectML.read_linelist_espresso(espresso_filename)
   #lambda_range_with_data = (min = maximum(d->minimum(d.λ),solar_data), max = minimum(d->maximum(d.λ),solar_data) )
-  line_list_df = espresso_df |>
+  #line_list_df = espresso_df |>
       #@filter(lambda_range_with_data.min <= _.lambda ) |>
       #@filter( _.lambda < lambda_range_with_data.max) |>
-      DataFrame
+      #DataFrame
 
 
 inst = RvSpectML.TheoreticalInstrument.TheoreticalInstrument1D()
  spec = RvSpectML.TheoreticalInstrument.generate_spectrum(line_list_df, inst)
+ line_list_df = espresso_df |>
+     @filter(lambda_range_with_data.min <= _.lambda ) |>
+     @filter( _.lambda < lambda_range_with_data.max) |>
+     DataFrame
+ lambda_range_with_data = minimum(spec.λ):maximum(spec.λ)
  period = 30
- times = range(0.0, stop=2*period, length=17)
+ times = range(0.0, stop=period, length=17)
  rv_mean = -825
- Δ_rvs_true = 100 .* sin.(2π.*times./period)
+ Δ_rvs_true = 1 .* cos.(2π.*times./period)
  rvs_true = rv_mean .+ Δ_rvs_true
- spectra = RvSpectML.TheoreticalInstrument.generate_spectra_timeseries(times, line_list_df, inst, rvs_true)
+ @time spectra = RvSpectML.TheoreticalInstrument.generate_spectra_timeseries(times, line_list_df, inst, rvs_true, snr_per_pixel=10000)
 
 lambda_range_with_data = (min = maximum(d->minimum(d.λ),spectra), max = minimum(d->maximum(d.λ),spectra) )
  espresso_mask_df = RvSpectML.read_mask_espresso(espresso_filename)
@@ -33,6 +38,11 @@ lambda_range_with_data = (min = maximum(d->minimum(d.λ),spectra), max = minimum
   @filter(lambda_range_with_data.min <= _.lambda ) |>
   @filter( _.lambda < lambda_range_with_data.max) |>
   DataFrame
+
+find_overlapping_chunks(chunk_list_df)
+chunk_list_df = RvSpectML.merge_chunks(chunk_list_df)
+  #@assert find_overlapping_chunks(chunk_list_df) == nothing
+
 
 order_list_timeseries = RvSpectML.make_chunk_list_timeseries(spectra, chunk_list_df)
 

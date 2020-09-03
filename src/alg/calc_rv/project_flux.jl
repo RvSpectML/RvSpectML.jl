@@ -16,9 +16,9 @@ function calc_dfluxdlnlambda(flux::AbstractArray{T1,1}, λ::AbstractArray{T2,1})
     @assert size(flux) == size(λ)
     @assert length(flux) >= 3
     dfdlogλ = Array{T1,1}(undef,length(flux))
-    dfdlogλ[1] = 0.5*(flux[2]-flux[1])/(λ[2]-λ[1])*(λ[2]+λ[1])
-    dfdlogλ[2:end-1] .= 0.5*(flux[3:end].-flux[1:end-2])./(λ[3:end].-λ[1:end-2]).*(λ[3:end].+λ[end-2])
-    dfdlogλ[end] = 0.5*(flux[end]-flux[end-1])/(λ[end]-λ[end-1])*(λ[end]+λ[end-1])
+    dfdlogλ[1] = (flux[2]-flux[1])/(λ[2]-λ[1])*(λ[2]+λ[1])
+    dfdlogλ[2:end-1] .= 0.5*(flux[3:end].-flux[1:end-2])./(λ[3:end].-λ[1:end-2]).*(λ[3:end].+λ[1:end-2])
+    dfdlogλ[end] = (flux[end]-flux[end-1])/(λ[end]-λ[end-1])*(λ[end]+λ[end-1])
     return dfdlogλ
 end
 

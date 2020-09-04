@@ -26,10 +26,11 @@ include("types/types.jl")
 include("util/util.jl")
 export calc_doppler_factor, apply_doppler_boost!
 export absorption_line
+export speed_of_light_mps
 #export searchsortednearest
 
 include("util/spectra.jl")
-export calc_normalization, normalize_spectrum!
+export calc_normalization, normalize_spectrum!, get_λ_range
 include("util/chunks.jl")
 export make_chunk_list, make_orders_into_chunks, filter_bad_chunks, make_grid_for_chunk
 #export find_cols..., find_orders..., findall_line,...
@@ -39,6 +40,10 @@ include("alg/alg.jl")
 
 # instruments.jl & the ihstruments it contains are responsible for exporting their own functions & modules
 include("instruments/instruments.jl")
+
+# util/files.jl
+include("util/files.jl")
+export make_manifest, code_to_include_param_jl
 
 # util/plots.jl  is responsible for exporting its own functions
 include("util/plots.jl")

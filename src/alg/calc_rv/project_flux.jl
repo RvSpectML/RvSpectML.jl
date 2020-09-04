@@ -29,7 +29,7 @@ function calc_d2fluxdlnlambda2(flux::AbstractArray{T1,1}, λ::AbstractArray{T2,1
     logλ = log.(λ)
     d2fdlogλ2 = Array{T1,1}(undef,length(flux))
     #d2fdlogλ2[2:end-1] .= 0.25*(flux[3:end].+flux[1:end-2].-2.0.*flux[2:end-1])./(λ[3:end].+λ[1:end-2].-2.0*λ[2:end-1]).*(λ[3:end].+λ[end-2]).^2
-    d2fdlogλ2[2:end-1] .= 0.5 * (flux[3:end].+flux[1:end-2].-2.0.*flux[2:end-1]).* ((λ[3:end].+λ[1:end-2])./(logλ[3:end].-logλ[1:end-2])).^2 
+    d2fdlogλ2[2:end-1] .= 0.5 * (flux[3:end].+flux[1:end-2].-2.0.*flux[2:end-1]).* ((λ[3:end].+λ[1:end-2])./(logλ[3:end].-logλ[1:end-2])).^2
     d2fdlogλ2[end] = d2fdlogλ2[end-1]
     d2fdlogλ2[1] = d2fdlogλ2[2]
     return d2fdlogλ2
@@ -122,11 +122,4 @@ function calc_chunk_rvs_from_taylor_expansion(spectra::STS; mean::MT = calc_mean
    @assert size(spectra.flux,1) == length(mean)
 
    map(idx->calc_rvs_from_taylor_expansion(spectra,mean=mean,deriv=deriv,idx=idx),spectra.chunk_map)
-end
-
-function compute_spectra_perp_doppler_shift(spectra::AA, deriv::V1, rvs::V2) where {
-            T1<:Real, AA<:AbstractArray{T1,2}, T2<:Real, V1<:AbstractVector{T2}, T3<:Real, V2<:AbstractVector{T3} }
-   @assert size(spectra,1) == length(deriv)
-   @assert size(spectra,2) == length(rvs)
-   fm_perp = spectra .- rvs' .* deriv./RvSpectML.speed_of_light_mps
 end

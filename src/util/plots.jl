@@ -65,21 +65,44 @@ function plot_basis_vectors(λ::VR1, f_mean::V1, deriv::V2, proj::A3;
   @assert size(proj,1) == length(f_mean)
   @assert minimum(idx_plt) >= 1
   @assert maximum(idx_plt) <= length(f_mean)
-  if num_basis != 4   @warn "plot_basis_vectors hasn't been generalized for num_basis!=4."   end
+  if num_basis > 4   @warn "plot_basis_vectors hasn't been generalized for num_basis!=4."   end
   λ_plt = get_λs(λ,idx_plt)
-  local plt0 = plot(λ_plt, (f_mean[idx_plt].-1.0)./std(f_mean[idx_plt]),linecolor=:black, label="Std Mean")
-  plt0 = plot!(λ_plt, deriv[idx_plt]./std(deriv[idx_plt]),linecolor=:red,label="Std Deriv")
-  plt0 = plot!(λ_plt, proj[idx_plt,1]./std(proj[idx_plt,1]),linecolor=:blue,label=:none)
-  plt0 = plot!(λ_plt, proj[idx_plt,2]./std(proj[idx_plt,2]),linecolor=:green,label=:none)
-  local plt1 = plot(λ_plt, proj[idx_plt,1],linecolor=:blue,label=:none) #"PC 1")
-  ylabel!(plt1,"PC1")
-  local plt2 = plot(λ_plt, proj[idx_plt,2],linecolor=:green,label=:none) #"PC 2")
-  ylabel!(plt2,"PC2")
-  local plt3 = plot(λ_plt, proj[idx_plt,3],linecolor=:cyan,label=:none) #"PC 3")
-  ylabel!(plt3,"PC3")
-  local plt4 = plot(λ_plt, proj[idx_plt,4],linecolor=:magenta,label=:none) #"PC 4")
-  ylabel!(plt4,"PC4")
-  local pltall = plot(plt0,plt1,plt2,plt3,plt4, layout = (5,1) )
+  plt0 = plot(λ_plt, (f_mean[idx_plt].-1.0)./std(f_mean[idx_plt]).*3,linecolor=:black, label="Std Mean")
+  plt0 = plot!(plt0,λ_plt, deriv[idx_plt]./std(deriv[idx_plt]),linecolor=:red,label="Std Deriv")
+  pltall = [plt0]
+  if num_basis >= 1
+      plt0 = plot!(plt0,λ_plt, proj[idx_plt,1]./std(proj[idx_plt,1]),linecolor=:blue,label=:none)
+      plt1 = plot(λ_plt, proj[idx_plt,1],linecolor=:blue,label=:none) #"PC 1")
+      ylabel!(plt1,"PC1")
+      push!(pltall,plt1)
+  end
+  if num_basis >= 2
+      plt0 = plot!(plt0,λ_plt, proj[idx_plt,2]./std(proj[idx_plt,2]),linecolor=:green,label=:none)
+      plt2 = plot(λ_plt, proj[idx_plt,2],linecolor=:green,label=:none) #"PC 2")
+      ylabel!(plt2,"PC2")
+      push!(pltall,plt2)
+  end
+  if num_basis >= 3
+      plt3 = plot(λ_plt, proj[idx_plt,3],linecolor=:cyan,label=:none) #"PC 3")
+      ylabel!(plt3,"PC3")
+      push!(pltall,plt3)
+  end
+  if num_basis >= 4
+      plt4 = plot(λ_plt, proj[idx_plt,4],linecolor=:magenta,label=:none) #"PC 4")
+      ylabel!(plt4,"PC4")
+      push!(pltall,plt4)
+  end
+  if num_basis == 1
+      pltall = plot(plt0,plt1, layout = (2,1) )
+  elseif num_basis == 2
+      pltall = plot(plt0,plt1,plt2, layout = (3,1) )
+  elseif num_basis == 3
+      pltall = plot(plt0,plt1,plt2,plt3, layout = (4,1) )
+  elseif num_basis == 4
+      pltall = plot(plt0,plt1,plt2,plt3,plt4, layout = (5,1) )
+  elseif num_basis == 5
+      pltall = plot(plt0,plt1,plt2,plt3,plt4,plt5, layout = (6,1) )
+  end
   xlabel!(pltall,"λ (Å)")
   pltall
 end
@@ -93,14 +116,25 @@ function plot_basis_scores(times::V1, rvs::V2, scores::A3;
   @assert size(scores,1) >= num_basis
   @assert minimum(idx_plt) >= 1
   @assert maximum(idx_plt) <= length(times)
-  if num_basis != 4   @warn "plot_basis_scores hasn't been generalized for num_basis!=4."   end
+  if num_basis > 4   @warn "plot_basis_scores hasn't been generalized for num_basis>4."   end
   local plt0 = scatter(times[idx_plt],rvs[idx_plt],label=:none,color=:black)
   ylabel!(plt0,"RV (m/s)")
-  local plt1 = scatter(times[idx_plt],scores[1,idx_plt],label=:none,color=:blue)
-  local plt2 = scatter(times[idx_plt],scores[2,idx_plt],label=:none,color=:green)
-  local plt3 = scatter(times[idx_plt],scores[3,idx_plt],label=:none,color=:cyan)
-  local plt4 = scatter(times[idx_plt],scores[4,idx_plt],label=:none,color=:magenta)
-  local pltall = plot(plt0,plt1,plt2,plt3,plt4, layout = (5,1) )
+  if num_basis >= 1
+      plt1 = scatter(times[idx_plt],scores[1,idx_plt],label=:none,color=:blue)
+      pltall = plot(plt0,plt1, layout = (2,1) )
+  end
+  if num_basis >= 2
+      plt2 = scatter(times[idx_plt],scores[2,idx_plt],label=:none,color=:green)
+      pltall = plot(plt0,plt1,plt2, layout = (3,1) )
+  end
+  if num_basis >= 3
+      plt3 = scatter(times[idx_plt],scores[3,idx_plt],label=:none,color=:cyan)
+      pltall = plot(plt0,plt1,plt2,plt3, layout = (4,1) )
+  end
+  if num_basis >= 4
+      plt4 = scatter(times[idx_plt],scores[4,idx_plt],label=:none,color=:magenta)
+      pltall = plot(plt0,plt1,plt2,plt3,plt4, layout = (5,1) )
+  end
   xlabel!(pltall,"Time")
   pltall
 end
@@ -114,16 +148,27 @@ function plot_basis_scores_cor(rvs::V2, scores::A3;
   @assert size(scores,1) >= num_basis
   @assert minimum(idx_plt) >= 1
   @assert maximum(idx_plt) <= length(rvs)
-  if num_basis != 4   @warn "plot_basis_scores_cor hasn't been generalized for num_basis!=4."   end
-  local plt1 = scatter(rvs[idx_plt],vec(scores[1,idx_plt]),xlabel="RV",ylabel="PC1",legend=:none)
-  local plt2 = scatter(rvs[idx_plt],vec(scores[2,idx_plt]),xlabel="RV",ylabel="PC2",legend=:none)
-  local plt3 = scatter(rvs[idx_plt],vec(scores[3,idx_plt]),xlabel="RV",ylabel="PC3",legend=:none)
-  local plt4 = scatter(vec(scores[1,idx_plt]),vec(scores[2,idx_plt]),xlabel="PC1",ylabel="PC2",legend=:none)
-  local plt5 = scatter(vec(scores[1,idx_plt]),vec(scores[3,idx_plt]),xlabel="PC1",ylabel="PC3",legend=:none)
-  local plt6 = scatter(vec(scores[2,idx_plt]),vec(scores[3,idx_plt]),xlabel="PC2",ylabel="PC3",legend=:none)
-  local plt7 = scatter(vec(scores[1,idx_plt]),vec(scores[4,idx_plt]),xlabel="PC2",ylabel="PC4",legend=:none)
-  local plt8 = scatter(vec(scores[2,idx_plt]),vec(scores[4,idx_plt]),xlabel="PC2",ylabel="PC4",legend=:none)
-  local plt9 = scatter(vec(scores[3,idx_plt]),vec(scores[4,idx_plt]),xlabel="PC3",ylabel="PC4",legend=:none)
-  local pltall = plot(plt1,plt2,plt3,plt4,plt5,plt6,plt7,plt8,plt9,layout=(3,3))
+  if num_basis > 4   @warn "plot_basis_scores_cor hasn't been generalized for num_basis>4."   end
+  if num_basis >= 1
+      plt1 = scatter(rvs[idx_plt],vec(scores[1,idx_plt]),xlabel="RV",ylabel="PC1",legend=:none)
+      pltall = plt1
+  end
+  if num_basis >= 2
+      plt2 = scatter(rvs[idx_plt],vec(scores[2,idx_plt]),xlabel="RV",ylabel="PC2",legend=:none)
+      plt4 = scatter(vec(scores[1,idx_plt]),vec(scores[2,idx_plt]),xlabel="PC1",ylabel="PC2",legend=:none)
+      pltall = plot(plt1,plt2,plt4,layout=3)
+  end
+  if num_basis >= 3
+      plt3 = scatter(rvs[idx_plt],vec(scores[3,idx_plt]),xlabel="RV",ylabel="PC3",legend=:none)
+      plt5 = scatter(vec(scores[1,idx_plt]),vec(scores[3,idx_plt]),xlabel="PC1",ylabel="PC3",legend=:none)
+      plt6 = scatter(vec(scores[2,idx_plt]),vec(scores[3,idx_plt]),xlabel="PC2",ylabel="PC3",legend=:none)
+      pltall = plot(plt1,plt2,plt3,plt4,plt5,plt6,layout=(2,3))
+  end
+  if num_basis >= 4
+      plt7 = scatter(vec(scores[1,idx_plt]),vec(scores[4,idx_plt]),xlabel="PC2",ylabel="PC4",legend=:none)
+      plt8 = scatter(vec(scores[2,idx_plt]),vec(scores[4,idx_plt]),xlabel="PC2",ylabel="PC4",legend=:none)
+      plt9 = scatter(vec(scores[3,idx_plt]),vec(scores[4,idx_plt]),xlabel="PC3",ylabel="PC4",legend=:none)
+      pltall = plot(plt1,plt2,plt3,plt4,plt5,plt6,plt7,plt8,plt9,layout=(3,3))
+  end
   pltall
 end

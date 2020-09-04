@@ -8,7 +8,7 @@ Created: August 2020
 module EXPRES
 using ..RvSpectML
 import ..RvSpectML: AbstractInstrument, AbstractInstrument1D, AbstractInstrument2D
-using DataFrames, FITSIO
+using DataFrames, Query, FITSIO
 using Dates  # If need to use datetime2julian() to get jd.  Need to check about getting BJD.
 
 #type EXPRES <: AbstractInstrument end

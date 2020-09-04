@@ -19,7 +19,7 @@ using .SincInterpolation
 export interp_chunk_to_grid_sinc!
 
 #=
-include("gp/gp.jl")             # Basic, brute-force GPs with no dependancies
+include("gp/gp_brute_force.jl")             # Basic, brute-force GPs with no dependancies
 import .GPInterpolation
 export interp_chunk_to_grid_gp!
 =#

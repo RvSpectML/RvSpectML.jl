@@ -18,7 +18,7 @@ using ..RvSpectML
 export make_kernel_data, make_kernel_obs_pred, gp_marginal
 export predict_mean, predict_deriv, predict_deriv2, predict_mean_and_deriv, predict_mean_and_derivs
 
-include("gp_kernels.jl")
+include("gp_brute_force_kernels.jl")
 
 function make_kernel_data(x::AA1, kernel::Function; sigmasq_obs::AA2 = zeros(length(x)), sigmasq_cor::Real=1.0, rho::Real=1.0)  where { T1<:Real, AA1<:AbstractArray{T1,1},  T2<:Real, AA2<:AbstractArray{T2,1} }
   @assert length(x) == length(sigmasq_obs)

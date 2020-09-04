@@ -44,7 +44,7 @@ function make_template_spectra( chunk_list_timeseries::ACLT; remove_rv_est::Bool
             ( matrix, f_mean, var_mean, deriv, deriv2 )  = RvSpectML.pack_chunk_list_timeseries_to_matrix(chunk_list_timeseries,chunk_λ_grids, alg=alg, smooth_factor=smooth_factor )
         end
     end
-    return ( matrix, f_mean, var_mean, deriv, deriv2 )
+    return ( matrix, f_mean, var_mean, deriv, deriv2, chunk_λ_grids )
 end
 
 

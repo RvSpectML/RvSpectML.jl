@@ -45,3 +45,22 @@ metadata_hdu2_strings_default(::AnyEXPRES) = String["HALPHA", "HWIDTH", "CCFFWHM
 
 import ..RvSpectML: default_ccf_mask_v_width
 default_ccf_mask_v_width(::AnyEXPRES) = 448.0   # TODO: Update value for EXPRES
+
+import ..RvSpectML: get_λ_range
+function get_λ_range(data::CLT) where { T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2},
+                                       IT<:EXPRES.AnyEXPRES, CLT<:Spectra2DBasic{T1,T2,T3,A1,A2,A3,IT} }
+   mask = data.metadata[:excalibur_mask]
+   (λmin, λmax) = extrema(data.λ[mask])
+   return (min=λmin, max=λmax)
+end
+
+default_λmin = 4738.0  # Based on HD 101501, should generalize
+default_λmax = 7227.0  #
+
+function filter_line_list(df::DataFrame, inst::IT ; λmin::Real = default_λmin, λmax::Real = default_λmax ) where { # data::CLT) where { T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2},
+                                       IT<:EXPRES.AnyEXPRES } #, CLT<:Spectra2DBasic{T1,T2,T3,A1,A2,A3,IT} }
+   df |> @filter(λmin <= _.lambda <= λmax) |>
+    #    @filter( _.lambda < 6000.0 ) |>                       # Avoid tellurics at redder wavelengths
+    #    @filter( _.lambda >6157 || _.lambda < 6155  ) |>   # Avoid "line" w/ large variability
+    DataFrame
+end

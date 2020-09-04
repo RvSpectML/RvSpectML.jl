@@ -11,7 +11,7 @@ Module for estimating the radial velocity based on the CCF
 """
 module RVFromCCF
 
-export measure_rv_from_ccf
+export measure_rv_from_ccf, measure_rvs_from_ccf
 import ..RvSpectML: searchsortednearest
 
 # packages
@@ -59,9 +59,9 @@ end
 
 
 """
-    measure_rv(vels, ccf; fit_type="gaussian")
+    measure_rv_from_ccf(vels, ccf; fit_type="gaussian")
 
-Compute the cross correlation function and fit to calculate a velocity
+Fit a gaussian to the CCF to calculate a velocity
 using the specified method. Valid arguments for fit_type include
 "gaussian", "quadratic", and "centroid".
 """
@@ -89,6 +89,21 @@ function measure_rv_from_ccf(vels::A1, ccf::A2; fit_type::String="gaussian")  wh
         RVs[i] = measure_rv_from_ccf(vels, ccf[:,i], fit_type=fit_type)
     end
     return RVs
+end
+
+
+
+"""
+    measure_rvs_from_ccf(vels, ccf; fit_type="gaussian")
+
+At each time, compute the cross correlation function and fit to calculate a velocity
+using the specified method. Valid arguments for fit_type include
+"gaussian", "quadratic", and "centroid".
+"""
+function measure_rvs_from_ccf(vels::A1, ccfs::A2,
+            ; fit_type::String="gaussian") where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
+ rvs = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(vels,ccfs[:,i],fit_type=fit_type) for i in 1:size(ccfs,2) ]
+ return rvs
 end
 
 

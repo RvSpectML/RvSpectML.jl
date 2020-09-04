@@ -84,3 +84,13 @@ function normalize_spectra!(chunk_timeseries::ACLT, spectra::AS) where { ACLT<:A
     end
     return chunk_timeseries
 end
+
+
+""" Return the largest minimum wavelength and smallest maximum wavelength across an array of spectra. 
+Calls get_λ_range(AbstractSpectra2D) that should be specialized for each instrument. """
+function get_λ_range(data::ACLT) where { CLT<:AbstractSpectra, ACLT<:AbstractArray{CLT} }
+   λminmax = get_λ_range.(data)
+   λmin = maximum(map(p->p[1],λminmax))
+   λmax = minimum(map(p->p[2],λminmax))
+   return (min = λmin, max = λmax)
+end

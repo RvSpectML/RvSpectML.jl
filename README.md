@@ -7,11 +7,24 @@ The primary goal is to measure extremely precise radial velocities (EPRVs).
 To support that goal, it will also include tools to deal with intrinsic stellar variability and telluric variability.  
 
 ## Scope
-[RvSpectML.jl](https://github.com/eford/RvSpectML.jl)
+[RvSpectML.jl](https://github.com/eford/RvSpectML.jl) is currently able to:
+- create a manifest of files (as a DataFrame) to be ingested from a directory (custom filtering via Query.jl)
+- read datafiles from NEID and EXPRES into a common set of data structures,
+- perform basic pre-processing (filtering out some orders, pixels within an order, chunks of spectra with NaNs, normalize spectra,...)
+- read a line list or cross-correlation function (CCF) mask file based on ESPRESSO or VALD, 
+- compute cross-correlation function (CCF) of spectra relative to a top-hat mask efficiently, 
+- measure RVs based on either the CCF or a direct Taylor expansion of the flux, 
+- interpolate spectra to a new set of wavelengths using linear, sinc, or Gaussian process regression algorithms, 
+- combine many files into a template spectra, interpolating them to a common wavelength grid and applying Doppler shift by estimated RV,
+- perform Doppler-constrained PCA analysis.
+
+
 It will eventually include tools to:
-- read datafiles from multiple spectrographs into a common format,
-- perform basic pre-processing,
-- measure RVs, and
+- read datafiles from additional spectrographs into a common set of data structures,
+- perform additional pre-processing steps as needed,
+- compute CCFs using different mask shapes, 
+- measure RVs using additional methods, 
+- calculated additional stellar activity indicators, and 
 - predict contamination due to stellar variability.
 
 ## Contributing

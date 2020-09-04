@@ -8,7 +8,7 @@ Created: August 2020
 module NEID
 using ..RvSpectML
 import ..RvSpectML: AbstractInstrument, AbstractInstrument1D, AbstractInstrument2D
-using DataFrames, FITSIO
+using DataFrames, Query, FITSIO
 
 #type NEID <: AbstractInstrument end
 """ Trait for 1D Extracted spectra from NEID """
@@ -28,7 +28,9 @@ export metadata_symbols_default, metadata_strings_default
 export default_ccf_mask_v_width
 
 include("io.jl")
-export make_manifest, read_metadata, read_data, read_solar_data
+export make_manifest
+# export make_manifest
+export read_metadata, read_data, read_solar_data
 # read_header not exported to avoid conflict with FITSIO.read_header
 export read_drift_corrections!, read_barycentric_corrections!
 

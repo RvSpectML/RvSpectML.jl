@@ -1,25 +1,25 @@
 using Pkg
-Pkg.activate(".")
+ Pkg.activate(".")
 
 verbose = true
 using Revise
  if verbose   println("# Loading RvSpecML")    end
- using RvSpectML
+using RvSpectML
  if verbose   println("# Loading other packages")    end
  using DataFrames, Query, Statistics
 
 # USER:  The default paths that specify where datafiles can be entered here or overridden in examples/data_paths.jl
-target_subdir = "101501"   # USER: Replace with directory of your choice
- fits_target_str = "101501"
+target_subdir = "20190918"   # USER: Replace with directory of your choice
+ fits_target_str = "Solar"
  output_dir = "examples/output"
- default_paths_to_search = [pwd(),"examples",joinpath(pkgdir(RvSpectML),"examples"),"/gpfs/group/ebf11/default/ebf11/expres/inputs"]
+ default_paths_to_search = [pwd(),"examples",joinpath(pkgdir(RvSpectML),"examples"),"/gpfs/group/ebf11/default/ebf11/neid/inputs"]
 
- make_plots = true
+make_plots = false
  write_ccf_to_csv = true
  write_rvs_to_csv = true
- write_template_to_csv = true
+ write_template_to_csv = false
  write_spectral_grid_to_jld2 = true
- write_dcpca_to_csv = true
+ write_dcpca_to_csv = false
 
 has_loaded_data = false
  has_computed_ccfs = false
@@ -28,27 +28,30 @@ has_loaded_data = false
  has_computed_dcpca = false
 
 if !has_loaded_data
-  df_files = make_manifest(target_subdir, EXPRES )
-  eval(code_to_include_param_jl())
+   df_files = make_manifest(target_subdir, NEID )
+   eval(code_to_include_param_jl())
+   df_files_use
 
-  if verbose println("# Reading in FITS files.")  end
-  @time expres_data = map(EXPRES.read_data,eachrow(df_files_use))
+   if verbose println("# Reading in FITS files.")  end
+  @time neid_data = map(NEID.read_solar_data,eachrow(df_files_use))
   has_loaded_data = true
 end
 
 if !has_computed_ccfs
  if verbose println("# Extracting order list timeseries from spectra.")  end
-   order_list_timeseries = RvSpectML.make_order_list_timeseries(expres_data)
-   order_list_timeseries = RvSpectML.filter_bad_chunks(order_list_timeseries,verbose=true)
-   RvSpectML.normalize_spectra!(order_list_timeseries,expres_data);
- end
+ order_list_timeseries = RvSpectML.make_order_list_timeseries(neid_data)
+ order_list_timeseries = RvSpectML.filter_bad_chunks(order_list_timeseries,verbose=true)
+ RvSpectML.normalize_spectra!(order_list_timeseries,neid_data);
+end
 
+begin
  if verbose println("# Reading line list for CCF: ", linelist_for_ccf_filename, ".")  end
- lambda_range_with_good_data = get_λ_range(expres_data)
+ lambda_range_with_good_data = get_λ_range(neid_data)
  espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks",linelist_for_ccf_filename)
  espresso_df = RvSpectML.read_linelist_espresso(espresso_filename)
- line_list_df = EXPRES.filter_line_list(espresso_df,first(expres_data).inst)
-
+ line_list_df = NEID.filter_line_list(espresso_df,first(neid_data).inst)
+end
+begin
     # Compute CCF's & measure RVs
  if verbose println("# Computing CCF.")  end
  mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor)
@@ -57,9 +60,9 @@ if !has_computed_ccfs
  v_grid = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan)
  @time ccfs = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan)
  # Write CCFs to file
- if write_ccf_to_csv
+ if write_ccf_to_csv && false
     using CSV
-    CSV.write(target_subdir * "_ccfs.csv",Tables.table(ccfs',header=Symbol.(v_grid)))
+    CSV.write(joinpath(output_dir,target_subdir * "_ccfs.csv"),Tables.table(ccfs',header=Symbol.(v_grid)))
  end
  has_computed_ccfs = true
 end
@@ -82,10 +85,41 @@ if !has_computed_rvs
  map(i->order_list_timeseries.metadata[i][:rv_est] = rvs_ccf_gauss[i]-mean(rvs_ccf_gauss), 1:length(order_list_timeseries) )
  if write_rvs_to_csv
     using CSV
-    CSV.write(target_subdir * "_rvs_ccf.csv",DataFrame("Time [MJD]"=>order_list_timeseries.times,"CCF RV [m/s]"=>rvs_ccf_gauss))
+    CSV.write(joinpath(output_dir,target_subdir * "_rvs_ccf.csv"),DataFrame("Time [MJD]"=>order_list_timeseries.times,"CCF RV [m/s]"=>rvs_ccf_gauss))
  end
  has_computed_rvs = true
 end
+
+#=
+using DataFrames, Query, Statistics
+vald_filename = joinpath(ancilary_solar_data_path,"VALD_Fe1_DP_rejectTelluricSlope0.0_badLineFilterESPRESSO-strict-NEID-BIS_overlapcutoff6e-05_depthcutoff0.05_allowBlends0_wavesReiners_depthssolar_nbin1depth0.mas")
+ vald_df = RvSpectML.read_mask_vald(vald_filename)
+
+λmin, λmax = get_λ_range(neid_data)
+ orig_chunk_list_df = vald_df |>
+    @filter(λmin <= _.lambda ) |>
+    @filter( _.lambda < λmax ) |>
+#    @filter( _.lambda < 6000.0 ) |>                       # Avoid tellurics at redder wavelengths
+#    @filter( _.lambda >6157 || _.lambda < 6155  ) |>   # Avoid "line" w/ large variability
+   DataFrame
+
+find_overlapping_chunks(orig_chunk_list_df)
+chunk_list_df = RvSpectML.merge_chunks(orig_chunk_list_df)
+@assert find_overlapping_chunks(chunk_list_df) == nothing
+
+
+# TODO:  FIX:  Problem with ESPRESSO mask having lots of lines getting meged into humongous chunks that don't fit into the order!
+chunk_list_timeseries = RvSpectML.make_chunk_list_timeseries(neid_data,chunk_list_df)
+
+# Check that no NaN's included
+(chunk_list_timeseries, chunk_list_df) = RvSpectML.filter_bad_chunks(chunk_list_timeseries,chunk_list_df)
+println(size(chunk_list_df), " vs ", num_chunks(chunk_list_timeseries) )
+
+chunk_grids = map(c->RvSpectML.make_grid_for_chunk(chunk_list_timeseries,c), 1:num_chunks(chunk_list_timeseries) )
+spectra_matrix = RvSpectML.pack_chunk_list_timeseries_to_matrix(chunk_list_timeseries,chunk_grids, alg=:Sinc, oversample_factor=1)
+RvSpectML.make_template_spectra(chunk_list_timeseries)
+
+=#
 
 if !has_computed_tempalte
    if verbose println("# Making template spectra.")  end
@@ -93,11 +127,11 @@ if !has_computed_tempalte
 
    if write_template_to_csv
       using CSV
-      CSV.write(target_subdir * "_template.csv",DataFrame("λ"=>spectral_orders_matrix.λ,"flux_template"=>f_mean,"var"=>var_mean, "dfluxdlnλ_template"=>deriv,"d²fluxdlnλ²_template"=>deriv2))
+      CSV.write(joinpath(output_dir,target_subdir * "_template.csv"),DataFrame("λ"=>spectral_orders_matrix.λ,"flux_template"=>f_mean,"var"=>var_mean, "dfluxdlnλ_template"=>deriv,"d²fluxdlnλ²_template"=>deriv2))
    end
    if write_spectral_grid_to_jld2
       using JLD2, FileIO
-      save(target_subdir * "_matrix.jld2", Dict("λ"=>spectral_orders_matrix.λ,"spectra"=>spectral_orders_matrix.flux,"var_spectra"=>spectral_orders_matrix.var,"flux_template"=>f_mean,"var"=>var_mean, "dfluxdlnλ_template"=>deriv,"d²fluxdlnλ²_template"=>deriv2))
+      save(joinpath(output_dir,target_subdir * "_matrix.jld2"), Dict("λ"=>spectral_orders_matrix.λ,"spectra"=>spectral_orders_matrix.flux,"var_spectra"=>spectral_orders_matrix.var,"flux_template"=>f_mean,"var"=>var_mean, "dfluxdlnλ_template"=>deriv,"d²fluxdlnλ²_template"=>deriv2))
    end
 end
 
@@ -109,8 +143,8 @@ if !has_computed_dcpca
    println("# Fraction of variance explained = ", frac_var_explained[1:min(5,length(frac_var_explained))])
    if write_dcpca_to_csv
       using CSV
-      CSV.write(target_subdir * "_dcpca_basis.csv",  Tables.table(M.proj) )
-      CSV.write(target_subdir * "_dcpca_scores.csv", Tables.table(dcpca_out) )
+      CSV.write(joinpath(output_dir,target_subdir * "_dcpca_basis.csv"),  Tables.table(M.proj) )
+      CSV.write(joinpath(output_dir,target_subdir * "_dcpca_scores.csv"), Tables.table(dcpca_out) )
    end
 end
 
@@ -135,17 +169,18 @@ if make_plots
 end
 
 if make_plots
-  plt_order = 13
+  plt_order = 40
   RvSpectML.plot_basis_vectors(order_grids, f_mean, deriv, M.proj, idx_plt = spectral_orders_matrix.chunk_map[plt_order], num_basis=3 )
   #xlims!(5761.5,5766)
+  xlims!(5315,5330)
 end
 
 if make_plots
-  RvSpectML.plot_basis_scores(order_list_timeseries.times, rvs_ccf_gauss, pca_out, num_basis=3 )
+  RvSpectML.plot_basis_scores(order_list_timeseries.times, rvs_ccf_gauss, dcpca_out, num_basis=3 )
 end
 
 if make_plots
-  RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss, pca_out, num_basis=3)
+  RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss, dcpca_out, num_basis=3)
 end
 
 has_loaded_data = false

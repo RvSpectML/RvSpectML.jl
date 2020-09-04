@@ -17,8 +17,8 @@ Returns a dataframe containing a list of files to be read and some metadata (e.g
 
 Warning:  Malicious users could insert arbitrary code into data_paths.jl.  Don't be a malicous user.
 """
-function make_manifest(target_subdir::String, Inst::Module; max_spectra_to_use::Integer = Inf,
-      paths_to_search::Union{String,AbstractVector{String}} = default_paths_to_search,
+function make_manifest(target_subdir::String, Inst::Module; paths_to_search::Union{String,AbstractVector{String}} = default_paths_to_search,
+      # max_spectra_to_use::Integer = 1000, target_fits::String = target_subdir,
       verbose::Bool = true)
 
    if verbose   println("# Looking for data paths and config files in default_paths_to_search.")    end
@@ -51,17 +51,19 @@ function make_manifest(target_subdir::String, Inst::Module; max_spectra_to_use::
    end
 
    if verbose  println("# Creating manifest of files to process.")    end
-   df_files = EXPRES.make_manifest(data_path)
+   df_files = Inst.make_manifest(data_path)
    if size(df_files,1) < 1
       @error("Did not find any files in ", data_path ,".")
    end
-   df_files = df_files |> @filter( _.target == target_subdir ) |> DataFrame
+   #=
+   df_files = df_files |> @filter( _.target == target_fits ) |> DataFrame
    if size(df_files,1) < 1
-      @error("Did not find any files with target field matching ", target_subdir,".")
+      @error("Did not find any files with target field matching ", target_fits,".")
    end
    if size(df_files,1) > max_spectra_to_use
       df_files = df_files |> @take(max_spectra_to_use) |> DataFrame
    end
+   =#
    return df_files
 end
 

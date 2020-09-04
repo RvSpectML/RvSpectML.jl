@@ -9,14 +9,22 @@ using DataFrames, FITSIO
 using CSV, Interpolations
 
 """Create Dataframe containing filenames and key data for all files neid*.fits in directory"""
-function make_manifest(data_path::String)
+function make_manifest(data_path::String ; max_spectra_to_use::Int = 1000 )
     dir_filelist = readdir(data_path,join=true)
     idx_spectra = map(fn->occursin(r"^neid\w+\.fits$", last(split(fn,'/')) ),dir_filelist)
     spectra_filelist = dir_filelist[idx_spectra]
-
+    #=
     df_files = DataFrame(Filename = String[], target = String[], bjd = Float64[], ssbz=Float64[] )
     map(fn->add_metadata_from_fits!(df_files,fn),spectra_filelist)
     df_files
+    =#
+    @assert length(spectra_filelist) >= 1
+    df_files = DataFrame(read_metadata(spectra_filelist[1]))
+    if length(spectra_filelist) >= 2
+        map(fn->add_metadata_from_fits!(df_files,fn),spectra_filelist[2:end])
+    end
+    df_files
+
 end
 
 """Create Dict containing filename and default metadata from file."""

@@ -30,3 +30,21 @@ metadata_strings_default(::AnyNEID) = String["OBSJD", "SKY-OBJ", "SSBZ000"]
 
 import ..RvSpectML: default_ccf_mask_v_width
 default_ccf_mask_v_width(::AnyNEID) = 620.953
+
+import ..RvSpectML: get_λ_range
+function get_λ_range(data::CLT) where { T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2},
+                                       IT<:NEID.AnyNEID, CLT<:Spectra2DBasic{T1,T2,T3,A1,A2,A3,IT} }
+   (λmin, λmax) = extrema(data.λ)
+   return (min=λmin, max=λmax)
+end
+
+default_λmin = 3950.0  # Based on HD solar data from PSU, should generalize
+default_λmax = 9500.0  #
+
+function filter_line_list(df::DataFrame, inst::IT ; λmin::Real = default_λmin, λmax::Real = default_λmax ) where { # data::CLT) where { T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2},
+                                       IT<:NEID.AnyNEID } #, CLT<:Spectra2DBasic{T1,T2,T3,A1,A2,A3,IT} }
+   df |> @filter(λmin <= _.lambda <= λmax) |>
+    #    @filter( _.lambda < 6000.0 ) |>                       # Avoid tellurics at redder wavelengths
+    #    @filter( _.lambda >6157 || _.lambda < 6155  ) |>   # Avoid "line" w/ large variability
+    DataFrame
+end

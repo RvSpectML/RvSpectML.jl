@@ -202,9 +202,11 @@ end
 function interp_chunk_to_shifted_grid_gp_temporal!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR, boost_factor::Real; use_logx::Bool = true,  use_logy::Bool = false, smooth_factor::Real=1 ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
-    flux_out .= TemporalGPInterpolation.predict_mean(chunk.λ./boost_factor, chunk.flux, grid, sigmasq_obs = chunk.var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
+    y = eltype(chunk.flux) == Float64  ? chunk.flux : convert.(Float64,chunk.flux)
+    var = eltype(chunk.var) == Float64  ? chunk.var : convert.(Float64,chunk.var)
+    flux_out .= TemporalGPInterpolation.predict_mean(chunk.λ./boost_factor, y, grid, sigmasq_obs = var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
     # TODO: Update var_out to actually use the right GP or at least do something more sensible
-    var_out .= TemporalGPInterpolation.predict_mean(chunk.λ./boost_factor, chunk.var, grid, sigmasq_obs = chunk.var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
+    var_out .= TemporalGPInterpolation.predict_mean(chunk.λ./boost_factor, var, grid, sigmasq_obs = var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
     return flux_out
 end
 
@@ -219,10 +221,12 @@ end
 function interp_chunk_to_grid_gp_temporal!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR ; use_logx::Bool = true,  use_logy::Bool = false, smooth_factor::Real=1 ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
-    flux_out .= TemporalGPInterpolation.predict_mean(chunk.λ, chunk.flux, grid, sigmasq_obs = chunk.var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
+    y = eltype(chunk.flux) == Float64  ? chunk.flux : convert.(Float64,chunk.flux)
+    var = eltype(chunk.var) == Float64  ? chunk.var : convert.(Float64,chunk.var)
+    flux_out .= TemporalGPInterpolation.predict_mean(chunk.λ, y, grid, sigmasq_obs = var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
     # TODO: Update var_out to actually use the right GP or at least do something more sensible
     var_out .= flux_out
-    var_out .= TemporalGPInterpolation.predict_mean(chunk.λ, chunk.var, grid, sigmasq_obs = chunk.var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
+    var_out .= TemporalGPInterpolation.predict_mean(chunk.λ, var, grid, sigmasq_obs = var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
     return flux_out
 end
 

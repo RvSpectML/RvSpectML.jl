@@ -15,8 +15,7 @@ using Test
         @test res.argmin ==  3
         @test res.argmax == 4
 
-        res = searchsortednearest(sin.(2π*(1:16)./16))
-
+        @test RvSpectML.searchsortednearest(-cos.(π*(1:16)./16), 0.0) == 8
     end
 
     @testset "Spectra" begin

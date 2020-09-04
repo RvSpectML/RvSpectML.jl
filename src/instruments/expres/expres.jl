@@ -24,7 +24,8 @@ export metadata_symbols_default, metadata_strings_default
 export default_ccf_mask_v_width
 
 include("io.jl")
-export make_manifest, read_data
+export read_data
+# export make_manifest
 # read_header not exported to avoid conflict with FITSIO.read_header
 
 end

@@ -60,9 +60,8 @@ if !has_computed_ccfs
  if write_ccf_to_csv
     using CSV
     CSV.write(target_subdir * "_ccfs.csv",Tables.table(ccfs',header=Symbol.(v_grid)))
- end
  has_computed_ccfs = true
-end
+ end
 
 if make_plots
    using Plots

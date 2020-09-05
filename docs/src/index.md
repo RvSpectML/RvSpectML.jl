@@ -8,12 +8,18 @@ CurrentModule = RvSpectML
 
 ## Modules
 ```@autodocs
-Modules = [RvSpectML, RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA ] #, RvSpectML.PPCA ]
+Modules = [RvSpectML ]
+Order = [:module]
+```
+#### RV-Related Algorithms
+```@autodocs
+Modules = [RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA ] #, RvSpectML.PPCA ]
 Order = [:module]
 ```
 
+#### Interpolation Algorithms
 ```@autodocs
-Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation, RvSpectML.TemporalGPInterpolation ]
+Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.TemporalGPInterpolation ]  # RvSpectML.GPInterpolation,
 Order = [:module]
 ```
 
@@ -42,7 +48,7 @@ Order = [:function ]
 
 #### Interpolation Algorithms
 ```@autodocs
-Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation, RvSpectML.TemporalGPInterpolation ]
+Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.TemporalGPInterpolation ]  # RvSpectML.GPInterpolation,
 Private = false
 Order = [:function ]
 ```
@@ -63,8 +69,7 @@ Private = false
 Order = [:type]
 ```
 ```@autodocs
-
-Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation, RvSpectML.TemporalGPInterpolation ]
+Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.TemporalGPInterpolation ]  # RvSpectML.GPInterpolation,
 Private = false
 Order = [:type]
 ```
@@ -76,28 +81,3 @@ Private = false
 Order = [:type]
 ```
 
-## Private Types & Functions
-### General purpose
-```@autodocs
-Modules = [RvSpectML, RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA ] #, RvSpectML.PPCA ]
-Public = false
-Order = [:type, :function ]
-```
-
-```@autodocs
-Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation, RvSpectML.TemporalGPInterpolation ]
-Public = false
-Order = [:type, :function]
-```
-
-### Instrument specific
-```@autodocs
-Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID, RvSpectML.TheoreticalInstrument  ]
-Public = false
-Order = [:type, :function]
-```
-
-
-## Index
-```@index
-```

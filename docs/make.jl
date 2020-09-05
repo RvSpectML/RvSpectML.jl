@@ -3,7 +3,7 @@ using Documenter
 
 makedocs(;
     modules=[RvSpectML],
-    authors="Eric Ford <ebf11@psu.edu> and contributors",
+    authors="Eric Ford and contributors",
     repo="https://github.com/eford/RvSpectML.jl/blob/{commit}{path}#L{line}",
     sitename="RvSpectML.jl",
 #    latest="main",
@@ -14,6 +14,8 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Internals" => "internals.md",
+        "Index" => "longlist.md",
     ],
 )
 

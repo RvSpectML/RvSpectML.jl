@@ -50,7 +50,7 @@ jobs:
         with:
           version: '1.5'
       - name: Install dependancies
-	run: |
+        run: |
           julia --project=docs -e '
             using Pkg
             Pkg.develop(PackageSpec(path=pwd()))

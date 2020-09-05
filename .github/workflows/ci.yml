@@ -49,7 +49,7 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1.5'
-      - name Install dependancies
+      - name: Install dependancies
 	run: |
           julia --project=docs -e '
             using Pkg

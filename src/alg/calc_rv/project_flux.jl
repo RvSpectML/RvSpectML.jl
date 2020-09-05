@@ -57,7 +57,7 @@ function calc_d2fluxdlnlambda2!(d2fdlogλ2::AbstractArray{T1,1}, flux::AbstractA
     #logλ = log.(λ)
     #d2fdlogλ2 = Array{T1,1}(undef,length(flux))
     #d2fdlogλ2[2:end-1] .= 0.25*(flux[3:end].+flux[1:end-2].-2.0.*flux[2:end-1])./(λ[3:end].+λ[1:end-2].-2.0*λ[2:end-1]).*(λ[3:end].+λ[end-2]).^2
-    d2fdlogλ2[2:end-1] .= 0.5 * (flux[3:end].+flux[1:end-2].-2.0.*flux[2:end-1]).* ((λ[3:end].+λ[1:end-2]).^2 ./ (2.0.*log.(logλ[3:end]./logλ[1:end-2])))
+    d2fdlogλ2[2:end-1] .= 0.5 * (flux[3:end].+flux[1:end-2].-2.0.*flux[2:end-1]).* ((λ[3:end].+λ[1:end-2]).^2 ./ (2.0.*log.(λ[3:end]./λ[1:end-2])))
     d2fdlogλ2[end] = d2fdlogλ2[end-1]
     d2fdlogλ2[1] = d2fdlogλ2[2]
     return d2fdlogλ2

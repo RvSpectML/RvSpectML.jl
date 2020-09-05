@@ -38,12 +38,13 @@ function ccf_1D!(ccf_out::A1, λ::A2, flux::A3,
     @assert size(ccf_out,1) == length(v_grid)
 
     mask_projections = zeros(length(λ),1)
+    mask_workspace = zeros(length(λ)+2)
 
     # loop through each velocity, project the mask and compute ccf at given v
     for i in 1:size(ccf_out,1)
         # project shifted mask on wavelength domain
         doppler_factor = calc_doppler_factor(v_grid[i])
-        project_mask_opt!(mask_projections, λ, plan, shift_factor=doppler_factor) #line_list)
+        project_mask_opt!(mask_projections, λ, plan, shift_factor=doppler_factor, workspace=mask_workspace) #line_list)
 
         # compute the ccf value at the current velocity shift
         ccf_out[i] = sum(flux .* mask_projections)
@@ -88,14 +89,18 @@ The mask is computed from a line_list and mask_shape (default: tophat).
 
 TODO: Implement/test other mask_shapes.
 """
-function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::Real=one(T1) ) where {
+function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::Real=one(T1),
+                            workspace::A3 = Array{eltype(λ),1}(undef,length(λ)+2) ) where {
     #     }, line_list::ALL
     #        mask_shape::ACMS = TopHatCCFMask() ) where {
-                T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,2},
+                T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T1,1},
                 PlanT<:AbstractCCFPlan } # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
 
     # find bin edges
-    λsle = find_bin_edges_opt(λs)  # Read as λ's left edges
+    #λsle = find_bin_edges_opt(λs)  # Read as λ's left edges
+    @assert length(workspace) == length(λs)+2
+    find_bin_edges_opt!(workspace,λs)  # Read as λ's left edges
+    λsle = workspace
     # TODO: OPT: Can get remove this allocation and compute these as needed, at least for tophat mask.  But might be useful to keep for more non-const masks.
 
     # allocate memory for mask projection
@@ -198,14 +203,24 @@ end
    find_bin_edges( pixel_centers )
 
 Internal function used by project_mask!.
+TODO: OPT may be able to eliminate need for this memory allocation.  Or at least preallocate it.
 """
 function find_bin_edges_opt(fws::A) where { T<:Real, A<:AbstractArray{T,1} }
     fwse = Array{eltype(fws),1}(undef,length(fws)+2)
-    fwse[2:end-2] = (fws[2:end] + fws[1:end-1]) ./ 2.0
+    fwse[2:end-2] .= (fws[2:end] .+ fws[1:end-1]) ./ 2.0
     fwse[1] = 2.0 * fws[1] - fwse[2]
     fwse[end-1] = 2.0 * fws[end] - fwse[end-2]
     fwse[end] = zero(eltype(A))
     return fwse
+end
+
+function find_bin_edges_opt!(output::A1, fws::A2) where { T<:Real, A1<:AbstractArray{T,1}, A2<:AbstractArray{T,1} }
+    #fwse = Array{eltype(fws),1}(undef,length(fws)+2)
+    output[2:end-2] .= (fws[2:end] .+ fws[1:end-1]) ./ 2.0
+    output[1] = 2.0 * fws[1] - output[2]
+    output[end-1] = 2.0 * fws[end] - output[end-2]
+    output[end] = zero(eltype(output))
+    return output
 end
 
 #=

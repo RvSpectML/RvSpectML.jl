@@ -9,6 +9,7 @@ data_paths.jl
 /docs/Manifest.toml
 /examples/Manifest.toml
 /notebooks/Manifest.toml
+/profiling
 /test/Manifest.toml
 
 # Large files to be downloaded outside of git

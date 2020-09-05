@@ -2,8 +2,7 @@ using Pkg
 Pkg.activate(".")
 
 verbose = true
-using Revise
- if verbose   println("# Loading RvSpecML")    end
+if verbose   println("# Loading RvSpecML")    end
  using RvSpectML
  if verbose   println("# Loading other packages")    end
  using DataFrames, Query, Statistics

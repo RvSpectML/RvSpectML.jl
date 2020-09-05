@@ -8,12 +8,12 @@ CurrentModule = RvSpectML
 
 ## Modules
 ```@autodocs
-Modules = [RvSpectML, RvSpectML.CCF, RvSpectML.RVFromCCF ] #, RvSpectML.PPCA ]
+Modules = [RvSpectML, RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA ] #, RvSpectML.PPCA ]
 Order = [:module]
 ```
 
 ```@autodocs
-Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation ]
+Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation, RvSpectML.TemporalGPInterpolation ]
 Order = [:module]
 ```
 
@@ -23,7 +23,7 @@ Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID, RvSpectML.Theoret
 Order = [:module]
 ```
 
-
+ 
 
 ## Exported Functions
 ### General purpose
@@ -35,14 +35,14 @@ Order = [:function ]
 
 #### RV-Related Algorithms
 ```@autodocs
-Modules = [RvSpectML.CCF, RvSpectML.RVFromCCF ] #, RvSpectML.PPCA ]
+Modules = [RvSpectML, RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA ] #, RvSpectML.PPCA ]
 Private = false
 Order = [:function ]
 ```
 
 #### Interpolation Algorithms
 ```@autodocs
-Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation ]
+Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation, RvSpectML.TemporalGPInterpolation ]
 Private = false
 Order = [:function ]
 ```
@@ -58,13 +58,13 @@ Order = [:function]
 ## Exported Types
 ### General purpose
 ```@autodocs
-Modules = [RvSpectML, RvSpectML.CCF, RvSpectML.RVFromCCF ]
+Modules = [RvSpectML, RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA ] #, RvSpectML.PPCA ]
 Private = false
 Order = [:type]
 ```
 ```@autodocs
 
-Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation ]
+Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation, RvSpectML.TemporalGPInterpolation ]
 Private = false
 Order = [:type]
 ```
@@ -79,13 +79,13 @@ Order = [:type]
 ## Private Types & Functions
 ### General purpose
 ```@autodocs
-Modules = [RvSpectML, RvSpectML.CCF, RvSpectML.RVFromCCF ]
+Modules = [RvSpectML, RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA ] #, RvSpectML.PPCA ]
 Public = false
 Order = [:type, :function ]
 ```
 
 ```@autodocs
-Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation ]
+Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.GPInterpolation, RvSpectML.TemporalGPInterpolation ]
 Public = false
 Order = [:type, :function]
 ```

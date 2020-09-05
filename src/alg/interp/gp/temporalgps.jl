@@ -40,17 +40,19 @@ function construct_gp(; smooth_factor::Real = 1 ) #xobs::AA1, yobs::AA2, xpred::
 end
 
 function construct_gp_posterior(xobs::AA1, yobs::AA2, xpred::AA3; #= kernel::Function = matern52_sparse_kernel, =# sigmasq_obs::AA4 = 1e-16*ones(length(xobs)) #=, sigmasq_cor::Real=1.0, rho::Real=1.0)  =#
-			, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1 )   where {
+			, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1, boost_factor::Real = 1 )   where {
 				T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, T3<:Real, AA3<:AbstractArray{T3,1}, T4<:Real, AA4<:AbstractArray{T4,1} }
 	f = construct_gp( smooth_factor=smooth_factor ) # xobs,yobs,xpred,sigmasq_obs=sigmasq_obs)
-	xobs_trans = use_logx ? log.(xobs) : xobs
+	xobs_trans = use_logx ? log.(xobs./boost_factor) : xobs./boost_factor
     yobs_trans = use_logy ? log.(yobs) : yobs
     sigmasq_obs_trans = use_logy ? sigmasq_obs./yobs.^2 : sigmasq_obs
+	#=
 	if xobs == xpred
 		xpred_trans = xobs_trans
 	else
     	xpred_trans = use_logx ? log.(xpred) : xpred
 	end
+	=#
 	fx = f(xobs_trans, sigmasq_obs_trans)
 	f_posterior = posterior(fx, yobs_trans )
 end
@@ -105,13 +107,13 @@ function predict_deriv2(gp::AGP, xpred::AA3; use_logx::Bool = true, use_logy::Bo
 end
 
 function predict_mean(xobs::AA1, yobs::AA2, xpred::AA3;	sigmasq_obs::AA4 = 1e-16*ones(length(xobs)) #=, sigmasq_cor::Real=1.0, rho::Real=1.0)  =#
-			, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1  )   where {
+			, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1, boost_factor::Real = 1  )   where {
 				T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, T3<:Real, AA3<:AbstractArray{T3,1}, T4<:Real, AA4<:AbstractArray{T4,1} }
 	# global ncalls += 1
 	@assert size(xobs) == size(yobs) == size(sigmasq_obs)
   	#println("# predict_mean (TemporalGPs): size(xobs) = ",size(xobs), "  size(xpred) = ", size(xpred))
 	tstart = now()
-	f_posterior = construct_gp_posterior(xobs,yobs,xpred,sigmasq_obs=sigmasq_obs, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
+	f_posterior = construct_gp_posterior(xobs,yobs,xpred,sigmasq_obs=sigmasq_obs, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor, boost_factor=boost_factor )
 	#println("typeof(f_posterior) = ",typeof(f_posterior))
 	#println("f_posterior <: AbstractGP = ",typeof(f_posterior) <: AbstractGP )
 	#println("f_posterior <: AbstractMvNormal = ",typeof(f_posterior) <: AbstractMvNormal )

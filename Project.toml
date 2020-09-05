@@ -1,7 +1,7 @@
 name = "RvSpectML"
 uuid = "1f61ac2c-3a1c-440a-925a-2707197041c8"
-authors = ["Eric Ford <ebf11@psu.edu> and contributors"]
-version = "0.0.5"
+authors = ["Eric B. Ford, Christian Gilbertson, Joe Ninan, Michael L. Palumbo III, Alex Wise, and contributors"]
+version = "0.0.6"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"

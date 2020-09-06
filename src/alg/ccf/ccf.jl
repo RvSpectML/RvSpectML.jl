@@ -10,6 +10,8 @@ Refactors and optimized by Eric Ford
 """ Module for computing CCFs """
 module CCF
 
+import SpecialFunctions: erf
+
 import ..RvSpectML
 import ..RvSpectML: AbstractChuckOfSpectrum, AbstractChunkList, AbstractChunkListTimeseries
 import ..RvSpectML: AbstractInstrument
@@ -36,6 +38,7 @@ export calc_ccf_v_grid
 
 include("calc_ccf.jl")
 export ccf_1D, ccf_1D!
+export ccf_1D_expr, ccf_1D_expr!
 
 using ThreadedIterables
 #using ThreadTools

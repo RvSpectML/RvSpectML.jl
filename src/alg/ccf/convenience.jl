@@ -24,10 +24,39 @@ function calc_ccf_chunk(chunk::AbstractChuckOfSpectrum,
   ccf_out = zeros(size(v_grid))
   #ccf_1D!(ccf_out, chunk.λ, chunk.flux, line_list, mask_shape=mask_shape, plan=plan)
   ccf_1D!(ccf_out, chunk.λ, chunk.flux, plan)
+  # TODO Change once ready use generic CCF mask shape (currently don't understand why normalization of output CCF differs)
+  #ccf_1D_expr!(ccf_out, chunk.λ, chunk.flux, plan)
   return ccf_out
 end
 
-"""  calc_ccf_chunk( chunklist, line_list )
+"""  calc_ccf_chunk_expr( chunk, line_list::ALL )
+Convenience function to compute CCF for one chunk of spectrum.
+Uses experimental version of project_mask_expr!.
+Need to understand why difference before merging this in.
+# Inputs:
+- chunk
+- line_list
+# Optional Arguments:
+- mask_shape (TopHatCCFMask())
+- ccf_plan (BasicCCFPlan())
+# Return:
+CCF for one chunk of spectrum, evaluated using mask_shape and plan
+"""
+function calc_ccf_chunk_expr(chunk::AbstractChuckOfSpectrum,
+                            #line_list::ALL; mask_shape::ACMS = TopHatCCFMask(),
+                                plan::PlanT = BasicCCFPlan() ) where {
+                                    PlanT<:AbstractCCFPlan } # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+                                    # ALL<:AbstractLineList, ACMS<:AbstractCCFMaskShape }
+  v_grid = calc_ccf_v_grid(plan)
+  ccf_out = zeros(size(v_grid))
+  #ccf_1D!(ccf_out, chunk.λ, chunk.flux, line_list, mask_shape=mask_shape, plan=plan)
+  #ccf_1D!(ccf_out, chunk.λ, chunk.flux, plan)
+  # TODO Change once ready use generic CCF mask shape (currently don't understand why normalization of output CCF differs)
+  ccf_1D_expr!(ccf_out, chunk.λ, chunk.flux, plan)
+  return ccf_out
+end
+
+"""  calc_ccf_chunklist ( chunklist, line_list )
 Convenience function to compute CCF based on a spectrum's chunklist.
 # Inputs:
 - chunklist
@@ -47,7 +76,7 @@ function calc_ccf_chunklist(chunk_list::AbstractChunkList,
   mapreduce(chunk->calc_ccf_chunk(chunk, plan), +, chunk_list.data)
 end
 
-"""  calc_ccf_chunk( chunklist_timeseries, line_list )
+"""  calc_ccf_chunklist_timeseries( chunklist_timeseries, line_list )
 Convenience function to compute CCF for a timeseries of spectra, each with a chunklist.
 Uses multiple threads if avaliable.
 # Inputs:
@@ -68,7 +97,7 @@ function calc_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries,
   @threaded  mapreduce(cl->calc_ccf_chunklist(cl, plan),hcat,clt.chunk_list)
 end
 
-"""  calc_ccf_chunk( chunklist_timeseries, line_list )
+"""  calc_order_ccfs_chunklist ( chunklist_timeseries, line_list )
 Convenience function to compute separate CCFs for each chunk in a spectrum.
 CCF evaluated using mask_shape and plan.
 # Inputs:
@@ -88,7 +117,7 @@ function calc_order_ccfs_chunklist(chunk_list::AbstractChunkList, # line_list::A
     mapreduce(chunk->calc_ccf_chunk(chunk, plan), hcat, chunk_list.data)
 end
 
-"""  calc_ccf_chunk( chunklist_timeseries, line_list )
+"""  calc_order_ccf_chunklist_timeseries( chunklist_timeseries, line_list )
 Convenience function to compute separate CCFs for each chunk of each spectrum in a timeseries.
 CCF is evaluated using mask_shape and plan.
 Uses multiple threads if avaliable.

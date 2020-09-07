@@ -38,7 +38,7 @@ export make_chunk_list, make_orders_into_chunks, filter_bad_chunks, make_grid_fo
 # alg.jl  is responsible for exporting its own types, modules & functions
 include("alg/alg.jl")
 
-# instruments.jl & the ihstruments it contains are responsible for exporting their own functions & modules
+# instruments.jl & the instruments it contains are responsible for exporting their own functions & modules
 include("instruments/instruments.jl")
 
 # util/files.jl

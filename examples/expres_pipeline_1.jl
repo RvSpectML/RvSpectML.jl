@@ -19,12 +19,14 @@ target_subdir = "101501"   # USER: Replace with directory of your choice
  write_template_to_csv = false
  write_spectral_grid_to_jld2 = false
  write_dcpca_to_csv = false
+ write_lines_to_csv = true
 
 has_loaded_data = false
  has_computed_ccfs = false
  has_computed_rvs = false
  has_computed_tempalte = false
  has_computed_dcpca = false
+ has_found_lines = false
 
 if !has_loaded_data
   df_files = make_manifest(target_subdir, EXPRES )
@@ -35,10 +37,9 @@ if !has_loaded_data
   has_loaded_data = true
 
   if verbose println("# Extracting order list timeseries from spectra.")  end
-    order_list_timeseries = RvSpectML.make_order_list_timeseries(expres_data)
-    order_list_timeseries = RvSpectML.filter_bad_chunks(order_list_timeseries,verbose=true)
-    RvSpectML.normalize_spectra!(order_list_timeseries,expres_data);
-  end
+  order_list_timeseries = RvSpectML.make_order_list_timeseries(expres_data)
+  order_list_timeseries = RvSpectML.filter_bad_chunks(order_list_timeseries,verbose=true)
+  RvSpectML.normalize_spectra!(order_list_timeseries,expres_data);
 
 end
 
@@ -63,6 +64,7 @@ if !has_computed_ccfs
     CSV.write(target_subdir * "_ccfs.csv",Tables.table(ccfs',header=Symbol.(v_grid)))
  has_computed_ccfs = true
  end
+end
 
 if make_plots
    using Plots
@@ -114,17 +116,7 @@ if !has_computed_dcpca
    end
 end
 
-#=
-using MultivariateStats
-function doppler_constrained_pca(flux::AbstractArray{T1,2}, deriv::AbstractVector{T2}, rvs::AbstractVector{T3} )  where { T1<:Real, T2<:Real, T3<:Real  }#, times::AbstractVector, rvs::AbstractVector)
-  fm_perp = RvSpectML.compute_spectra_perp_doppler_shift(flux,deriv, rvs )
-  idx_good_obs = 1:length(rvs)
-  M = fit(PCA, fm_perp[:,idx_good_obs]; maxoutdim=10)
-  pca_out = MultivariateStats.transform(M,fm_perp[:,idx_good_obs])
-  return pca_out, M
-end
 
-=#
 if make_plots
   using Plots
   # Set parameters for plotting analysis
@@ -146,6 +138,18 @@ end
 
 if make_plots
   RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss, pca_out, num_basis=3)
+end
+
+has_found_lines = false
+write_lines_to_csv= true
+if !has_found_lines
+   cl = ChunkList(map(grid->ChuckOfSpectrum(spectral_orders_matrix.λ,f_mean, var_mean, grid), spectral_orders_matrix.chunk_map))
+   lines_in_template = RvSpectML.LineFinder.find_lines_in_chunklist(cl)
+   if write_lines_to_csv
+      using CSV
+      CSV.write(target_subdir * "_linefinder.csv", lines_in_template )
+   end
+   has_found_lines = true
 end
 
 has_loaded_data = false

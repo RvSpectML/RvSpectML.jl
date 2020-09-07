@@ -6,7 +6,7 @@ using Statistics
 using LsqFit
 #using Optim
 #using Plots
-using ThreadedIterables
+#using ThreadedIterables
 using ..TemporalGPInterpolation
 
 
@@ -131,7 +131,7 @@ function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPla
   line_candidates[!,:f_near_center] = map(i->flux_smooth[line_candidates[i,:pixel_max_d2fdlnλ2]], 1:size(line_candidates,1) )
   line_candidates[!,:dfdlnλ_near_center] = map(i->deriv_smooth[line_candidates[i,:pixel_max_d2fdlnλ2]], 1:size(line_candidates,1) )
   line_candidates[!,:df2dlnλ2_near_center] = map(i->deriv2_smooth[line_candidates[i,:pixel_max_d2fdlnλ2]], 1:size(line_candidates,1) )
-  line_candidates[!,:λ_min_flux] = line_candidates[!,:λ_near_center]./exp.(line_candidates[!,:dfdlnλ_near_center]./line_candidates[!,:df2dlnλ2_near_center])
+  line_candidates[!,:λ_min_flux] = line_candidates[!,:λ_near_center].-line_candidates[!,:dfdlnλ_near_center]./(line_candidates[!,:df2dlnλ2_near_center]) 
   line_candidates[!,:dfdlnλ_min_flux] = line_candidates[!,:dfdlnλ_near_center].+log.(line_candidates[!,:λ_min_flux]./line_candidates[!,:λ_near_center]).*line_candidates[!,:df2dlnλ2_near_center]
 
   lines = line_candidates |> @filter(_.fit_converged) |> @filter(_.fit_σ²<0.018) |> @filter(-0.5 <_.fit_b <0.5) |> @filter(_.fit_a < 1.8) |> DataFrame
@@ -166,10 +166,11 @@ function find_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries ; p
     map(cl->find_lines_in_chunklist(cl, plan=plan),clt.chunk_list)
 end
 
-
-end # module LineFinder
-
+#=
 function interp_linear(;x1::T1,x2::T1,y1::T2,y2::T2,xpred::T1) where { T1<:Real, T2<:Real }
   ypred = y1+(y2-y1)*((xpred-x1)/(x2-x1))
 end
 =#
+
+
+end # module LineFinder

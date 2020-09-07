@@ -1,5 +1,5 @@
 using Pkg
-Pkg.activate(".")
+ Pkg.activate(".")
 
 verbose = true
 if verbose   println("# Loading RvSpecML")    end
@@ -14,11 +14,11 @@ target_subdir = "101501"   # USER: Replace with directory of your choice
  default_paths_to_search = [pwd(),"examples",joinpath(pkgdir(RvSpectML),"examples"),"/gpfs/group/ebf11/default/ebf11/expres/inputs"]
 
  make_plots = true
- write_ccf_to_csv = true
- write_rvs_to_csv = true
- write_template_to_csv = true
- write_spectral_grid_to_jld2 = true
- write_dcpca_to_csv = true
+ write_ccf_to_csv = false
+ write_rvs_to_csv = false
+ write_template_to_csv = false
+ write_spectral_grid_to_jld2 = false
+ write_dcpca_to_csv = false
 
 has_loaded_data = false
  has_computed_ccfs = false
@@ -33,15 +33,17 @@ if !has_loaded_data
   if verbose println("# Reading in FITS files.")  end
   @time expres_data = map(EXPRES.read_data,eachrow(df_files_use))
   has_loaded_data = true
+
+  if verbose println("# Extracting order list timeseries from spectra.")  end
+    order_list_timeseries = RvSpectML.make_order_list_timeseries(expres_data)
+    order_list_timeseries = RvSpectML.filter_bad_chunks(order_list_timeseries,verbose=true)
+    RvSpectML.normalize_spectra!(order_list_timeseries,expres_data);
+  end
+
 end
 
-if !has_computed_ccfs
- if verbose println("# Extracting order list timeseries from spectra.")  end
-   order_list_timeseries = RvSpectML.make_order_list_timeseries(expres_data)
-   order_list_timeseries = RvSpectML.filter_bad_chunks(order_list_timeseries,verbose=true)
-   RvSpectML.normalize_spectra!(order_list_timeseries,expres_data);
- end
 
+if !has_computed_ccfs
  if verbose println("# Reading line list for CCF: ", linelist_for_ccf_filename, ".")  end
  lambda_range_with_good_data = get_λ_range(expres_data)
  espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks",linelist_for_ccf_filename)

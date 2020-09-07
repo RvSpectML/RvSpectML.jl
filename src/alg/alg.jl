@@ -4,6 +4,9 @@ include("interp/interp.jl")
 export pack_chunk_list_timeseries_to_matrix
 export pack_shifted_chunk_list_timeseries_to_matrix
 
+include("line_finder/line_finder.jl")
+export find_lines_in_chunk, find_lines_in_chunklist, find_lines_in_chunklist_timeseries
+
 include("combine_obs.jl")
 export bin_spectra_consecutive, bin_spectra_max_Δt, bin_spectra_nightly
 export bin_times_consecutive, bin_rvs_consecutive

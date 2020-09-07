@@ -29,9 +29,12 @@ const Fx_PosteriorType = Distribution{Multivariate,Continuous}
 function construct_gp(; smooth_factor::Real = 1 ) #xobs::AA1, yobs::AA2, xpred::AA3; #= kernel::Function = matern52_sparse_kernel, =# sigmasq_obs::AA4 = 1e-16*ones(length(xobs)) #=, sigmasq_cor::Real=1.0, rho::Real=1.0)  =#
 			#, use_logx::Bool = true, use_logy::Bool = true )   where {
 				#T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, T3<:Real, AA3<:AbstractArray{T3,1}, T4<:Real, AA4<:AbstractArray{T4,1} }
+	#gp_param_default = [.1639394167390819, 0.01/5615] .* smooth_factor   # TODO Generalize.  Values fr fit to one order of one EXPRES spectra
+	#gp_param_default = [.1639394167390819, 0.01/5615 .* smooth_factor  ] # TODO Generalize.  Values fr fit to one order of one EXPRES spectra
 	#gp_param_default = [.1639394167390819, 0.14584100679829712/5615] .* smooth_factor   # TODO Generalize.  Values fr fit to one order of one EXPRES spectra
-
+	#println("smooth_factor = ",smooth_factor)
 	gp_param_default = [ 0.4890909216856761, 5.800274590507981e-5] .* smooth_factor   # TODO Generalize.  Values fr fit to one order of one EXPRES spectra
+	#gp_param_default = [ 0.4890909216856761, 5.800274590507981e-5 * smooth_factor ]
 	σ², l = gp_param_default
 	k = σ² * stretch(Matern52(), 1 / l)
 	f_naive = GP(k, GPC())
@@ -129,6 +132,7 @@ function predict_mean(xobs::AA1, yobs::AA2, xpred::AA3;	sigmasq_obs::AA4 = 1e-16
 	return output
 end
 
+# NEED TO TEST
 function predict_deriv(xobs::AA, yobs::AA, xpred::AA; sigmasq_obs::AA = 1e-16*ones(length(xobs))
 						, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1  )   where { T<:Real, AA<:AbstractArray{T,1} }
 #			kernel::Function = matern52_sparse_kernel, dkerneldx::Function = dkerneldx_matern52_sparse,
@@ -146,6 +150,7 @@ function predict_deriv(xobs::AA, yobs::AA, xpred::AA; sigmasq_obs::AA = 1e-16*on
 	return output
 end
 
+# NEED TO TEST
 function predict_deriv2(xobs::AA, yobs::AA, xpred::AA;sigmasq_obs::AA = 1e-16*ones(length(xobs))
 						, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1  )  where { T<:Real, AA<:AbstractArray{T,1} }
 #			kernel::Function = matern52_sparse_kernel, d2kerneldx2::Function = d2kerneldx2_matern52_sparse,
@@ -199,14 +204,23 @@ function predict_mean_and_derivs(xobs::AA, yobs::AA, xpred::AA; sigmasq_obs::AA 
   kobs_pred_deriv2 = make_kernel_obs_pred(xobs,xpred, kernel=d2kerneldx2, sigmasq_cor=sigmasq_cor, rho=rho)
   pred_deriv2 = kobs_pred_deriv2' * alpha
   =#
-  println("# predict_mean_and_derivs (TemporalGPs): size(xobs) = ",size(xobs), "  size(xpred) = ", size(xpred))
+  #println("# predict_mean_and_derivs (TemporalGPs): size(xobs) = ",size(xobs), "  size(xpred) = ", size(xpred))
+  xobs_trans = use_logx ? log.(xobs) : xobs
+  yobs_trans = use_logy ? log.(yobs) : yobs
+  xpred_trans = use_logx ? log.(xpred) : xpred
+  sigmasq_obs_trans = use_logy ? sigmasq_obs./yobs.^2 : sigmasq_obs
+
   tstart = now()
-  f_posterior = construct_gp_posterior(xobs,yobs,xpred,sigmasq_obs=sigmasq_obs, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
-  # TODO Opt:  Avoid repeated calculating of mean
-  pred_mean = predict_mean(f_posterior(xpred_trans), use_logx=use_logx,use_logy=use_logy)
-  pred_deriv = predict_deriv(f_posterior(xpred_trans), use_logx=use_logx,use_logy=use_logy)
-  pred_deriv2 = predict_deriv2(f_posterior(xpred_trans), use_logx=use_logx,use_logy=use_logy)
-  println("# predict_mean_and_derivs (TemporalGPs) runtime: ", now()-tstart)
+  f_posterior = construct_gp_posterior(xobs_trans,yobs_trans,xpred_trans,sigmasq_obs=sigmasq_obs_trans, use_logx=false, use_logy=false, smooth_factor=smooth_factor )
+  pred_mean = predict_mean(f_posterior(xpred_trans), use_logy=false)  # doesn't need use_logx
+  if use_logy
+	pred_mean = exp.(pred_mean)
+  end
+  pred_deriv = calc_dfluxdlnlambda(pred_mean,xpred_trans)
+  pred_deriv2 = calc_d2fluxdlnlambda2(pred_mean,xpred_trans)
+  #pred_deriv = predict_deriv(f_posterior, xpred_trans, use_logx=false,use_logy=false)
+  #pred_deriv2 = predict_deriv2(f_posterior, xpred_trans, use_logx=false,use_logy=false)
+  #println("# predict_mean_and_derivs (TemporalGPs) runtime: ", now()-tstart)
   return (mean=pred_mean, deriv=pred_deriv, deriv2=pred_deriv2)
 end
 
@@ -215,9 +229,9 @@ function gp_marginal(xobs::AA, yobs::AA #, kernel::Function;
 			use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1  )  where { T<:Real, AA<:AbstractArray{T,1} }
   	#kobs = make_kernel_data(xobs, kernel=kernel, sigmasq_obs=sigmasq_obs, sigmasq_cor=sigmasq_cor, rho=rho)
   	# -0.5*( invquad(kobs, yobs) + logdet(kobs) + length(xobs)*log(2pi) )
-	# TODO Opt check if logs are being recalculated twice or otpimized away by compiler
 	xobs_trans = use_logx ? log.(xobs) : xobs
     yobs_trans = use_logy ? log.(yobs) : yobs
+	# TODO Opt check if logs are being recalculated twice or otpimized away by compiler
     sigmasq_obs_trans = use_logy ? sigmasq_obs./yobs.^2 : sigmasq_obs
 	f_posterior = construct_gp_posterior(xobs,yobs,xobs,sigmasq_obs=sigmasq_obs, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
 	return -logpdf(f_posterior(xobs_trans, sigmasq_obs_trans), yobs_trans)

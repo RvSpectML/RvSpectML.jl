@@ -14,11 +14,11 @@ target_subdir = "101501"   # USER: Replace with directory of your choice
  default_paths_to_search = [pwd(),"examples",joinpath(pkgdir(RvSpectML),"examples"),"/gpfs/group/ebf11/default/ebf11/expres/inputs"]
 
  make_plots = true
- write_ccf_to_csv = false
- write_rvs_to_csv = false
- write_template_to_csv = false
- write_spectral_grid_to_jld2 = false
- write_dcpca_to_csv = false
+ write_ccf_to_csv = true
+ write_rvs_to_csv = true
+ write_template_to_csv = true
+ write_spectral_grid_to_jld2 = true
+ write_dcpca_to_csv = true
  write_lines_to_csv = true
 
 has_loaded_data = false
@@ -133,27 +133,32 @@ if make_plots
 end
 
 if make_plots
-  RvSpectML.plot_basis_scores(order_list_timeseries.times, rvs_ccf_gauss, pca_out, num_basis=3 )
+  RvSpectML.plot_basis_scores(order_list_timeseries.times, rvs_ccf_gauss, dcpca_out, num_basis=3 )
 end
 
 if make_plots
-  RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss, pca_out, num_basis=3)
+  RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss, dcpca_out, num_basis=3)
 end
 
 has_found_lines = false
-write_lines_to_csv= true
+write_lines_to_csv= false
 if !has_found_lines
    cl = ChunkList(map(grid->ChuckOfSpectrum(spectral_orders_matrix.λ,f_mean, var_mean, grid), spectral_orders_matrix.chunk_map))
    lines_in_template = RvSpectML.LineFinder.find_lines_in_chunklist(cl)
+
+   fits_to_lines = RvSpectML.LineFinder.fit_all_lines_in_chunklist_timeseries(order_list_timeseries, lines_in_template )
+
    if write_lines_to_csv
       using CSV
-      CSV.write(target_subdir * "_linefinder.csv", lines_in_template )
+      CSV.write(target_subdir * "_linefinder_lines.csv", lines_in_template )
+      CSV.write(target_subdir * "_linefinder_line_fits.csv", fits_to_lines )
    end
    has_found_lines = true
 end
 
 has_loaded_data = false
-has_computed_ccfs = false
-has_computed_rvs = false
-has_computed_tempalte = false
-has_computed_dcpca = false
+ has_computed_ccfs = false
+ has_computed_rvs = false
+ has_computed_tempalte = false
+ has_computed_dcpca = false
+ has_found_lines = false

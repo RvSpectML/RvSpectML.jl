@@ -115,6 +115,7 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
 
     # set indexing variables
     p = 1
+    p0 = 1
     λsle_cur = λsle[p]   # Current pixel's left edge
     λsre_cur = λsle[p+1] # Current pixel's right edge
     m = 1
@@ -143,6 +144,7 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
                 else                       # Right edge of current pixel has entered the mask for this line, but left edge hasn't
                     projection[p] += mask_weight * (λsre_cur - mask_lo) / (λsre_cur - λsle_cur)
                     on_mask = true         # Indicate next pixel will hav something to contribute based on the current line
+                    p0 = p                 # Mark the starting pixel of the line in case the lines overlap
                     p+=1                   # Move to next pixel
                     λsle_cur = λsle[p]
                     λsre_cur = λsle[p+1]
@@ -161,6 +163,9 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
                     mask_lo = λ_min(plan.mask_shape,plan.line_list.λ[m]) * shift_factor
                     mask_hi = λ_max(plan.mask_shape,plan.line_list.λ[m]) * shift_factor
                     mask_weight = plan.line_list.weight[m]
+                    if mask_lo < λsle_cur
+                        p = p0
+                    end
                 else                            # We're done with all lines, can return early
                     break
                 end

@@ -5,7 +5,7 @@ using Test
 using DataFrames
 linelist_df = read_mask_espresso(joinpath(pkgdir(RvSpectML),"data/masks/G2.espresso.mas"))
     @test typeof(linelist_df) <: DataFrame
-    @test size(linelist_df,1) == 5551
+    @test size(linelist_df,1) == 5484
     #@test size(linelist_df,2) == 5
     @test hasproperty(linelist_df,:lambda)
     @test hasproperty(linelist_df,:lambda_lo)

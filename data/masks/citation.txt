@@ -1,0 +1,3 @@
+ESPRESSO mask files comes from the public DRS, version 2.2.1: 
+https://www.eso.org/sci/software/pipelines/espresso/espresso-pipe-recipes.html --> espdr-kit-2.2.1/espdr-calib-2.2.1/cal/
+

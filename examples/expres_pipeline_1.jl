@@ -24,9 +24,13 @@ target_subdir = "101501"   # USER: Replace with directory of your choice
 has_loaded_data = false
  has_computed_ccfs = false
  has_computed_rvs = false
- has_computed_tempalte = false
+ has_computed_template = false
  has_computed_dcpca = false
  has_found_lines = false
+ has_computed_ccfs2 = false
+ has_computed_rvs2 = false
+ has_computed_template2 = false
+ has_computed_dcpca2 = false
 
 if !has_loaded_data
   if verbose println("# Finding what data files are avaliable.")  end
@@ -92,7 +96,7 @@ if !has_computed_rvs
  has_computed_rvs = true
 end
 
-if !has_computed_tempalte
+if !has_computed_template
    if verbose println("# Making template spectra.")  end
    @time ( spectral_orders_matrix, f_mean, var_mean, deriv, deriv2, order_grids )  = RvSpectML.make_template_spectra(order_list_timeseries)
 
@@ -104,6 +108,7 @@ if !has_computed_tempalte
       using JLD2, FileIO
       save(joinpath(output_dir,target_subdir * "_matrix.jld2"), Dict("λ"=>spectral_orders_matrix.λ,"spectra"=>spectral_orders_matrix.flux,"var_spectra"=>spectral_orders_matrix.var,"flux_template"=>f_mean,"var"=>var_mean, "dfluxdlnλ_template"=>deriv,"d²fluxdlnλ²_template"=>deriv2))
    end
+   has_computed_template = true
 end
 
 if !has_computed_dcpca
@@ -117,6 +122,7 @@ if !has_computed_dcpca
       CSV.write(joinpath(output_dir,target_subdir * "_dcpca_basis.csv"),  Tables.table(M.proj) )
       CSV.write(joinpath(output_dir,target_subdir * "_dcpca_scores.csv"), Tables.table(dcpca_out) )
    end
+   has_computed_dcpca = true
 end
 
 
@@ -171,38 +177,123 @@ if !has_found_lines
             DataFrame # ~75th quantile
       good_lines = fit_distrib |> @filter(_.std_λc < 0.0316 ) |> DataFrame
       bad_lines = fit_distrib |> @filter(_.std_λc > 0.0316 ) |> DataFrame
-      scatter(good_lines.median_σ², good_lines.median_depth )
-      scatter!(bad_lines.median_σ², bad_lines.median_depth )
+      #scatter(good_lines.median_σ², good_lines.median_depth )
+      #scatter!(bad_lines.median_σ², bad_lines.median_depth )
       lines_to_try = lines_in_template[first.(good_lines[!,:line_id]),:]
+
 
       if write_lines_to_csv
          using CSV
          CSV.write(joinpath(output_dir,target_subdir * "_linefinder_lines.csv"), lines_in_template )
          CSV.write(joinpath(output_dir,target_subdir * "_linefinder_line_fits.csv"), fits_to_lines )
          CSV.write(joinpath(output_dir,target_subdir * "_linefinder_line_fits_clean.csv"), lines_to_try )
+         fits_to_lines = nothing
+         telluric_info = nothing
+         fit_distrib = nothing
+         good_lines = nothing
+         bad_lines = nothing
+         GC.gc()
       end
 
-      if verbose println("# Computing CCFs with new line list.")  end
-      #mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor)
-      perm = sortperm(lines_to_try.fit_λc)
-      line_list2 = RvSpectML.CCF.BasicLineList(lines_to_try.fit_λc[perm], lines_to_try.fit_depth[perm].*lines_to_try.fit_a[perm] )
-      ccf_plan2 = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list2, midpoint=0.0)
-      v_grid2 = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan2)
-      @time ccfs2 = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan2)
-      # Write CCFs to file
-      if write_ccf_to_csv
-         using CSV
-         CSV.write(joinpath(output_dir,target_subdir * "_ccfs2.csv"),Tables.table(ccfs2',header=Symbol.(v_grid)))
-         has_computed_ccfs = true
-      end
    has_found_lines = true
 end
 
+if has_computed_ccfs2
+   if verbose println("# Computing CCFs with new line list.")  end
+   #mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor)
+   perm = sortperm(lines_to_try.fit_λc)
+   line_list2 = RvSpectML.CCF.BasicLineList(lines_to_try.fit_λc[perm], lines_to_try.fit_depth[perm].*lines_to_try.fit_a[perm] )
+   ccf_plan2 = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list2, midpoint=0.0)
+   v_grid2 = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan2)
+   @time ccfs2 = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan2)
+   # Write CCFs to file
+   if write_ccf_to_csv
+      using CSV
+      CSV.write(joinpath(output_dir,target_subdir * "_ccfs2.csv"),Tables.table(ccfs2',header=Symbol.(v_grid)))
+   end
+   has_computed_ccfs2 = true
+end
+
+if !has_computed_rvs2
+ if verbose println("# Measuring RVs from CCF.")  end
+ #rvs_ccf_gauss = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs[:,i],fit_type = "gaussian") for i in 1:length(order_list_timeseries) ]
+ rvs_ccf_gauss2 = RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid2,ccfs2,fit_type = "gaussian")
+ # Store estimated RVs in metadata
+ map(i->order_list_timeseries.metadata[i][:rv_est] = rvs_ccf_gauss2[i]-mean(rvs_ccf_gauss2), 1:length(order_list_timeseries) )
+ if write_rvs_to_csv
+    using CSV
+    CSV.write(joinpath(output_dir,target_subdir * "_rvs_ccf2.csv"),DataFrame("Time [MJD]"=>order_list_timeseries.times,"CCF RV [m/s]"=>rvs_ccf_gauss))
+ end
+ has_computed_rvs2 = true
+end
+
+if !has_computed_template2
+   # Add code to perform DCPCA only around good lines
+   chunk_list_df2 = lines_to_try |> @select(:fit_min_λ,:fit_max_λ) |> @rename(:fit_min_λ=>:λ_lo, :fit_max_λ=>:λ_hi) |> DataFrame
+   chunk_list_timeseries2 = RvSpectML.make_chunk_list_timeseries(expres_data,chunk_list_df2)
+
+   # Check that no NaN's included
+   (chunk_list_timeseries2, chunk_list_df2) = RvSpectML.filter_bad_chunks(chunk_list_timeseries2,chunk_list_df2)
+   println(size(chunk_list_df2), " vs ", num_chunks(chunk_list_timeseries2) )
+
+
+   if verbose println("# Making template spectra.")  end
+   @time ( spectral_orders_matrix2, f_mean2, var_mean2, deriv_2, deriv2_2, order_grids2 )  = RvSpectML.make_template_spectra(chunk_list_timeseries2)
+
+   if write_template_to_csv
+      using CSV
+      CSV.write(joinpath(output_dir,target_subdir * "_template2.csv"),DataFrame("λ"=>spectral_orders_matrix2.λ,"flux_template"=>f_mean2,"var"=>var_mean2, "dfluxdlnλ_template"=>deriv_2,"d²fluxdlnλ²_template"=>deriv2_2))
+   end
+   if write_spectral_grid_to_jld2
+      using JLD2, FileIO
+      save(joinpath(output_dir,target_subdir * "_matrix2.jld2"), Dict("λ"=>spectral_orders_matrix2.λ,"spectra"=>spectral_orders_matrix2.flux,"var_spectra"=>spectral_orders_matrix2.var,"flux_template"=>f_mean2,"var"=>var_mean2, "dfluxdlnλ_template"=>deriv_2,"d²fluxdlnλ²_template"=>deriv2_2))
+   end
+   has_computed_template2 = true
+end
+
+has_computed_dcpca2 = false
+if !has_computed_dcpca2
+   if verbose println("# Performing Doppler constrained PCA analysis.")  end
+   using MultivariateStats
+   dcpca2_out, M2 = RvSpectML.DCPCA.doppler_constrained_pca(spectral_orders_matrix2.flux, deriv_2, rvs_ccf_gauss2)
+   frac_var_explained2 = 1.0.-cumsum(principalvars(M2))./tvar(M2)
+   println("# Fraction of variance explained = ", frac_var_explained2[1:min(5,length(frac_var_explained2))])
+   if write_dcpca_to_csv
+      using CSV
+      CSV.write(joinpath(output_dir,target_subdir * "_dcpca_basis2.csv"),  Tables.table(M.proj) )
+      CSV.write(joinpath(output_dir,target_subdir * "_dcpca_scores2.csv"), Tables.table(dcpca_out) )
+   end
+   has_computed_dcpca2 = true
+end
+
+
+if make_plots  # Ploting results from DCPCA
+  using Plots
+  # Set parameters for plotting analysis
+  plt_order = 42
+  plt_order_pix = 4500:5000
+  plt = scatter(frac_var_explained, xlabel="Number of PCs", ylabel="Frac Variance Unexplained")
+  display(plt)
+end
+
+if make_plots
+  plt_line = 170
+  RvSpectML.plot_basis_vectors(order_grids, f_mean, deriv, M.proj, idx_plt = spectral_orders_matrix.chunk_map[plt_line], num_basis=3 )
+  #xlims!(5761.5,5766)
+end
+
+if make_plots
+  RvSpectML.plot_basis_scores(order_list_timeseries.times, rvs_ccf_gauss, dcpca_out, num_basis=3 )
+end
+
+if make_plots
+  RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss, dcpca_out, num_basis=3)
+end
 
 
 has_loaded_data = false
  has_computed_ccfs = false
  has_computed_rvs = false
- has_computed_tempalte = false
+ has_computed_template = false
  has_computed_dcpca = false
  has_found_lines = false

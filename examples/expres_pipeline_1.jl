@@ -29,7 +29,10 @@ has_loaded_data = false
  has_found_lines = false
 
 if !has_loaded_data
+  if verbose println("# Finding what data files are avaliable.")  end
   df_files = make_manifest(target_subdir, EXPRES )
+
+  if verbose println("# Reading in customized parameters.")  end
   eval(code_to_include_param_jl())
 
   if verbose println("# Reading in FITS files.")  end
@@ -61,7 +64,7 @@ if !has_computed_ccfs
  # Write CCFs to file
  if write_ccf_to_csv
     using CSV
-    CSV.write(target_subdir * "_ccfs.csv",Tables.table(ccfs',header=Symbol.(v_grid)))
+    CSV.write(joinpath(output_dir,target_subdir * "_ccfs.csv"),Tables.table(ccfs',header=Symbol.(v_grid)))
  has_computed_ccfs = true
  end
 end
@@ -84,7 +87,7 @@ if !has_computed_rvs
  map(i->order_list_timeseries.metadata[i][:rv_est] = rvs_ccf_gauss[i]-mean(rvs_ccf_gauss), 1:length(order_list_timeseries) )
  if write_rvs_to_csv
     using CSV
-    CSV.write(target_subdir * "_rvs_ccf.csv",DataFrame("Time [MJD]"=>order_list_timeseries.times,"CCF RV [m/s]"=>rvs_ccf_gauss))
+    CSV.write(joinpath(output_dir,target_subdir * "_rvs_ccf.csv"),DataFrame("Time [MJD]"=>order_list_timeseries.times,"CCF RV [m/s]"=>rvs_ccf_gauss))
  end
  has_computed_rvs = true
 end
@@ -95,11 +98,11 @@ if !has_computed_tempalte
 
    if write_template_to_csv
       using CSV
-      CSV.write(target_subdir * "_template.csv",DataFrame("λ"=>spectral_orders_matrix.λ,"flux_template"=>f_mean,"var"=>var_mean, "dfluxdlnλ_template"=>deriv,"d²fluxdlnλ²_template"=>deriv2))
+      CSV.write(joinpath(output_dir,target_subdir * "_template.csv"),DataFrame("λ"=>spectral_orders_matrix.λ,"flux_template"=>f_mean,"var"=>var_mean, "dfluxdlnλ_template"=>deriv,"d²fluxdlnλ²_template"=>deriv2))
    end
    if write_spectral_grid_to_jld2
       using JLD2, FileIO
-      save(target_subdir * "_matrix.jld2", Dict("λ"=>spectral_orders_matrix.λ,"spectra"=>spectral_orders_matrix.flux,"var_spectra"=>spectral_orders_matrix.var,"flux_template"=>f_mean,"var"=>var_mean, "dfluxdlnλ_template"=>deriv,"d²fluxdlnλ²_template"=>deriv2))
+      save(joinpath(output_dir,target_subdir * "_matrix.jld2"), Dict("λ"=>spectral_orders_matrix.λ,"spectra"=>spectral_orders_matrix.flux,"var_spectra"=>spectral_orders_matrix.var,"flux_template"=>f_mean,"var"=>var_mean, "dfluxdlnλ_template"=>deriv,"d²fluxdlnλ²_template"=>deriv2))
    end
 end
 
@@ -111,13 +114,13 @@ if !has_computed_dcpca
    println("# Fraction of variance explained = ", frac_var_explained[1:min(5,length(frac_var_explained))])
    if write_dcpca_to_csv
       using CSV
-      CSV.write(target_subdir * "_dcpca_basis.csv",  Tables.table(M.proj) )
-      CSV.write(target_subdir * "_dcpca_scores.csv", Tables.table(dcpca_out) )
+      CSV.write(joinpath(output_dir,target_subdir * "_dcpca_basis.csv"),  Tables.table(M.proj) )
+      CSV.write(joinpath(output_dir,target_subdir * "_dcpca_scores.csv"), Tables.table(dcpca_out) )
    end
 end
 
 
-if make_plots
+if make_plots  # Ploting results from DCPCA
   using Plots
   # Set parameters for plotting analysis
   plt_order = 42
@@ -143,18 +146,59 @@ end
 has_found_lines = false
 write_lines_to_csv= false
 if !has_found_lines
+   if verbose println("# Performing fresh search for lines in template spectra.")  end
    cl = ChunkList(map(grid->ChuckOfSpectrum(spectral_orders_matrix.λ,f_mean, var_mean, grid), spectral_orders_matrix.chunk_map))
+   spectral_orders_matrix = nothing # We're done with this, so can release memory
+   GC.gc()
    lines_in_template = RvSpectML.LineFinder.find_lines_in_chunklist(cl)
+   if verbose println("# Finding above lines in all spectra.")  end
+   @time fits_to_lines = RvSpectML.LineFinder.fit_all_lines_in_chunklist_timeseries(order_list_timeseries, lines_in_template )
 
-   fits_to_lines = RvSpectML.LineFinder.fit_all_lines_in_chunklist_timeseries(order_list_timeseries, lines_in_template )
+   if verbose println("# Rejecting lines that have telluric contamination at any time.")  end
+   telluric_info = RvSpectML.LineFinder.find_worst_telluric_in_each_line!(fits_to_lines, order_list_timeseries, expres_data )
 
-   if write_lines_to_csv
-      using CSV
-      CSV.write(target_subdir * "_linefinder_lines.csv", lines_in_template )
-      CSV.write(target_subdir * "_linefinder_line_fits.csv", fits_to_lines )
-   end
+   # Look at distribution of standard deviations for line properties
+    fit_distrib = fits_to_lines |> @groupby(_.line_id) |>
+            @map( { median_a=median(_.fit_a), median_b=median(_.fit_b), median_depth=median(_.fit_depth), median_σ²=median(_.fit_σ²), median_λc=median(_.fit_λc),
+                   std_a=std(_.fit_a), std_b=std(_.fit_b), std_depth=std(_.fit_depth), std_σ²=std(_.fit_σ²), std_λc=std(_.fit_λc), min_telluric_model_all_obs=minimum(_.min_telluric_model_this_obs), line_id=_.line_id } ) |>
+            @filter(_.min_telluric_model_all_obs == 1.0 ) |> # No telluric in any observations
+            @filter(_.std_b < 0.257) |>     # ~90th quantile
+            @filter( 0.001 < _.median_σ² ) |>  # ~99th quantile
+            @filter( _.std_σ² < 0.00844) |>  # ~99th quantile
+            @filter( _.median_depth > 0.05 ) |>  # ~99th quantile
+            @filter( _.std_depth < 0.11 ) |>  # ~95th quantile
+            #@filter( -0.25 < _.median_b < 0.25) |>  #~5th to 95th percentiles
+            DataFrame # ~75th quantile
+      good_lines = fit_distrib |> @filter(_.std_λc < 0.0316 ) |> DataFrame
+      bad_lines = fit_distrib |> @filter(_.std_λc > 0.0316 ) |> DataFrame
+      scatter(good_lines.median_σ², good_lines.median_depth )
+      scatter!(bad_lines.median_σ², bad_lines.median_depth )
+      lines_to_try = lines_in_template[first.(good_lines[!,:line_id]),:]
+
+      if write_lines_to_csv
+         using CSV
+         CSV.write(joinpath(output_dir,target_subdir * "_linefinder_lines.csv"), lines_in_template )
+         CSV.write(joinpath(output_dir,target_subdir * "_linefinder_line_fits.csv"), fits_to_lines )
+         CSV.write(joinpath(output_dir,target_subdir * "_linefinder_line_fits_clean.csv"), lines_to_try )
+      end
+
+      if verbose println("# Computing CCFs with new line list.")  end
+      #mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor)
+      perm = sortperm(lines_to_try.fit_λc)
+      line_list2 = RvSpectML.CCF.BasicLineList(lines_to_try.fit_λc[perm], lines_to_try.fit_depth[perm].*lines_to_try.fit_a[perm] )
+      ccf_plan2 = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list2, midpoint=0.0)
+      v_grid2 = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan2)
+      @time ccfs2 = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan2)
+      # Write CCFs to file
+      if write_ccf_to_csv
+         using CSV
+         CSV.write(joinpath(output_dir,target_subdir * "_ccfs2.csv"),Tables.table(ccfs2',header=Symbol.(v_grid)))
+         has_computed_ccfs = true
+      end
    has_found_lines = true
 end
+
+
 
 has_loaded_data = false
  has_computed_ccfs = false

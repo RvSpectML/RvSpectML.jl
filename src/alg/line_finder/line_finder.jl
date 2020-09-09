@@ -84,6 +84,31 @@ function line_model(λ::Union{T1,AbstractVector{T1} }, θ::AbstractVector{T2}) w
   return @. a*(1.0+b*(λ-λc))*(1.0 - d * exp(-0.5*(λ-λc)^2 /σ²) )
 end
 
+
+function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::AbstractArray{T3,1}, idx::UnitRange) where { T1<:Real, T2<:Real, T3<:Real }
+  @assert length(λ) == length(flux) == length(var)
+    λc0 = λ[idx[argmin(flux[idx])]]
+  continuum0 = maximum(flux[idx])
+  depth0 = 1-minimum(flux[idx])/continuum0
+  width0 = 0.05^2   # might need to make more general to deal with different v sin i's
+  slope0 = 0.0
+  θ0 = pack(a=continuum0,b=slope0,λc=λc0,depth=depth0,σ²=width0)
+  lower_bound = pack(a=0.0, b=-1.0, λc=minimum(λ[idx]), depth=0.0, σ²=0.01^2)
+  upper_bound = pack(a=2.0, b= 1.0, λc=maximum(λ[idx]), depth=1.0, σ²=0.15^2)
+  try
+    res = curve_fit(line_model, λ[idx], flux[idx], 1.0 ./(var[idx]), θ0, lower=lower_bound, upper=upper_bound, show_trace=false, autodiff=:forwarddiff)
+    covar = estimate_covar(res)
+    param = unpack(res.param)
+    chi2perdof = sum(abs2.(res.resid).*res.wt) / length(idx)
+    return (param=param, covar=covar, χ²_per_dof=chi2perdof, is_converged = res.converged)
+  catch
+    param = (a=continuum0, λc=λc0, depth=depth0, σ²=width0, b=slope0  )
+    covar = Array{Float64,2}(undef,0,0)
+    return (param=param, covar=covar , χ²_per_dof=Inf, is_converged = false)
+  end
+end
+
+
 """ fit_line( λ, flux, var )
 Fits a basic Gaussian absorption line times a line (variable slope) to data.
 Returns a tuple of (param, χ²_per_dof, is_converged)
@@ -91,6 +116,7 @@ Warning:  Has some hardcoded parameters that likely need to be generalized for d
 """
 function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::AbstractArray{T3,1} ) where { T1<:Real, T2<:Real, T3<:Real }
   @assert length(λ) == length(flux) == length(var)
+  @warn "Need to check why this results in fits not converging!"
   λc0 = λ[argmin(flux)]
   continuum0 = maximum(flux)
   depth0 = 1-minimum(flux)/continuum0
@@ -100,13 +126,20 @@ function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::Abstr
   lower_bound = pack(a=0.0, b=-1.0, λc=minimum(λ), depth=0.0, σ²=0.01^2)
   upper_bound = pack(a=2.0, b= 1.0, λc=maximum(λ), depth=1.0, σ²=0.15^2)
   try
-    res = curve_fit(line_model, λ, flux, 1.0 ./(var), θ0, lower=lower_bound, upper=upper_bound, show_trace=false, autodiff=:forwarddiff)
+    #res = curve_fit(line_model, λ, flux, 1.0 ./(var), θ0, lower=lower_bound, upper=upper_bound, show_trace=false, autodiff=:forwarddiff)
+    λtmp = copy(λ)
+    ftmp = copy(flux)
+    invvar = 1.0 ./ var
+    res = curve_fit(line_model, λtmp, ftmp,invvar, θ0, lower=lower_bound, upper=upper_bound, show_trace=false, autodiff=:forwarddiff)
+    #res = curve_fit(line_model, λ, flux, 1.0 ./(var), θ0, lower=lower_bound, upper=upper_bound, show_trace=false, autodiff=:forwarddiff)
     param = unpack(res.param)
+    covar = estimate_covar(fit)
     chi2perdof = sum(abs2.(res.resid).*res.wt) / length(λ)
-    return (param=param, χ²_per_dof=chi2perdof, is_converged = res.converged)
+    return (param=param, covar=covar, χ²_per_dof=chi2perdof, is_converged = res.converged)
   catch
     param = (a=continuum0, λc=λc0, depth=depth0, σ²=width0, b=slope0  )
-    return (param=param, χ²_per_dof=Inf, is_converged = false)
+    covar = Array{Float64,2}(undef,0,0)
+    return (param=param, covar=covar, χ²_per_dof=Inf, is_converged = false)
   end
 end
 
@@ -118,10 +151,11 @@ Convenience function to find links in one chunk of spectrum.
 # Return:
 - line_list
 """
-function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPlan = LineFinderPlan(), chunk_id::Integer = 0 )
+function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPlan = LineFinderPlan(), chunk_id::Integer = 0 #=, telluric_model::AbstractArray{T,1}=zeros(0)=# ) where {T <:Real}
 
   function fit_line(idx::UnitRange)
-    RvSpectML.LineFinder.fit_line(view(chunk.λ,idx), view(flux,idx), view(chunk.var, idx) )
+    #RvSpectML.LineFinder.fit_line(view(chunk.λ,idx), view(flux,idx), view(chunk.var, idx) )   # some bug in this version of function causes non-convergence
+    RvSpectML.LineFinder.fit_line( chunk.λ, flux, chunk.var, idx)
   end
 
   # Fit flux with extra smoothing for measuring derivatives well
@@ -131,10 +165,11 @@ function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPla
   # Find pixel ranges that might be lines
   line_candidates = find_line_candidates_in_chunk(chunk, deriv2_smooth, plan=plan)
   if chunk_id != 0    line_candidates[!,:chunk_id] .= chunk_id  end
+  #line_candidates[!,:pixels] = line_candidates[!,:pixels]
   line_candidates[!,:fit_min_λ] = chunk.λ[first.(line_candidates[!,:pixels])]
   line_candidates[!,:fit_max_λ] = chunk.λ[ last.(line_candidates[!,:pixels])]
 
-  # Refit flux without extra smoothing
+  # Refit flux without extra smoothing, so depths and widths won't be biased by extra smoothing
   (flux, deriv, deriv2) = predict_mean_and_derivs(chunk.λ, chunk.flux, chunk.λ, sigmasq_obs=chunk.var,
                                   smooth_factor=1, use_logx=plan.use_logλ, use_logy=plan.use_logflux )
 
@@ -146,6 +181,7 @@ function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPla
   line_candidates[!,:fit_σ²] = [result[i].param.σ² for i in 1:length(result) ]
   line_candidates[!,:fit_a] = [result[i].param.a for i in 1:length(result) ]
   line_candidates[!,:fit_b] = [result[i].param.b for i in 1:length(result) ]
+  line_candidates[!,:fit_covar] = [result[i].covar for i in 1:length(result) ]
   line_candidates[!,:fit_χ²_per_dof] = [result[i].χ²_per_dof for i in 1:length(result) ]
   line_candidates[!,:fit_converged] = [result[i].is_converged for i in 1:length(result) ]
   line_candidates[!,:λ_near_center] = map(i->chunk.λ[line_candidates[i,:pixel_max_d2fdlnλ2]], 1:size(line_candidates,1) )
@@ -172,6 +208,17 @@ function find_lines_in_chunklist(chunk_list::AbstractChunkList ; plan::LineFinde
   mapreduce(i->find_lines_in_chunk(chunk_list[i], plan=plan, chunk_id=i), append!, 1:length(chunk_list) )
 end
 
+function find_lines_in_chunklist(chunk_list::AbstractChunkList, spectra::AS ; plan::LineFinderPlan = LineFinderPlan() ) where {AS<:AbstractSpectra}
+  if haskey(spectra.metadata,:tellurics)
+    return mapreduce(i->find_lines_in_chunk(chunk_list[i], plan=plan, chunk_id=i,
+      telluric_model = view(spectra.metadata[:tellurics], chunk_list[i].λ.indices[1], chunk_list[i].λ.indices[2])  ),
+        append!, 1:length(chunk_list) )
+  else
+    return find_lines_in_chunklist(chunk_list,plan=plan)
+  end
+end
+
+
 """  find_lines_in_chunklist_timeseries( chunklist_timeseries, line_list )
 Convenience function to find lines in each chunk of each spectrum in a timeseries.
 # Inputs:
@@ -187,13 +234,8 @@ function find_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries ; p
     map(cl->find_lines_in_chunklist(cl, plan=plan),clt.chunk_list)
 end
 
+
 function find_pixels_for_line_in_chunk( chunk::AbstractChuckOfSpectrum, λ_min::Real, λ_max::Real )# ; plan::LineFinderPlan = LineFinderPlan() )
-  #=
-  idx_lo = findfirst(λ->λ>=λ_min, chunk.λ)
-  idx_tmp = findfirst(λ->λ>=λ_max, chunk.λ[idx_lo:end] )
-  idx_hi = (idx_lo:end)[idx_tmp
-  =#
-  #searchsorted(chunk.λ, (λ_min+λ_max)/2, by=λ->λ_min<=λ<=λ_max)
   idx_lo = searchsortedfirst(chunk.λ, λ_min, by=x->x>=λ_min)
   idx_tmp = searchsortedlast(chunk.λ[idx_lo:end], λ_max, by=x->x<=λ_max, rev=true)
   idx_hi = idx_lo + idx_tmp - 1
@@ -220,7 +262,6 @@ function find_pixels_for_line_in_chunklist( chunk_list::AbstractChunkList, λ_mi
     error("Didn't find λ = " *string(λ_min)*" - " *string(λ_max)* " in chunklist.")
 
   end
-  #ch_idx = ch_idx_all[ch_idx_to_keep]
   return (chunk_idx=ch_idx, pixels=find_pixels_for_line_in_chunk(chunk_list.data[ch_idx], λ_min, λ_max) )
 end
 
@@ -236,12 +277,12 @@ function find_pixels_for_all_lines_in_chunklist( chunk_list::AbstractChunkList, 
 end
 
 
-function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, lines::DataFrame, line_idx::Integer)
-  @assert 1<=line_idx<=size(lines,1)
+#function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, lines::DataFrame, line_idx::Integer)
+function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmin::Real, λmax::Real, chid::Integer)
   df = DataFrame()
-  λmin = lines[line_idx,:fit_min_λ]
-  λmax = lines[line_idx,:fit_max_λ]
-  chid = lines[line_idx,:chunk_id]
+  #λmin = lines[line_idx,:fit_min_λ]
+  #λmax = lines[line_idx,:fit_max_λ]
+  #chid = lines[line_idx,:chunk_id]
   nobs = length(clt.chunk_list)
   ParamT = NamedTuple{(:a, :λc, :depth, :σ², :b),NTuple{5,Float64}}  # maybe generalize by making part of plan?
   param = Vector{ParamT}(undef,nobs)
@@ -250,60 +291,97 @@ function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, line
   fit_depth = Vector{Float64}(undef,nobs)
   fit_σ² = Vector{Float64}(undef,nobs)
   fit_b = Vector{Float64}(undef,nobs)
+  fit_covar = Vector{Array{Float64,2}}(undef,nobs)
   fit_converged = falses(nobs)
+  pixels = Vector{UnitRange{Int64}}(undef,nobs)
   gof = zeros(nobs)
+  #obs_idx = collect(1:nobs)
   for t in 1:nobs
-    pixels = find_pixels_for_line_in_chunklist(clt.chunk_list[t], λmin, λmax, chid).pixels
-    (param_tmp, gof[t], fit_converged[t] ) = fit_line(view(clt.chunk_list[t][chid].λ, pixels), view(clt.chunk_list[t][chid].flux,pixels), view(clt.chunk_list[t][chid].var, pixels) )
+    pixels[t] = find_pixels_for_line_in_chunklist(clt.chunk_list[t], λmin, λmax, chid).pixels
+    #(param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(view(clt.chunk_list[t][chid].λ, pixels), view(clt.chunk_list[t][chid].flux,pixels), view(clt.chunk_list[t][chid].var, pixels) )  # some bug in this version of function causes non-convergence
+    (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, clt.chunk_list[t][chid].flux, clt.chunk_list[t][chid].var, pixels[t] )
     fit_a[t] = param_tmp.a
     fit_λc[t] = param_tmp.λc
     fit_depth[t] = param_tmp.depth
     fit_σ²[t] = param_tmp.σ²
     fit_b[t] = param_tmp.b
   end
+
   return DataFrame(:fit_a=>fit_a, :fit_λc=>fit_λc, :fit_depth=>fit_depth, :fit_σ²=>fit_σ², :fit_b=>fit_b,
-                    :χ²_per_dof=>gof, :fit_converged=>fit_converged)
+                    :fit_covar=>fit_covar, :χ²_per_dof=>gof, :fit_converged=>fit_converged, :obs_idx =>collect(1:nobs), :chunk_id=>chid, :pixels=>pixels  )
 end
 
 
-function fit_all_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, lines::DataFrame )
+function fit_all_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, lines::DataFrame ; plan::LineFinderPlan = LineFinderPlan() )
   @assert size(lines,1) >= 2
-  df = fit_line_in_chunklist_timeseries(clt, lines, 1)
-  df[!,:line_id] .= 1
-  for i in 2:size(lines,1)
-    df_tmp = fit_line_in_chunklist_timeseries(clt, lines, i)
-    df_tmp[!,:line_id] .= i
+  line_idx = 1
+  λmin = lines[line_idx,:fit_min_λ]
+  λmax = lines[line_idx,:fit_max_λ]
+  chid = lines[line_idx,:chunk_id]
+  df = fit_line_in_chunklist_timeseries(clt, λmin, λmax, chid)
+  #df = fit_line_in_chunklist_timeseries(clt, lines, line_idx)
+  df[!,:line_id] .= line_idx
+  for line_idx in 2:size(lines,1)
+    #df_tmp = fit_line_in_chunklist_timeseries(clt, lines, i)
+    λmin = lines[line_idx,:fit_min_λ]
+    λmax = lines[line_idx,:fit_max_λ]
+    chid = lines[line_idx,:chunk_id]
+    df_tmp = fit_line_in_chunklist_timeseries(clt, λmin, λmax, chid)
+    df_tmp[!,:line_id] .= line_idx
     append!(df,df_tmp)
   end
   return df
 end
 
+
+function find_worst_telluric_in_each_line!( df::DataFrame, clt::AbstractChunkListTimeseries, data::AbstractArray{AS,1} )  where {AS<:AbstractSpectra}
+  min_telluric_model_this_obs = ones(size(df,1))
+  min_telluric_model_all_obs  = ones(size(df,1))
+  for (i, row) in enumerate(eachrow(df))
+    t_idx = row.obs_idx
+    ch_idx = row.chunk_id
+    pixels = row.pixels
+    view_indices = clt.chunk_list[t_idx].data[ch_idx].λ.indices
+    order = view_indices[1]
+    cols = view_indices[2]
+    min_telluric_model_this_obs[i] = minimum(view(data[t_idx].metadata[:tellurics], order, cols)[pixels])
+  end
+  df.min_telluric_model_this_obs = min_telluric_model_this_obs
+  return df
+  df_tmp = df |> @groupby(_.line_id) |> @map( { min_telluric_model_all_obs=minimum(_.min_telluric_model_this_obs), line_id=first(_.line_id) } ) |> DataFrame
+  df.min_telluric_model_all_obs = df_tmp[telluric_info[!,:line_id],:min_telluric_model_all_obs]
+  return df
+end
+
+
+default_Δλ_over_λ_threshold_check_if_line_match = 2.25e-5
+function check_if_line_match( list::AbstractVector{T}, λ::Real ; threshold::Real = default_Δλ_over_λ_threshold_check_if_line_match ) where { T<:Real }
+  idx = searchsortednearest(list, λ)
+  Δ = abs(list[idx]-λ)/λ
+  if Δ <= threshold
+    return true
+  else
+    return false
+  end
+end
+
+function find_which_line_fits_in_line_list(df::DataFrame, line_list::DataFrame ; threshold::Real = default_Δλ_over_λ_threshold_check_if_line_match )
+  @assert hasproperty(line_list,:lambda)
+  @assert hasproperty(df,:fit_λc)
+  @assert issorted(line_list)
+  perm = sortperm(df.fit_λc)
+  idx = RvSpectML.searchsortednearest(line_list.lambda, df.fit_λc[perm])
+  Δ = Array{Float64,1}(undef, size(df,1) )
+  Δ[perm] .= (line_list.lambda[idx] .- df.fit_λc[perm])./df.fit_λc[perm]
+  line_matches = Δ .<= threshold
+  return line_matches
+end
+
+
+
 #=
 function interp_linear(;x1::T1,x2::T1,y1::T2,y2::T2,xpred::T1) where { T1<:Real, T2<:Real }
   ypred = y1+(y2-y1)*((xpred-x1)/(x2-x1))
-end
-=#
-
-#=
-function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::AbstractArray{T3,1}, idx::UnitRange) where { T1<:Real, T2<:Real, T3<:Real }
-  @assert length(λ) == length(flux) == length(var)
-    λc0 = λ[idx[argmin(flux[idx])]]
-  continuum0 = maximum(flux[idx])
-  depth0 = 1-minimum(flux[idx])/continuum0
-  width0 = 0.05^2   # might need to make more general to deal with different v sin i's
-  slope0 = 0.0
-  θ0 = pack(a=continuum0,b=slope0,λc=λc0,depth=depth0,σ²=width0)
-  lower_bound = pack(a=0.0, b=-1.0, λc=minimum(λ[idx]), depth=0.0, σ²=0.01^2)
-  upper_bound = pack(a=2.0, b= 1.0, λc=maximum(λ[idx]), depth=1.0, σ²=0.15^2)
-  try
-    res = curve_fit(line_model, λ[idx], flux[idx], 1.0 ./(var[idx]), θ0, lower=lower_bound, upper=upper_bound, show_trace=false, autodiff=:forwarddiff)
-    param = unpack(res.param)
-    chi2perdof = sum(abs2.(res.resid).*res.wt) / length(idx)
-    return (param=param, χ²_per_dof=chi2perdof, is_converged = res.converged)
-  catch
-    param = (a=continuum0, λc=λc0, depth=depth0, σ²=width0, b=slope0  )
-    return (param=param, χ²_per_dof=Inf, is_converged = false)
-  end
 end
 =#
 

@@ -37,7 +37,7 @@ function ccf_1D!(ccf_out::A1, λ::A2, flux::A3,
     #ccf_out = zeros(size(v_grid))
     @assert size(ccf_out,1) == length(v_grid)
     # TODO: Opt could move this assertion into the ccf_plan
-    @assert all( map(i->λ_min(plan.mask_shape,plan.line_list.λ[i+1]) .> λ_max(plan.mask_shape,plan.line_list.λ[i]) , 1:(length(plan.line_list.λ)-1) ) )
+    #@assert all( map(i->λ_min(plan.mask_shape,plan.line_list.λ[i+1]) .> λ_max(plan.mask_shape,plan.line_list.λ[i]) , 1:(length(plan.line_list.λ)-1) ) )
 
     mask_projections = zeros(length(λ),1)
     mask_workspace = zeros(length(λ)+2)

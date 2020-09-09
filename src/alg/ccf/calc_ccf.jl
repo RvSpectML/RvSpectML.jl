@@ -190,7 +190,18 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
     p_left_edge_of_current_line = 1
     λsle_cur = λsle[p]   # Current pixel's left edge
     λsre_cur = λsle[p+1] # Current pixel's right edge
-    m = 1
+    #m = 1  # I think this will fix the issue with mask lines starting before chunk's wavelengths.
+    #@assert issorted( plan.line_list.λ )
+    m = searchsortedfirst(plan.line_list.λ, λsle_cur/shift_factor)
+    if m <= length(plan.line_list.λ) && λ_min(plan.mask_shape,plan.line_list.λ[m]) * shift_factor < λsle_cur   # only includemask entry if it fit entirely in chunk
+        m += 1
+    end
+    if m >= length(plan.line_list.λ)
+        #println("# No mask entries with λ > ", λsle_cur)
+        return projection
+    else
+        #println("# Starting with mask entry at λ=", plan.line_list.λ[m], " for chunk with λ= ",first(λs)," - ",last(λs))
+    end
     on_mask = false
     #mask_lo = line_list.λ_lo[m] * shift_factor   # current line's lower limit
     #mask_hi = line_list.λ_hi[m] * shift_factor   # current line's upper limit
@@ -284,7 +295,18 @@ function project_mask_expr!(projection::A2, λs::A1, plan::PlanT ; shift_factor:
     p = 1
     λsle_cur = λsle[p]   # Current pixel's left edge
     λsre_cur = λsle[p+1] # Current pixel's right edge
-    m = 1
+    #m = 1  # I think this will fix the issue with mask lines starting before chunk's wavelengths.
+    #@assert issorted( plan.line_list.λ )
+    m = searchsortedfirst(plan.line_list.λ, λsle_cur/shift_factor)
+    if m <= length(plan.line_list.λ) && λ_min(plan.mask_shape,plan.line_list.λ[m]) * shift_factor < λsle_cur   # only includemask entry if it fit entirely in chunk
+        m += 1
+    end
+    if m >= length(plan.line_list.λ)
+        #println("# No mask entries with λ > ", λsle_cur)
+        return projection
+    else
+        #println("# Starting with mask entry at λ=", plan.line_list.λ[m], " for chunk with λ= ",first(λs)," - ",last(λs))
+    end
     on_mask = false
     #mask_lo = line_list.λ_lo[m] * shift_factor   # current line's lower limit
     #mask_hi = line_list.λ_hi[m] * shift_factor   # current line's upper limit
@@ -454,7 +476,19 @@ function project_mask_compare!(projection::A2, λs::A1, plan::PlanT = BasicCCFPl
 
     # set indexing variables
     p = 1
-    m = 1
+    #m = 1
+    #m = 1  # I think this will fix the issue with mask lines starting before chunk's wavelengths.
+    #@assert issorted( plan.line_list.λ )
+    m = searchsortedfirst(plan.line_list.λ, λsle_cur/shift_factor)
+    if m <= length(plan.line_list.λ) && λ_min(plan.mask_shape,plan.line_list.λ[m]) * shift_factor < λsle_cur   # only includemask entry if it fit entirely in chunk
+        m += 1
+    end
+    if m >= length(plan.line_list.λ)
+        #println("# No mask entries with λ > ", λsle_cur)
+        return projection
+    else
+        #println("# Starting with mask entry at λ=", plan.line_list.λ[m], " for chunk with λ= ",first(λs)," - ",last(λs))
+    end
     on_mask = false
 
     # loop through lines in mask, weight mask by amount in each wavelength bin

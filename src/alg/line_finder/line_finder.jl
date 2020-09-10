@@ -144,14 +144,15 @@ function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::Abstr
 end
 
 """  find_lines_in_chunk( chunk, plan )
-Convenience function to find links in one chunk of spectrum.
+Convenience function to find lines in one chunk of spectrum.
 # Inputs:
 - chunk
 # Optional Arguments:
 # Return:
-- line_list
+- line_fit_list
 """
-function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPlan = LineFinderPlan(), chunk_id::Integer = 0 #=, telluric_model::AbstractArray{T,1}=zeros(0)=# ) where {T <:Real}
+function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPlan = LineFinderPlan(),
+                              chunk_id::Integer = 0, keep_bad_fits::Bool = false) where {T <:Real}
 
   function fit_line(idx::UnitRange)
     #RvSpectML.LineFinder.fit_line(view(chunk.λ,idx), view(flux,idx), view(chunk.var, idx) )   # some bug in this version of function causes non-convergence
@@ -191,9 +192,11 @@ function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPla
   line_candidates[!,:λ_min_flux] = line_candidates[!,:λ_near_center].-line_candidates[!,:dfdlnλ_near_center]./(line_candidates[!,:df2dlnλ2_near_center])
   line_candidates[!,:dfdlnλ_min_flux] = line_candidates[!,:dfdlnλ_near_center].+log.(line_candidates[!,:λ_min_flux]./line_candidates[!,:λ_near_center]).*line_candidates[!,:df2dlnλ2_near_center]
 
-  lines = line_candidates |> @filter(_.fit_converged) |> @filter(_.fit_σ²<0.018) |> @filter(-0.5 <_.fit_b <0.5) |> @filter(_.fit_a < 1.8) |> DataFrame
+  if ! keep_bad_fits
+    line_candidates = line_candidates |> @filter(_.fit_converged) |> @filter(_.fit_σ²<0.018) |> @filter(-0.5 <_.fit_b <0.5) |> @filter(_.fit_a < 1.8) |> DataFrame
+  end
 
-  return lines
+  return line_candidates
 end
 
 """  find_lines_in_chunklist ( chunklist, line_list )
@@ -208,17 +211,6 @@ function find_lines_in_chunklist(chunk_list::AbstractChunkList ; plan::LineFinde
   mapreduce(i->find_lines_in_chunk(chunk_list[i], plan=plan, chunk_id=i), append!, 1:length(chunk_list) )
 end
 
-function find_lines_in_chunklist(chunk_list::AbstractChunkList, spectra::AS ; plan::LineFinderPlan = LineFinderPlan() ) where {AS<:AbstractSpectra}
-  if haskey(spectra.metadata,:tellurics)
-    return mapreduce(i->find_lines_in_chunk(chunk_list[i], plan=plan, chunk_id=i,
-      telluric_model = view(spectra.metadata[:tellurics], chunk_list[i].λ.indices[1], chunk_list[i].λ.indices[2])  ),
-        append!, 1:length(chunk_list) )
-  else
-    return find_lines_in_chunklist(chunk_list,plan=plan)
-  end
-end
-
-
 """  find_lines_in_chunklist_timeseries( chunklist_timeseries, line_list )
 Convenience function to find lines in each chunk of each spectrum in a timeseries.
 # Inputs:
@@ -229,45 +221,10 @@ Convenience function to find lines in each chunk of each spectrum in a timeserie
 
 """
 function find_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries ; plan::LineFinderPlan = LineFinderPlan() )
-    # TODO? switch to creating one big dataframes?
     #@threaded
     map(cl->find_lines_in_chunklist(cl, plan=plan),clt.chunk_list)
 end
 
-
-function find_pixels_for_line_in_chunk( chunk::AbstractChuckOfSpectrum, λ_min::Real, λ_max::Real )# ; plan::LineFinderPlan = LineFinderPlan() )
-  idx_lo = searchsortedfirst(chunk.λ, λ_min, by=x->x>=λ_min)
-  idx_tmp = searchsortedlast(chunk.λ[idx_lo:end], λ_max, by=x->x<=λ_max, rev=true)
-  idx_hi = idx_lo + idx_tmp - 1
-  return idx_lo:idx_hi
-end
-
-function find_pixels_for_line_in_chunklist( chunk_list::AbstractChunkList, λ_min::Real, λ_max::Real; verbose::Bool = false )
-  ch_idx_all = findall(c-> (λ_min <= minimum(chunk_list.data[c].λ)) && (maximum(chunk_list.data[c].λ) <= λ_max) ,1:length(chunk_list))
-  #map(c->(chunk_idx=c, pixels=find_pixels_for_line_in_chunk(chunk_list.data[c], λ_min, λ_max) ), ch_idx)
-  ch_idx = 0
-  if length(ch_idx_all) > 1
-    snr_of_chunks_with_line = map(c->RvSpectML.calc_snr(chunk_list.data[c].flux, chunk_list.data[c].var), ch_idx_all)
-    ch_idx_to_keep = argmax(snr_of_chunks_with_line)
-    ch_idx = ch_idx_all[ch_idx_to_keep]
-    if verbose
-      println(" Found λ=",λ_min,"-",λ_max," in chunks: ", ch_idx_all)
-      println(" SNRs = ", snr_of_chunks_with_line)
-      println(" Keeping chunk #",ch_idx)
-    end
-  elseif length(ch_idx_all) == 1
-    ch_idx = first(ch_idx_all)
-  end
-  if ch_idx == 0
-    error("Didn't find λ = " *string(λ_min)*" - " *string(λ_max)* " in chunklist.")
-
-  end
-  return (chunk_idx=ch_idx, pixels=find_pixels_for_line_in_chunk(chunk_list.data[ch_idx], λ_min, λ_max) )
-end
-
-function find_pixels_for_line_in_chunklist( chunk_list::AbstractChunkList, λ_min::Real, λ_max::Real, chunk_id::Integer)
-  return (chunk_idx=chunk_id, pixels=find_pixels_for_line_in_chunk(chunk_list.data[chunk_id], λ_min, λ_max) )
-end
 
 function find_pixels_for_all_lines_in_chunklist( chunk_list::AbstractChunkList, lines::DataFrame)
   @assert hasproperty(lines,:fit_min_λ)
@@ -277,12 +234,8 @@ function find_pixels_for_all_lines_in_chunklist( chunk_list::AbstractChunkList, 
 end
 
 
-#function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, lines::DataFrame, line_idx::Integer)
 function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmin::Real, λmax::Real, chid::Integer)
   df = DataFrame()
-  #λmin = lines[line_idx,:fit_min_λ]
-  #λmax = lines[line_idx,:fit_max_λ]
-  #chid = lines[line_idx,:chunk_id]
   nobs = length(clt.chunk_list)
   ParamT = NamedTuple{(:a, :λc, :depth, :σ², :b),NTuple{5,Float64}}  # maybe generalize by making part of plan?
   param = Vector{ParamT}(undef,nobs)
@@ -295,10 +248,8 @@ function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmi
   fit_converged = falses(nobs)
   pixels = Vector{UnitRange{Int64}}(undef,nobs)
   gof = zeros(nobs)
-  #obs_idx = collect(1:nobs)
   for t in 1:nobs
     pixels[t] = find_pixels_for_line_in_chunklist(clt.chunk_list[t], λmin, λmax, chid).pixels
-    #(param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(view(clt.chunk_list[t][chid].λ, pixels), view(clt.chunk_list[t][chid].flux,pixels), view(clt.chunk_list[t][chid].var, pixels) )  # some bug in this version of function causes non-convergence
     (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, clt.chunk_list[t][chid].flux, clt.chunk_list[t][chid].var, pixels[t] )
     fit_a[t] = param_tmp.a
     fit_λc[t] = param_tmp.λc
@@ -319,10 +270,8 @@ function fit_all_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries,
   λmax = lines[line_idx,:fit_max_λ]
   chid = lines[line_idx,:chunk_id]
   df = fit_line_in_chunklist_timeseries(clt, λmin, λmax, chid)
-  #df = fit_line_in_chunklist_timeseries(clt, lines, line_idx)
   df[!,:line_id] .= line_idx
   for line_idx in 2:size(lines,1)
-    #df_tmp = fit_line_in_chunklist_timeseries(clt, lines, i)
     λmin = lines[line_idx,:fit_min_λ]
     λmax = lines[line_idx,:fit_max_λ]
     chid = lines[line_idx,:chunk_id]
@@ -334,7 +283,9 @@ function fit_all_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries,
 end
 
 
-function find_worst_telluric_in_each_line!( df::DataFrame, clt::AbstractChunkListTimeseries, data::AbstractArray{AS,1} )  where {AS<:AbstractSpectra}
+# Patterned after find_worst_telluric_in_each_chunk in src/instruments/tellurics.jl
+function find_worst_telluric_in_each_line_fit!( df::DataFrame, clt::AbstractChunkListTimeseries, data::AbstractArray{AS,1} )  where {AS<:AbstractSpectra}
+  @assert hasproperty(df,:line_id)
   min_telluric_model_this_obs = ones(size(df,1))
   min_telluric_model_all_obs  = ones(size(df,1))
   for (i, row) in enumerate(eachrow(df))
@@ -342,9 +293,9 @@ function find_worst_telluric_in_each_line!( df::DataFrame, clt::AbstractChunkLis
     ch_idx = row.chunk_id
     pixels = row.pixels
     view_indices = clt.chunk_list[t_idx].data[ch_idx].λ.indices
-    order = view_indices[1]
-    cols = view_indices[2]
-    min_telluric_model_this_obs[i] = minimum(view(data[t_idx].metadata[:tellurics], order, cols)[pixels])
+    cols = view_indices[1][pixels]
+    order = view_indices[2]
+    min_telluric_model_this_obs[i] = minimum(view(data[t_idx].metadata[:tellurics], cols, order))
   end
   df.min_telluric_model_this_obs = min_telluric_model_this_obs
   return df
@@ -352,37 +303,5 @@ function find_worst_telluric_in_each_line!( df::DataFrame, clt::AbstractChunkLis
   df.min_telluric_model_all_obs = df_tmp[telluric_info[!,:line_id],:min_telluric_model_all_obs]
   return df
 end
-
-
-default_Δλ_over_λ_threshold_check_if_line_match = 2.25e-5
-function check_if_line_match( list::AbstractVector{T}, λ::Real ; threshold::Real = default_Δλ_over_λ_threshold_check_if_line_match ) where { T<:Real }
-  idx = searchsortednearest(list, λ)
-  Δ = abs(list[idx]-λ)/λ
-  if Δ <= threshold
-    return true
-  else
-    return false
-  end
-end
-
-function find_which_line_fits_in_line_list(df::DataFrame, line_list::DataFrame ; threshold::Real = default_Δλ_over_λ_threshold_check_if_line_match )
-  @assert hasproperty(line_list,:lambda)
-  @assert hasproperty(df,:fit_λc)
-  @assert issorted(line_list)
-  perm = sortperm(df.fit_λc)
-  idx = RvSpectML.searchsortednearest(line_list.lambda, df.fit_λc[perm])
-  Δ = Array{Float64,1}(undef, size(df,1) )
-  Δ[perm] .= (line_list.lambda[idx] .- df.fit_λc[perm])./df.fit_λc[perm]
-  line_matches = Δ .<= threshold
-  return line_matches
-end
-
-
-
-#=
-function interp_linear(;x1::T1,x2::T1,y1::T2,y2::T2,xpred::T1) where { T1<:Real, T2<:Real }
-  ypred = y1+(y2-y1)*((xpred-x1)/(x2-x1))
-end
-=#
 
 end # module LineFinder

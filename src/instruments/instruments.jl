@@ -43,6 +43,9 @@ export EXPRES, EXPRES1D, EXPRES2D, AnyEXPRES
 include("harps-n/harps-n.jl")
 export HARPSN, HARPSN1D, HARPSN2D, AnyHARPSN
 
+include("tellurics.jl")
+export find_worst_telluric_in_each_chunk
+
 export min_order, max_order, min_pixel_in_order, max_pixel_in_order, min_col_default, max_col_default
 export orders_all, pixels_all, max_pixels_in_spectra       # generic implementations avaliable
 export metadata_symbols_default, metadata_strings_default  # need to specialize

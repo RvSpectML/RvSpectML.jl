@@ -91,32 +91,33 @@ function merge_chunks(line_list::DataFrame)
     @assert hasproperty(line_list,:lambda_lo)
     @assert hasproperty(line_list,:lambda_hi)
     @assert hasproperty(line_list,:lambda)
-    @assert hasproperty(line_list,:depth)
+    #@assert hasproperty(line_list,:depth)
+    @assert hasproperty(line_list,:weight)
     chunk_list_df = DataFrame(:lambda_lo=>Float64[],:lambda_hi=>Float64[],
-                                :lambda=>Array{Float64,1}[],:depth=>Array{Float64,1}[])
+                                :lambda=>Array{Float64,1}[],:weight=>Array{Float64,1}[])
     num_lines = size(line_list,1)
     @assert num_lines >= 2
     lambda_lo_last = line_list[1,:lambda_lo]
     lambda_hi_last = line_list[1,:lambda_hi]
     lambda = [line_list[1,:lambda]]
-    line_depths = [line_list[1,:depth]]
+    line_weights = [line_list[1,:weight]]
     for i in 2:num_lines
         lambda_lo = line_list[i,:lambda_lo]
         lambda_hi = line_list[i,:lambda_hi]
         if lambda_lo>lambda_hi_last
-            push!(chunk_list_df, (lambda_lo_last, lambda_hi_last, lambda, line_depths))
+            push!(chunk_list_df, (lambda_lo_last, lambda_hi_last, lambda, line_weights))
             (lambda_lo_last, lambda_hi_last) = (lambda_lo, lambda_hi)
             lambda = [line_list[i,:lambda]]
-            line_depths = [line_list[i,:depth]]
+            line_weights = [line_list[i,:weight]]
         else
             lambda_hi_last = lambda_hi
             push!(lambda,line_list[i,:lambda])
-            push!(line_depths,line_list[i,:depth])
+            push!(line_weights,line_list[i,:weight])
         end
     end
     if chunk_list_df[end,:lambda_hi] != lambda_hi_last
         #push!(chunk_list_df, (lambda_lo_last, lambda_hi_last))
-        push!(chunk_list_df, (lambda_lo_last, lambda_hi_last, lambda, line_depths))
+        push!(chunk_list_df, (lambda_lo_last, lambda_hi_last, lambda, line_weights))
     end
     return chunk_list_df
 end

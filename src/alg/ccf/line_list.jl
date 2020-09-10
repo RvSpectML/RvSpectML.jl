@@ -22,6 +22,9 @@ function BasicLineList{T}(λ::AA, w::AA) where { T<:Real, AA<:AbstractArray{T,1}
     BasicLineList{eltype(w),typeof(w)}(λ,w)
 end
 
+function EmptyBasicLineList()
+    return BasicLineList{Float64,Array{Float64,1}}(zeros(0),zeros(0))
+end
 #=  Not fully implemented/tested yet
 """ A line list for passing to compute CCFs with variable line widths.
 Contains (views into) arrays specifying the minimum and maximum wavelength range and weight for each line. """

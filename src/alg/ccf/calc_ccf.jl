@@ -39,6 +39,10 @@ function ccf_1D!(ccf_out::A1, λ::A2, flux::A3,
     # TODO: Opt could move this assertion into the ccf_plan
     #@assert all( map(i->λ_min(plan.mask_shape,plan.line_list.λ[i+1]) .> λ_max(plan.mask_shape,plan.line_list.λ[i]) , 1:(length(plan.line_list.λ)-1) ) )
 
+    if length(plan.line_list) < 1  # If no lines in chunk
+        ccf_out .= zero(eltype(A1))
+        return ccf_out
+    end
     mask_projections = zeros(length(λ),1)
     mask_workspace = zeros(length(λ)+2)
 
@@ -87,6 +91,11 @@ function ccf_1D_expr!(ccf_out::A1, λ::A2, flux::A3,
     # TODO: Opt could move this assertion into the ccf_plan
     @assert all( map(i->λ_min(plan.mask_shape,plan.line_list.λ[i+1]) .> λ_max(plan.mask_shape,plan.line_list.λ[i]) , 1:(length(plan.line_list.λ)-1) ) )
 
+    if length(plan.line_list) < 1  # If no lines in chunk
+        ccf_out .= zero(eltype(A1))
+        return ccf_out
+    end
+
     mask_projections = zeros(length(λ),1)
     mask_workspace = zeros(length(λ)+2)
 
@@ -131,6 +140,9 @@ function ccf_1D(λ::A2, flux::A3, #line_list::ALL, #mask_shape1::A3
 
     v_grid = calc_ccf_v_grid(plan)
     ccf_out = zeros(size(v_grid))
+    if length(plan.line_list) < 1  # If no lines in chunk
+        return ccf_out
+    end
     ccf_1D!(ccf_out, λ, flux, plan )
     return ccf_out
 end
@@ -148,6 +160,9 @@ function ccf_1D_expr(λ::A2, flux::A3, #line_list::ALL, #mask_shape1::A3
 
     v_grid = calc_ccf_v_grid(plan)
     ccf_out = zeros(size(v_grid))
+    if length(plan.line_list) < 1  # If no lines in chunk
+        return ccf_out
+    end
     ccf_1D_expr!(ccf_out, λ, flux, plan )
     return ccf_out
 end

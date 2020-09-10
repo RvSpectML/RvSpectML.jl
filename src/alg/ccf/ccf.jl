@@ -15,6 +15,7 @@ import SpecialFunctions: erf
 import ..RvSpectML
 import ..RvSpectML: AbstractChuckOfSpectrum, AbstractChunkList, AbstractChunkListTimeseries
 import ..RvSpectML: AbstractInstrument
+import ..RvSpectML: num_chunks
 
 # physical constants
 const c_ms = 2.99782458e8    # m/s

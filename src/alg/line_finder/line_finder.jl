@@ -46,7 +46,7 @@ function find_line_candidates_in_chunk(chunk::AbstractChuckOfSpectrum, deriv2::A
       if i-last_idx_in_line > 1   # No longer in last set of contiguous indices, process last line candidate
         if last_idx_in_line - first_idx_in_line + 1 < plan.min_pixels_in_line
           # noop continue
-        elseif maximum(deriv2[first_idx_in_line:last_idx_in_line]) < plan.min_deriv2
+        elseif maximum(deriv2[first_idx_in_line:last_idx_in_line]) < plan.min_deriv2 #* norm_in_chunk
           # noop continue
         else  # Add last range of pixels as line candidate
           push!(line_candidates,first_idx_in_line:last_idx_in_line)
@@ -60,7 +60,7 @@ function find_line_candidates_in_chunk(chunk::AbstractChuckOfSpectrum, deriv2::A
     # See if we were in the middle of a line candidate at the end of the chunk
     if last_idx_in_line - first_idx_in_line + 1 < plan.min_pixels_in_line
       # noop continue
-    elseif maximum(deriv2[first_idx_in_line:last_idx_in_line]) < plan.min_deriv2
+    elseif maximum(deriv2[first_idx_in_line:last_idx_in_line]) < plan.min_deriv2 #* norm_in_chunk
       # noop continue
     else
       push!(line_candidates,first_idx_in_line:last_idx_in_line)
@@ -85,7 +85,7 @@ function line_model(λ::Union{T1,AbstractVector{T1} }, θ::AbstractVector{T2}) w
 end
 
 
-function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::AbstractArray{T3,1}, idx::UnitRange) where { T1<:Real, T2<:Real, T3<:Real }
+function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::AbstractArray{T3,1}, idx::UnitRange; show_trace::Bool = false) where { T1<:Real, T2<:Real, T3<:Real }
   @assert length(λ) == length(flux) == length(var)
     λc0 = λ[idx[argmin(flux[idx])]]
   continuum0 = maximum(flux[idx])
@@ -95,11 +95,23 @@ function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::Abstr
   θ0 = pack(a=continuum0,b=slope0,λc=λc0,depth=depth0,σ²=width0)
   lower_bound = pack(a=0.0, b=-1.0, λc=minimum(λ[idx]), depth=0.0, σ²=0.01^2)
   upper_bound = pack(a=2.0, b= 1.0, λc=maximum(λ[idx]), depth=1.0, σ²=0.15^2)
+  #upper_bound = pack(a=2.0, b= 1.0, λc=maximum(λ[idx]), depth=1.0, σ²=0.1)
   try
-    res = curve_fit(line_model, λ[idx], flux[idx], 1.0 ./(var[idx]), θ0, lower=lower_bound, upper=upper_bound, show_trace=false, autodiff=:forwarddiff)
+    res = curve_fit(line_model, λ[idx], flux[idx], 1.0 ./(var[idx]), θ0, lower=lower_bound, upper=upper_bound, show_trace=show_trace, autodiff=:forwarddiff)
     covar = estimate_covar(res)
     param = unpack(res.param)
     chi2perdof = sum(abs2.(res.resid).*res.wt) / length(idx)
+    #=
+    println("idx = ", idx)
+    println("lambda = ",λ[idx])
+    println("flux = ",flux[idx])
+    println("var = ", var[idx])
+    println("result = ", res)
+    println("param = ", param)
+    println("chi2perdof = ", chi2perdof)
+    println("res.converged = ",  res.converged)
+    @error("good luck!")
+    =#
     return (param=param, covar=covar, χ²_per_dof=chi2perdof, is_converged = res.converged)
   catch
     param = (a=continuum0, λc=λc0, depth=depth0, σ²=width0, b=slope0  )
@@ -152,28 +164,32 @@ Convenience function to find lines in one chunk of spectrum.
 - line_fit_list
 """
 function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPlan = LineFinderPlan(),
-                              chunk_id::Integer = 0, keep_bad_fits::Bool = false) where {T <:Real}
+                              chunk_id::Integer = 0, keep_bad_fits::Bool = false, verbose::Bool = true) where {T <:Real}
 
   function fit_line(idx::UnitRange)
     #RvSpectML.LineFinder.fit_line(view(chunk.λ,idx), view(flux,idx), view(chunk.var, idx) )   # some bug in this version of function causes non-convergence
     RvSpectML.LineFinder.fit_line( chunk.λ, flux, chunk.var, idx)
   end
-
+  norm_in_chunk = mean(chunk.flux)
+  @assert 0.9<=norm_in_chunk<=1.1  # Just making sure we're passing roughly normalized chunks
   # Fit flux with extra smoothing for measuring derivatives well
+  #(flux_smooth, deriv_smooth, deriv2_smooth) = predict_mean_and_derivs(chunk.λ, chunk.flux./norm_in_chunk, chunk.λ, sigmasq_obs=chunk.var./norm_in_chunk^2,
   (flux_smooth, deriv_smooth, deriv2_smooth) = predict_mean_and_derivs(chunk.λ, chunk.flux, chunk.λ, sigmasq_obs=chunk.var,
                                   smooth_factor=plan.smooth_factor, use_logx=plan.use_logλ, use_logy=plan.use_logflux )
 
   # Find pixel ranges that might be lines
   line_candidates = find_line_candidates_in_chunk(chunk, deriv2_smooth, plan=plan)
+  if verbose    println("# Found ", size(line_candidates,1), " line candidates.")   end
   if chunk_id != 0    line_candidates[!,:chunk_id] .= chunk_id  end
   #line_candidates[!,:pixels] = line_candidates[!,:pixels]
   line_candidates[!,:fit_min_λ] = chunk.λ[first.(line_candidates[!,:pixels])]
   line_candidates[!,:fit_max_λ] = chunk.λ[ last.(line_candidates[!,:pixels])]
 
+
   # Refit flux without extra smoothing, so depths and widths won't be biased by extra smoothing
+  #(flux, deriv, deriv2) = predict_mean_and_derivs(chunk.λ, chunk.flux./norm_in_chunk, chunk.λ, sigmasq_obs=chunk.var./norm_in_chunk^2,
   (flux, deriv, deriv2) = predict_mean_and_derivs(chunk.λ, chunk.flux, chunk.λ, sigmasq_obs=chunk.var,
                                   smooth_factor=1, use_logx=plan.use_logλ, use_logy=plan.use_logflux )
-
   # Compute model fit parameters and add results to dataframe
   result = map(fit_line, line_candidates.pixels)
   #line_candidates[!,:fit_param] = [result[i].param for i in 1:length(result) ]
@@ -193,7 +209,13 @@ function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPla
   line_candidates[!,:dfdlnλ_min_flux] = line_candidates[!,:dfdlnλ_near_center].+log.(line_candidates[!,:λ_min_flux]./line_candidates[!,:λ_near_center]).*line_candidates[!,:df2dlnλ2_near_center]
 
   if ! keep_bad_fits
-    line_candidates = line_candidates |> @filter(_.fit_converged) |> @filter(_.fit_σ²<0.018) |> @filter(-0.5 <_.fit_b <0.5) |> @filter(_.fit_a < 1.8) |> DataFrame
+    # Avoid "lines" at edge of chunk, either due to contamination or GP fit using zero mean
+    line_candidates = line_candidates |> @filter(minimum(_.pixels)>1) |> @filter(maximum(_.pixels)<length(flux)) |> #DataFrame
+    #line_candidates = line_candidates |>
+        @filter(_.fit_converged) |>
+        #@filter(_.fit_σ²<0.018) |>
+        @filter(-0.5 <_.fit_b <0.5) |> @filter(_.fit_a < 1.8) |>
+        DataFrame
   end
 
   return line_candidates
@@ -233,8 +255,8 @@ function find_pixels_for_all_lines_in_chunklist( chunk_list::AbstractChunkList, 
   map(l->find_pixels_for_line_in_chunklist(chunk_list[1], lines[l,:fit_min_λ],  lines[l,:fit_max_λ], lines[l,:chunk_id] ), 1:size(lines,1) )
 end
 
-
-function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmin::Real, λmax::Real, chid::Integer)
+global count_msgs = 0
+function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmin::Real, λmax::Real, chid::Integer; show_trace::Bool = false)
   df = DataFrame()
   nobs = length(clt.chunk_list)
   ParamT = NamedTuple{(:a, :λc, :depth, :σ², :b),NTuple{5,Float64}}  # maybe generalize by making part of plan?
@@ -248,9 +270,30 @@ function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmi
   fit_converged = falses(nobs)
   pixels = Vector{UnitRange{Int64}}(undef,nobs)
   gof = zeros(nobs)
+  global count_msgs
   for t in 1:nobs
     pixels[t] = RvSpectML.find_pixels_for_line_in_chunklist(clt.chunk_list[t], λmin, λmax, chid).pixels
-    (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, clt.chunk_list[t][chid].flux, clt.chunk_list[t][chid].var, pixels[t] )
+    mean_flux = mean(clt.chunk_list[t][chid].flux[pixels[t]])
+    flux = clt.chunk_list[t][chid].flux ./ mean_flux
+    var = clt.chunk_list[t][chid].var ./ mean_flux^2
+    (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, clt.chunk_list[t][chid].flux, clt.chunk_list[t][chid].var, pixels[t], show_trace=show_trace )
+    #=
+    if count_msgs<20
+      (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, flux, var, pixels[t], show_trace=true )
+        println("lambda = ",extrema(clt.chunk_list[t][chid].λ[pixels[t]]))
+      println("flux = ",extrema(clt.chunk_list[t][chid].flux[pixels[t]]))
+      println("var = ", extrema(clt.chunk_list[t][chid].var[pixels[t]]))
+      println("flux = ",extrema(flux))
+      println("var = ", extrema(var))
+      println("pixels = ",extrema(pixels[t]))
+      println("param = ", param_tmp)
+      println("gof = ", gof[t])
+      println("fit_converged = ", fit_converged[t])
+      count_msgs += 1
+    else
+      (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, flux, var, pixels[t] )
+    end
+    =#
     fit_a[t] = param_tmp.a
     fit_λc[t] = param_tmp.λc
     fit_depth[t] = param_tmp.depth

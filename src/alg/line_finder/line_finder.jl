@@ -249,7 +249,7 @@ function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmi
   pixels = Vector{UnitRange{Int64}}(undef,nobs)
   gof = zeros(nobs)
   for t in 1:nobs
-    pixels[t] = find_pixels_for_line_in_chunklist(clt.chunk_list[t], λmin, λmax, chid).pixels
+    pixels[t] = RvSpectML.find_pixels_for_line_in_chunklist(clt.chunk_list[t], λmin, λmax, chid).pixels
     (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, clt.chunk_list[t][chid].flux, clt.chunk_list[t][chid].var, pixels[t] )
     fit_a[t] = param_tmp.a
     fit_λc[t] = param_tmp.λc

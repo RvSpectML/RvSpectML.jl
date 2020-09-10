@@ -133,8 +133,8 @@ function predict_mean(xobs::AA1, yobs::AA2, xpred::AA3;	sigmasq_obs::AA4 = 1e-16
 end
 
 # NEED TO TEST
-function predict_deriv(xobs::AA, yobs::AA, xpred::AA; sigmasq_obs::AA = 1e-16*ones(length(xobs))
-						, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1  )   where { T<:Real, AA<:AbstractArray{T,1} }
+function predict_deriv(xobs::AA1, yobs::AA2, xpred::AA3; sigmasq_obs::AA4 = 1e-16*ones(length(xobs))
+						, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1  )    where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, T3<:Real, AA3<:AbstractArray{T3,1}, T4<:Real, AA4<:AbstractArray{T4,1}  }
 #			kernel::Function = matern52_sparse_kernel, dkerneldx::Function = dkerneldx_matern52_sparse,
 #			sigmasq_cor::Real=1.0, rho::Real=1.0)
   #kobs = make_kernel_data(xobs, kernel=kernel, sigmasq_obs=sigmasq_obs, sigmasq_cor=sigmasq_cor, rho=rho)
@@ -151,8 +151,8 @@ function predict_deriv(xobs::AA, yobs::AA, xpred::AA; sigmasq_obs::AA = 1e-16*on
 end
 
 # NEED TO TEST
-function predict_deriv2(xobs::AA, yobs::AA, xpred::AA;sigmasq_obs::AA = 1e-16*ones(length(xobs))
-						, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1  )  where { T<:Real, AA<:AbstractArray{T,1} }
+function predict_deriv2(xobs::AA1, yobs::AA2, xpred::AA3;sigmasq_obs::AA4 = 1e-16*ones(length(xobs))
+						, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1  )   where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, T3<:Real, AA3<:AbstractArray{T3,1}, T4<:Real, AA4<:AbstractArray{T4,1}  }
 #			kernel::Function = matern52_sparse_kernel, d2kerneldx2::Function = d2kerneldx2_matern52_sparse,
 #			,	sigmasq_cor::Real=1.0, rho::Real=1.0
   #kobs = make_kernel_data(xobs, kernel=kernel, sigmasq_obs=sigmasq_obs, sigmasq_cor=sigmasq_cor, rho=rho)
@@ -169,8 +169,8 @@ function predict_deriv2(xobs::AA, yobs::AA, xpred::AA;sigmasq_obs::AA = 1e-16*on
     return output
 end
 
-function predict_mean_and_deriv(xobs::AA, yobs::AA, xpred::AA;sigmasq_obs::AA = 1e-16*ones(length(xobs))
-	 							, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1 )   where { T<:Real, AA<:AbstractArray{T,1} }
+function predict_mean_and_deriv(xobs::AA1, yobs::AA2, xpred::AA3;sigmasq_obs::AA4 = 1e-16*ones(length(xobs))
+	 							, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1 ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, T3<:Real, AA3<:AbstractArray{T3,1}, T4<:Real, AA4<:AbstractArray{T4,1}  }
 	#		kernel::Function = matern52_sparse_kernel, dkerneldx::Function = dkerneldx_matern52_sparse,
 	#		sigmasq_cor::Real=1.0, rho::Real=1.0)
   #kobs = make_kernel_data(xobs, kernel=kernel, sigmasq_obs=sigmasq_obs, sigmasq_cor=sigmasq_cor, rho=rho)
@@ -190,8 +190,8 @@ function predict_mean_and_deriv(xobs::AA, yobs::AA, xpred::AA;sigmasq_obs::AA = 
   return (mean=pred_mean, deriv=pred_deriv)
 end
 
-function predict_mean_and_derivs(xobs::AA, yobs::AA, xpred::AA; sigmasq_obs::AA = 1e-16*ones(length(xobs))
-								, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1  ) where { T<:Real, AA<:AbstractArray{T,1} }
+function predict_mean_and_derivs(xobs::AA1, yobs::AA2, xpred::AA3; sigmasq_obs::AA4 = 1e-16*ones(length(xobs))
+								, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1  ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, T3<:Real, AA3<:AbstractArray{T3,1}, T4<:Real, AA4<:AbstractArray{T4,1}  }
 	#		kernel::Function = matern52_sparse_kernel, dkerneldx::Function = dkerneldx_matern52_sparse, d2kerneldx2::Function = d2kerneldx2_matern52_sparse,
 	#		,	sigmasq_cor::Real=1.0, rho::Real=1.0)
   #=
@@ -209,10 +209,13 @@ function predict_mean_and_derivs(xobs::AA, yobs::AA, xpred::AA; sigmasq_obs::AA 
   yobs_trans = use_logy ? log.(yobs) : yobs
   xpred_trans = use_logx ? log.(xpred) : xpred
   sigmasq_obs_trans = use_logy ? sigmasq_obs./yobs.^2 : sigmasq_obs
+  #mean_yobs_trans = mean(yobs_trans)
+  #yobs_trans .-= mean_yobs_trans  # Since TemporalGPs don't like non-zero mean
 
   tstart = now()
   f_posterior = construct_gp_posterior(xobs_trans,yobs_trans,xpred_trans,sigmasq_obs=sigmasq_obs_trans, use_logx=false, use_logy=false, smooth_factor=smooth_factor )
   pred_mean = predict_mean(f_posterior(xpred_trans), use_logy=false)  # doesn't need use_logx
+  #pred_mean .+= mean_yobs_trans   # Since TemporalGPs don't like non-zero mean
   if use_logy
 	pred_mean = exp.(pred_mean)
   end

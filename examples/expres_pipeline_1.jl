@@ -5,7 +5,7 @@ verbose = true
 if verbose   println("# Loading RvSpecML")    end
  using RvSpectML
  if verbose   println("# Loading other packages")    end
- using DataFrames, Query, Statistics
+ using DataFrames, Query, Statistics, Dates
 
 # USER:  The default paths that specify where datafiles can be entered here or overridden in examples/data_paths.jl
 target_subdir = "101501"   # USER: Replace with directory of your choice
@@ -58,10 +58,20 @@ if !has_computed_ccfs
  espresso_df = RvSpectML.read_linelist_espresso(espresso_filename)
  line_list_df = EXPRES.filter_line_list(espresso_df,first(expres_data).inst)
 
+ if verbose println("# Removing lines with telluric contamination.")  end    # Currently only works for EXPRES data
+  Δv_to_avoid_tellurics = 14000.0
+  line_list_to_search_for_tellurics = copy(line_list_df)
+  line_list_to_search_for_tellurics.lambda_lo = line_list_to_search_for_tellurics.lambda./calc_doppler_factor(Δv_to_avoid_tellurics)
+  line_list_to_search_for_tellurics.lambda_hi = line_list_to_search_for_tellurics.lambda.*calc_doppler_factor(Δv_to_avoid_tellurics)
+  chunk_list_timeseries = RvSpectML.make_chunk_list_timeseries(expres_data,line_list_to_search_for_tellurics)
+  line_list_to_search_for_tellurics.min_telluric_model_all_obs = RvSpectML.find_worst_telluric_in_each_chunk( chunk_list_timeseries, expres_data)
+  line_list_no_tellurics_df = line_list_to_search_for_tellurics |> @filter(_.min_telluric_model_all_obs == 1.0) |> DataFrame
+
     # Compute CCF's & measure RVs
  if verbose println("# Computing CCF.")  end
  mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor)
- line_list = RvSpectML.CCF.BasicLineList(line_list_df.lambda, line_list_df.weight)
+ #line_list = RvSpectML.CCF.BasicLineList(line_list_df.lambda, line_list_df.weight)
+ line_list = RvSpectML.CCF.BasicLineList(line_list_no_tellurics_df.lambda, line_list_no_tellurics_df.weight)
  ccf_plan = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity)
  v_grid = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan)
  @time ccfs = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan)
@@ -85,7 +95,6 @@ if make_plots
 
 if !has_computed_rvs
  if verbose println("# Measuring RVs from CCF.")  end
- #rvs_ccf_gauss = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs[:,i],fit_type = "gaussian") for i in 1:length(order_list_timeseries) ]
  rvs_ccf_gauss = RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs,fit_type = "gaussian")
  # Store estimated RVs in metadata
  map(i->order_list_timeseries.metadata[i][:rv_est] = rvs_ccf_gauss[i]-mean(rvs_ccf_gauss), 1:length(order_list_timeseries) )

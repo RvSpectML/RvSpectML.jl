@@ -96,7 +96,7 @@ if !has_computed_rvs
  has_computed_rvs = true
 end
 
-if !has_computed_template
+if !has_computed_template || true
    if verbose println("# Making template spectra.")  end
    @time ( spectral_orders_matrix, f_mean, var_mean, deriv, deriv2, order_grids )  = RvSpectML.make_template_spectra(order_list_timeseries)
 
@@ -154,14 +154,14 @@ write_lines_to_csv= false
 if !has_found_lines
    if verbose println("# Performing fresh search for lines in template spectra.")  end
    cl = ChunkList(map(grid->ChuckOfSpectrum(spectral_orders_matrix.λ,f_mean, var_mean, grid), spectral_orders_matrix.chunk_map))
-   spectral_orders_matrix = nothing # We're done with this, so can release memory
-   GC.gc()
+   #spectral_orders_matrix = nothing # We're done with this, so can release memory
+   #GC.gc()
    lines_in_template = RvSpectML.LineFinder.find_lines_in_chunklist(cl)
    if verbose println("# Finding above lines in all spectra.")  end
    @time fits_to_lines = RvSpectML.LineFinder.fit_all_lines_in_chunklist_timeseries(order_list_timeseries, lines_in_template )
 
    if verbose println("# Rejecting lines that have telluric contamination at any time.")  end
-   telluric_info = RvSpectML.LineFinder.find_worst_telluric_in_each_line!(fits_to_lines, order_list_timeseries, expres_data )
+   telluric_info = RvSpectML.LineFinder.find_worst_telluric_in_each_line_fit!(fits_to_lines, order_list_timeseries, expres_data )
 
    # Look at distribution of standard deviations for line properties
     fit_distrib = fits_to_lines |> @groupby(_.line_id) |>
@@ -198,7 +198,7 @@ if !has_found_lines
    has_found_lines = true
 end
 
-if has_computed_ccfs2
+if !has_computed_ccfs2
    if verbose println("# Computing CCFs with new line list.")  end
    #mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor)
    perm = sortperm(lines_to_try.fit_λc)
@@ -229,11 +229,12 @@ end
 
 if !has_computed_template2
    # Add code to perform DCPCA only around good lines
-   chunk_list_df2 = lines_to_try |> @select(:fit_min_λ,:fit_max_λ) |> @rename(:fit_min_λ=>:λ_lo, :fit_max_λ=>:λ_hi) |> DataFrame
+   chunk_list_df2 = lines_to_try |> @select(:fit_min_λ,:fit_max_λ) |> @rename(:fit_min_λ=>:lambda_lo, :fit_max_λ=>:lambda_hi) |> DataFrame
    chunk_list_timeseries2 = RvSpectML.make_chunk_list_timeseries(expres_data,chunk_list_df2)
 
    # Check that no NaN's included
-   (chunk_list_timeseries2, chunk_list_df2) = RvSpectML.filter_bad_chunks(chunk_list_timeseries2,chunk_list_df2)
+   #(chunk_list_timeseries2, chunk_list_df2) = RvSpectML.filter_bad_chunks(chunk_list_timeseries2,chunk_list_df2)
+   chunk_list_timeseries2 = RvSpectML.filter_bad_chunks(chunk_list_timeseries2)
    println(size(chunk_list_df2), " vs ", num_chunks(chunk_list_timeseries2) )
 
 
@@ -260,8 +261,8 @@ if !has_computed_dcpca2
    println("# Fraction of variance explained = ", frac_var_explained2[1:min(5,length(frac_var_explained2))])
    if write_dcpca_to_csv
       using CSV
-      CSV.write(joinpath(output_dir,target_subdir * "_dcpca_basis2.csv"),  Tables.table(M.proj) )
-      CSV.write(joinpath(output_dir,target_subdir * "_dcpca_scores2.csv"), Tables.table(dcpca_out) )
+      CSV.write(joinpath(output_dir,target_subdir * "_dcpca_basis2.csv"),  Tables.table(M2.proj) )
+      CSV.write(joinpath(output_dir,target_subdir * "_dcpca_scores2.csv"), Tables.table(dcpca2_out) )
    end
    has_computed_dcpca2 = true
 end
@@ -272,22 +273,22 @@ if make_plots  # Ploting results from DCPCA
   # Set parameters for plotting analysis
   plt_order = 42
   plt_order_pix = 4500:5000
-  plt = scatter(frac_var_explained, xlabel="Number of PCs", ylabel="Frac Variance Unexplained")
+  plt = scatter(frac_var_explained2, xlabel="Number of PCs", ylabel="Frac Variance Unexplained")
   display(plt)
 end
 
 if make_plots
   plt_line = 170
-  RvSpectML.plot_basis_vectors(order_grids, f_mean, deriv, M.proj, idx_plt = spectral_orders_matrix.chunk_map[plt_line], num_basis=3 )
+  RvSpectML.plot_basis_vectors(order_grids2, f_mean2, deriv_2, M2.proj, idx_plt = spectral_orders_matrix2.chunk_map[plt_line], num_basis=3 )
   #xlims!(5761.5,5766)
 end
 
 if make_plots
-  RvSpectML.plot_basis_scores(order_list_timeseries.times, rvs_ccf_gauss, dcpca_out, num_basis=3 )
+  RvSpectML.plot_basis_scores(order_list_timeseries.times, rvs_ccf_gauss2, dcpca2_out, num_basis=3 )
 end
 
 if make_plots
-  RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss, dcpca_out, num_basis=3)
+  RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss2, dcpca2_out, num_basis=3)
 end
 
 

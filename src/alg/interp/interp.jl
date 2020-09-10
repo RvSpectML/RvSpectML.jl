@@ -291,7 +291,7 @@ function pack_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Uni
                d2fluxdlnλ2[idx] .+= calc_d2fluxdlnlambda2(view(flux_matrix,idx,t),view(λ_vec,idx))
 
                flux_matrix[idx,t] ./= mean_flux_in_chunk
-               var_matrix[idx,t]  ./= mean_flux_in_chunk
+               var_matrix[idx,t]  ./= mean_flux_in_chunk^2
            else  # no flux in chunk?!?
                @warn "No flux in chunk " * string(c) * " at time " * string(t) * "."
            end
@@ -311,7 +311,7 @@ function pack_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Uni
         #println("Normalizing chunk ", c, " (",idx,") by ", mean_flux_in_chunk)
         #dmeanfluxdlnλ[idx] .= calc_dfluxdlnlambda(vec(sum(view(flux_matrix,idx,:),dims=2)),vec(sum(view(var_matrix,idx,:), dims=2)) ) ./mean_flux_in_chunk
         mean_flux[idx] ./= mean_flux_in_chunk
-        mean_var[idx] ./= mean_flux_in_chunk
+        mean_var[idx] ./= mean_flux_in_chunk^2
         #dfluxdlnλ[idx] ./= mean_flux_in_chunk
         #d2fluxdlnλ2[idx] ./= mean_flux_in_chunk
         dfluxdlnλ[idx] .= calc_dfluxdlnlambda(mean_flux[idx],view(λ_vec,idx))
@@ -393,7 +393,7 @@ function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_gr
            d2fluxdlnλ2[idx] .+= calc_d2fluxdlnlambda2(view(flux_matrix,idx,t),view(λ_vec,idx))
 
            flux_matrix[idx,t] ./= mean_flux_in_chunk
-           var_matrix[idx,t]  ./= mean_flux_in_chunk
+           var_matrix[idx,t]  ./= mean_flux_in_chunk^2
 
            idx_start += length(chunk_grids[c])
        end
@@ -412,7 +412,7 @@ function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_gr
         #dmeanfluxdlnλ[idx] .= calc_dfluxdlnlambda(vec(sum(view(flux_matrix,idx,:),dims=2)),vec(sum(view(var_matrix,idx,:), dims=2)) ) ./mean_flux_in_chunk
         #sum_in_chunk = vec(sum(view(flux_matrix,idx,:),dims=2))
         mean_flux[idx] ./= mean_flux_in_chunk
-        mean_var[idx] ./= mean_flux_in_chunk
+        mean_var[idx] ./= mean_flux_in_chunk^2
         #dfluxdlnλ[idx] ./= mean_flux_in_chunk
         #d2fluxdlnλ2[idx] ./= mean_flux_in_chunk
         dfluxdlnλ[idx] .= calc_dfluxdlnlambda(mean_flux[idx],view(λ_vec,idx))

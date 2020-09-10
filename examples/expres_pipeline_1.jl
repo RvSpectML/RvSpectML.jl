@@ -16,6 +16,7 @@ target_subdir = "101501"   # USER: Replace with directory of your choice
  make_plots = true
  write_ccf_to_csv = true
  write_rvs_to_csv = true
+ write_order_ccf_to_csv = true
  write_template_to_csv = true
  write_spectral_grid_to_jld2 = true
  write_dcpca_to_csv = true
@@ -24,6 +25,7 @@ target_subdir = "101501"   # USER: Replace with directory of your choice
 has_loaded_data = false
  has_computed_ccfs = false
  has_computed_rvs = false
+ has_computed_order_ccfs = false
  has_computed_template = false
  has_computed_dcpca = false
  has_found_lines = false
@@ -46,12 +48,12 @@ if !has_loaded_data
   if verbose println("# Extracting order list timeseries from spectra.")  end
   order_list_timeseries = RvSpectML.make_order_list_timeseries(expres_data)
   order_list_timeseries = RvSpectML.filter_bad_chunks(order_list_timeseries,verbose=true)
-  RvSpectML.normalize_spectra!(order_list_timeseries,expres_data);
+  #RvSpectML.normalize_spectra!(order_list_timeseries,expres_data);
 
 end
 
 
-if !has_computed_ccfs
+if !has_computed_ccfs || true
  if verbose println("# Reading line list for CCF: ", linelist_for_ccf_filename, ".")  end
  lambda_range_with_good_data = get_λ_range(expres_data)
  espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks",linelist_for_ccf_filename)
@@ -75,6 +77,14 @@ if !has_computed_ccfs
  ccf_plan = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity)
  v_grid = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan)
  @time ccfs = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan)
+ mask_shape_expr = RvSpectML.CCF.GaussianCCFMask(order_list_timeseries.inst, scale_factor=9)
+ ccf_plan_expr = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape_expr, line_list=line_list, midpoint=ccf_mid_velocity)
+ @time ccfs_exper = RvSpectML.CCF.calc_ccf_chunklist_timeseries_expr(order_list_timeseries, ccf_plan_expr) #, verbose=true)
+ #=
+ mask_shape_expr2 = RvSpectML.CCF.CosCCFMask(order_list_timeseries.inst, scale_factor=18)   # Why does such a large value help so much?
+ ccf_plan_expr2 = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape_expr2, line_list=line_list, midpoint=ccf_mid_velocity)
+ @time ccfs_exper2 = RvSpectML.CCF.calc_ccf_chunklist_timeseries_expr(order_list_timeseries, ccf_plan_expr2) #, verbose=true)
+ =#
  # Write CCFs to file
  if write_ccf_to_csv
     using CSV
@@ -85,17 +95,20 @@ end
 
 if make_plots
    using Plots
-   t_idx = 1
+   t_idx = 20
    using Plots
    plot(v_grid,ccfs[:,t_idx],label=:none)
+   scatter!(v_grid,ccfs_exper[:,t_idx],markersize=1.2,label=:none)
    xlabel!("v (m/s)")
    ylabel!("CCF")
  end
 
 
-if !has_computed_rvs
+if !has_computed_rvs || true
  if verbose println("# Measuring RVs from CCF.")  end
  rvs_ccf_gauss = RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs,fit_type = "gaussian")
+ rvs_ccf_gauss2 = RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs_exper,fit_type = "gaussian")
+ #rvs_ccf_gauss3 = RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs_exper2,fit_type = "gaussian")
  # Store estimated RVs in metadata
  map(i->order_list_timeseries.metadata[i][:rv_est] = rvs_ccf_gauss[i]-mean(rvs_ccf_gauss), 1:length(order_list_timeseries) )
  if write_rvs_to_csv
@@ -104,6 +117,64 @@ if !has_computed_rvs
  end
  has_computed_rvs = true
 end
+
+
+if make_plots
+   using Plots
+   rvs_ccf_gauss .-= mean(rvs_ccf_gauss)
+   rvs_ccf_gauss2 .-= mean(rvs_ccf_gauss2)
+   scatter(rvs_ccf_gauss,markersize=2,label="RVs CCF Tophat")
+   scatter!(rvs_ccf_gauss2,markersize=2,label="RVs CCF Gaussian")
+   ylabel!("v (m/s)")
+   xlabel!("Time (#)")
+   #=
+   df_yale_resutls = CSV.read(joinpath(homedir(),"Data/EXPRES/inputs/101501/101501_activity.csv"))
+   rvs_yale_ccf = df_yale_resutls["CCF RV [m/s]"]
+   rvs_yale_ccf .-= mean(rvs_yale_ccf)
+   rvs_yale_cbc = df_yale_resutls["CBC RV [m/s]"]
+   rvs_yale_cbc .-= mean(rvs_yale_cbc)
+   scatter!(rvs_yale_cbc,markersize=2,label="Yale CBC")
+   scatter!(rvs_yale_ccf,markersize=2,label="Yale CCF")
+   =#
+   #diff = rvs_yale_ccf.-rvs_yale_cbc
+   #diff = rvs_ccf_gauss.-rvs_yale_cbc
+   #diff = rvs_ccf_gauss2.-rvs_yale_cbc
+   #diff = rvs_ccf_gauss.-rvs_yale_ccf
+   #diff = rvs_ccf_gauss2.-rvs_yale_ccf
+   diff = rvs_ccf_gauss.-rvs_ccf_gauss2
+   println(std(diff))
+   scatter(diff,markersize=4,label="Delta RV")
+   ylabel!("v (m/s)")
+   xlabel!("Time (#)")
+ end
+
+
+if !has_computed_order_ccfs  # Compute order CCF's & measure RVs
+ tstart = now()    # Compute CCFs for each order
+ order_ccfs = RvSpectML.CCF.calc_order_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan)
+ println("# Order CCFs runtime: ", now()-tstart)
+
+ if write_order_ccf_to_csv
+    using CSV
+    inst = EXPRES.EXPRES2D()
+    for (i, order) in orders_to_use
+      if !(sum(order_ccfs[:,i,:]) > 0)   continue    end
+      local t = Tables.table( order_ccfs[:,i,:]', header=Symbol.(v_grid) )
+      CSV.write(joinpath(output_dir,target_subdir * "_ccf_order=" * string(order) * ".csv"),t)
+    end
+ end
+ has_computed_order_ccfs = true
+end
+
+if make_plots
+   # order ccfs averaged over time
+   plot(v_grid,reshape(sum(order_ccfs,dims=3)./maximum(sum(order_ccfs,dims=3),dims=1),size(order_ccfs,1),size(order_ccfs,2)), label=:none)
+   # resudiuals of order ccfs to time and chunk averaged ccf
+   plot(v_grid,reshape(sum(order_ccfs,dims=3)./maximum(sum(order_ccfs,dims=3),dims=1),size(order_ccfs,1),size(order_ccfs,2)).-reshape(sum(order_ccfs,dims=(2,3))./maximum(sum(order_ccfs,dims=(2,3))),size(order_ccfs,1) )
+      , label=:none)
+end
+
+
 
 if !has_computed_template || true
    if verbose println("# Making template spectra.")  end

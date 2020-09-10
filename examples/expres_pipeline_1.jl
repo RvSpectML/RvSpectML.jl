@@ -231,36 +231,47 @@ end
 
 has_found_lines = false
 write_lines_to_csv= false
-if !has_found_lines
-   if verbose println("# Performing fresh search for lines in template spectra.")  end
+#if !has_found_lines
+if verbose println("# Performing fresh search for lines in template spectra.")  end
    cl = ChunkList(map(grid->ChuckOfSpectrum(spectral_orders_matrix.λ,f_mean, var_mean, grid), spectral_orders_matrix.chunk_map))
    #spectral_orders_matrix = nothing # We're done with this, so can release memory
    #GC.gc()
-   lines_in_template = RvSpectML.LineFinder.find_lines_in_chunklist(cl)
-   if verbose println("# Finding above lines in all spectra.")  end
-   @time fits_to_lines = RvSpectML.LineFinder.fit_all_lines_in_chunklist_timeseries(order_list_timeseries, lines_in_template )
 
-   if verbose println("# Rejecting lines that have telluric contamination at any time.")  end
-   telluric_info = RvSpectML.LineFinder.find_worst_telluric_in_each_line_fit!(fits_to_lines, order_list_timeseries, expres_data )
+lines_in_template = RvSpectML.LineFinder.find_lines_in_chunklist(cl, plan=RvSpectML.LineFinder.LineFinderPlan(min_deriv2=2e2))
+
+if verbose println("# Finding above lines in all spectra.")  end
+   #@time
+   fits_to_lines = RvSpectML.LineFinder.fit_all_lines_in_chunklist_timeseries(order_list_timeseries, lines_in_template )
+
+   #if verbose println("# Rejecting lines that have telluric contamination at any time.")  end
+   #telluric_info = RvSpectML.LineFinder.find_worst_telluric_in_each_line_fit!(fits_to_lines, order_list_timeseries, expres_data )
 
    # Look at distribution of standard deviations for line properties
-    fit_distrib = fits_to_lines |> @groupby(_.line_id) |>
+fit_distrib = fits_to_lines |> @groupby(_.line_id) |>
             @map( { median_a=median(_.fit_a), median_b=median(_.fit_b), median_depth=median(_.fit_depth), median_σ²=median(_.fit_σ²), median_λc=median(_.fit_λc),
-                   std_a=std(_.fit_a), std_b=std(_.fit_b), std_depth=std(_.fit_depth), std_σ²=std(_.fit_σ²), std_λc=std(_.fit_λc), min_telluric_model_all_obs=minimum(_.min_telluric_model_this_obs), line_id=_.line_id } ) |>
-            @filter(_.min_telluric_model_all_obs == 1.0 ) |> # No telluric in any observations
-            @filter(_.std_b < 0.257) |>     # ~90th quantile
-            @filter( 0.001 < _.median_σ² ) |>  # ~99th quantile
-            @filter( _.std_σ² < 0.00844) |>  # ~99th quantile
-            @filter( _.median_depth > 0.05 ) |>  # ~99th quantile
-            @filter( _.std_depth < 0.11 ) |>  # ~95th quantile
-            #@filter( -0.25 < _.median_b < 0.25) |>  #~5th to 95th percentiles
+                   std_a=std(_.fit_a), std_b=std(_.fit_b), std_depth=std(_.fit_depth), std_σ²=std(_.fit_σ²), std_λc=std(_.fit_λc), line_id=_.line_id, frac_converged=mean(_.fit_converged)  } ) |>
+
+                    # , min_telluric_model_all_obs=minimum(_.min_telluric_model_this_obs),
+            #@filter(_.min_telluric_model_all_obs == 1.0 ) |> # No telluric in any observations
+            @filter(_.frac_converged == 1.0 ) |>
+            @filter( _.median_depth > 0.1 ) |>
+            @filter(_.std_b < 0.05) |>
+            @filter(_.std_a < 0.025) |>
+            @filter( _.std_depth < 0.006 ) |>
+            #            @filter( 0.001 < _.median_σ² ) |>
+            @filter( _.std_σ² < 0.001) |>  #
+            @filter( -0.25 < _.median_b < 0.25) |>  #
             DataFrame # ~75th quantile
-      good_lines = fit_distrib |> @filter(_.std_λc < 0.0316 ) |> DataFrame
-      bad_lines = fit_distrib |> @filter(_.std_λc > 0.0316 ) |> DataFrame
+      good_lines = fit_distrib |> @filter(_.std_λc < 0.002 ) |> DataFrame
+      bad_lines = fit_distrib |> @filter(_.std_λc >= 0.002 ) |> DataFrame
+      #if size(bad_lines,1) >= 1
+         println("Founds ", size(lines_in_template,1), " lines, ",size(good_lines,1), " good lines and rejected ", size(bad_lines,1), " lines due to scatter")
+      #end
       #scatter(good_lines.median_σ², good_lines.median_depth )
       #scatter!(bad_lines.median_σ², bad_lines.median_depth )
       lines_to_try = lines_in_template[first.(good_lines[!,:line_id]),:]
 
+0
 
       if write_lines_to_csv
          using CSV
@@ -276,13 +287,14 @@ if !has_found_lines
       end
 
    has_found_lines = true
-end
+#end
 
-if !has_computed_ccfs2
+if !has_computed_ccfs2 || true
    if verbose println("# Computing CCFs with new line list.")  end
    #mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor)
    perm = sortperm(lines_to_try.fit_λc)
-   line_list2 = RvSpectML.CCF.BasicLineList(lines_to_try.fit_λc[perm], lines_to_try.fit_depth[perm].*lines_to_try.fit_a[perm] )
+   normalization = map(l->mean(spectral_orders_matrix.flux[lines_to_try.pixels[l],lines_to_try.chunk_id[l]]),1:size(lines_to_try,1))
+   line_list2 = RvSpectML.CCF.BasicLineList(lines_to_try.fit_λc[perm], lines_to_try.fit_depth[perm] ) # .*lines_to_try.fit_a[perm].*normalization )
    ccf_plan2 = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list2, midpoint=0.0)
    v_grid2 = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan2)
    @time ccfs2 = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan2)
@@ -307,9 +319,10 @@ if !has_computed_rvs2
  has_computed_rvs2 = true
 end
 
-if !has_computed_template2
+if !has_computed_template2 || true
    # Add code to perform DCPCA only around good lines
-   chunk_list_df2 = lines_to_try |> @select(:fit_min_λ,:fit_max_λ) |> @rename(:fit_min_λ=>:lambda_lo, :fit_max_λ=>:lambda_hi) |> DataFrame
+   #chunk_list_df2 = lines_to_try |> @select(:fit_min_λ,:fit_max_λ) |> @rename(:fit_min_λ=>:lambda_lo, :fit_max_λ=>:lambda_hi) |> DataFrame
+   chunk_list_df2 = lines_to_try |> @select(:fit_λc,:fit_min_λ,:fit_max_λ) |> @map({:fit_min_λ=>_.fit_λc-3*(_.fit_λc-_.fit_min_λ), :fit_max_λ=>_.fit_λc+3*(_.fit_max_λ-_.fit_λc)}) |> DataFrame
    chunk_list_timeseries2 = RvSpectML.make_chunk_list_timeseries(expres_data,chunk_list_df2)
 
    # Check that no NaN's included

@@ -27,7 +27,7 @@ export read_cache, set_cache!, reset_all_cache!
 # Default steps for the PipelinePlan to track
 default_pipeline_input_collect(keys)  = [ :read_spectra, :read_line_list ]
 default_pipeline_work_collect(keys)   = [ :extract_orders, :clean_line_list_tellurics, :fit_lines, :clean_line_list_blends  ]
-default_pipeline_output_collect(keys) = [ :ccf_pass0, :ccf_total, :rvs_ccf_total, :ccf_orders, :rvs_ccf_orders, :template, :dcpca ]
+default_pipeline_output_collect(keys) = [ :ccf_pass0, :ccf_total, :rvs_ccf_total, :ccf_orders, :rvs_ccf_orders, :scalpels, :template, :dcpca ]
 default_pipeline_need_to_collect(keys) = vcat( default_pipeline_input_collect(keys),  default_pipeline_work_collect(keys), default_pipeline_output_collect(keys) )
 
 DictSB = Dict{Symbol,Bool}

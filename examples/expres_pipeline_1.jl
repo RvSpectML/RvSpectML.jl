@@ -50,23 +50,25 @@ if need_to(pipeline,:read_line_list)
  end
  #line_list_df
 
+#need_to!(pipeline,:clean_line_list_tellurics)
 if need_to(pipeline,:clean_line_list_tellurics)
    if verbose println("# Removing lines with telluric contamination.")  end    # Currently only works for EXPRES data
    @assert !need_to(pipeline,:read_line_list)
    @assert !need_to(pipeline,:read_spectra)
-   line_list_no_tellurics_df  = make_clean_line_list_from_tellurics_expres(line_list_df, expres_data, Δv_to_avoid_tellurics = 14000.0)
+   line_list_no_tellurics_df  = make_clean_line_list_from_tellurics_expres(line_list_df, expres_data, Δv_to_avoid_tellurics = 30.0e3) #14000.0)
    dont_need_to!(pipeline,:clean_line_list_tellurics);
  end
  #line_list_no_tellurics_df
 
-if need_to(pipeline,:ccf_total)
+#need_to!(pipeline,:ccf_total)
+ if need_to(pipeline,:ccf_total)
    if verbose println("# Computing CCF.")  end
    @assert !need_to(pipeline,:extract_orders)
    @assert !need_to(pipeline,:clean_line_list_tellurics)
    mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor)
    #line_list = RvSpectML.CCF.BasicLineList(line_list_df.lambda, line_list_df.weight)
    line_list = RvSpectML.CCF.BasicLineList(line_list_no_tellurics_df.lambda, line_list_no_tellurics_df.weight)
-   ccf_plan = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity)
+   ccf_plan = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity, range_no_mask_change=30e3)
    v_grid = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan)
    @time ccfs = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan)
    mask_shape_expr = RvSpectML.CCF.GaussianCCFMask(order_list_timeseries.inst, scale_factor=9)
@@ -136,15 +138,16 @@ if need_to(pipeline, :rvs_ccf_total)
 end
 
 
-
 if make_plot(pipeline, :rvs_ccf_total)
    using Plots
    rvs_ccf_gauss .-= mean(rvs_ccf_gauss)
    rvs_ccf_gauss2 .-= mean(rvs_ccf_gauss2)
-   plt = scatter(rvs_ccf_gauss,markersize=2,label="RVs CCF Tophat")
-   scatter!(plt,rvs_ccf_gauss2,markersize=2,label="RVs CCF Gaussian")
+   plt = scatter(rvs_ccf_gauss,markersize=3,label="RVs CCF Tophat", legend=:bottomright)
+   scatter!(plt,rvs_ccf_gauss2,markersize=3,label="RVs CCF Gaussian")
    ylabel!("v (m/s)")
    xlabel!("Time (#)")
+   if save_plot(pipeline,:rvs_ccf_total)   savefig(plt,joinpath(output_dir,"rvs_ccf_sum.png"))   end
+   display(plt)
    #=
    df_yale_resutls = CSV.read(joinpath(homedir(),"Data/EXPRES/inputs/101501/101501_activity.csv"))
    rvs_yale_ccf = df_yale_resutls["CCF RV [m/s]"]
@@ -159,16 +162,19 @@ if make_plot(pipeline, :rvs_ccf_total)
    #diff = rvs_ccf_gauss2.-rvs_yale_cbc
    #diff = rvs_ccf_gauss.-rvs_yale_ccf
    #diff = rvs_ccf_gauss2.-rvs_yale_ccf
+end
+if make_plot(pipeline, :rvs_ccf_total)
    diff = rvs_ccf_gauss.-rvs_ccf_gauss2
    println(std(diff))
    plt = scatter(order_list_timeseries.times,diff,markersize=4,label="Delta RV")
-   ylabel!("v (m/s)")
+   ylabel!("Δv (m/s) (Two mask shapes)")
    xlabel!("Time (d)")
    if save_plot(pipeline,:rvs_ccf_total)   savefig(plt,joinpath(output_dir,"rvs_ccf_sum.png"))   end
    display(plt)
 end
 
-if need_to(pipeline, :ccf_orders)  # Compute order CCF's & measure RVs
+#need_to!(pipeline, :ccf_orders)
+ if need_to(pipeline, :ccf_orders)  # Compute order CCF's & measure RVs
    tstart = now()    # Compute CCFs for each order
    order_ccfs = RvSpectML.CCF.calc_order_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan)
    println("# Order CCFs runtime: ", now()-tstart)
@@ -185,20 +191,51 @@ if need_to(pipeline, :ccf_orders)  # Compute order CCF's & measure RVs
    dont_need_to!(pipeline, :ccf_orders);
 end
 
-
 if make_plot(pipeline, :ccf_orders)
    # order ccfs averaged over time
-   ord = 3   # TODO:  I think this order illustrates the issue Alex is going to fix with lines dropping off at the boundary of orders.  Check his fix solves the issue.
+   obs = 3:40   # TODO:  I think this order illustrates the issue Alex is going to fix with lines dropping off at the boundary of orders.  Check his fix solves the issue.
    #plot(v_grid,reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1), size(order_ccfs,1),size(order_ccfs[:,ord,:],2)), label=:none)
    # resudiuals of order ccfs to time and chunk averaged ccf
-   plt = plot(v_grid,reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1),size(order_ccfs,1),size(order_ccfs[:,ord,:],2)).-
-               reshape(sum(order_ccfs[:,ord,:],dims=(2,3))./maximum(sum(order_ccfs[:,ord,:],dims=(2,3))),size(order_ccfs,1) ), label=:none)
+   #plt = plot(v_grid,reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1),size(order_ccfs,1),size(order_ccfs[:,ord,:],2)).-
+   #            reshape(sum(order_ccfs[:,ord,:],dims=(2,3))./maximum(sum(order_ccfs[:,ord,:],dims=(2,3))),size(order_ccfs,1) ), label=:none)
+   order_labels = map(c->order_list_timeseries.chunk_list[1].data[c].λ.indices[2], 1:size(order_ccfs,2))
+   zvals = reshape(sum(order_ccfs[:,:,obs],dims=3)./maximum(sum(order_ccfs[:,:,obs],dims=3),dims=1),size(order_ccfs,1),size(order_ccfs[:,:,obs],2)).-
+   reshape(sum(order_ccfs[:,:,obs],dims=(2,3))./maximum(sum(order_ccfs[:,:,obs],dims=(2,3))),size(order_ccfs,1) )
+   plt = heatmap(v_grid,order_labels, zvals',c = cgrad(:balance), clims=(-maximum(abs.(zvals)),maximum(abs.(zvals))) )
+
+   xlabel!("v (m/s)")
+   ylabel!("Order ID")
+   title!("CCF-<CCF> for obs ID=" * string(obs))
    if save_plot(pipeline,:ccf_orders)   savefig(plt,joinpath(output_dir,"ccf_orders.png"))   end
    display(plt)
 end
 
+if make_plot(pipeline, :ccf_orders)
+   ord = 3  # TODO:  I think this order illustrates the issue Alex is going to fix with lines dropping off at the boundary of orders.  Check his fix solves the issue.
+   #plot(v_grid,reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1), size(order_ccfs,1),size(order_ccfs[:,ord,:],2)), label=:none)
+   # resudiuals of order ccfs to time and chunk averaged ccf
+   #plt = plot(v_grid,reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1),size(order_ccfs,1),size(order_ccfs[:,ord,:],2)).-
+   #            reshape(sum(order_ccfs[:,ord,:],dims=(2,3))./maximum(sum(order_ccfs[:,ord,:],dims=(2,3))),size(order_ccfs,1) ), label=:none)
+   zvals = reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1),size(order_ccfs,1),size(order_ccfs[:,ord,:],2)).-
+   reshape(sum(order_ccfs[:,ord,:],dims=(2,3))./maximum(sum(order_ccfs[:,ord,:],dims=(2,3))),size(order_ccfs,1) )
+   plt = heatmap(v_grid,1:size(order_ccfs,3), zvals',c = cgrad(:balance), clims=(-maximum(abs.(zvals)),maximum(abs.(zvals))) )
+   xlabel!("v (m/s)")
+   ylabel!("Observation ID")
+   title!("CCF-<CCF> for order=" * string(ord))
+   if save_plot(pipeline,:ccf_orders)   savefig(plt,joinpath(output_dir,"ccf_orders.png"))   end
+   display(plt)
+end
 
-need_to!(pipeline, :template)
+RvSpectML.Pipeline.make_plot!(pipeline,:scalpels)
+if make_plot(pipeline, :scalpels)
+   @assert !need_to(pipeline, :rvs_ccf_total)
+   @assert !need_to(pipeline, :ccf_total)
+   plt = Scalpels.make_plots_scalpels(rvs_ccf_gauss, ccfs, max_num_basis=4, v_grid=v_grid, times=order_list_timeseries.times, output_path="examples/output/figures")
+   display(plt)
+end
+
+
+#need_to!(pipeline, :template)
 if need_to(pipeline, :template)  # Compute order CCF's & measure RVs
    if verbose println("# Making template spectra.")  end
    @assert !need_to(pipeline,:extract_orders)
@@ -214,7 +251,7 @@ if need_to(pipeline, :template)  # Compute order CCF's & measure RVs
 end
 
 
-need_to!(pipeline, :dcpca)
+#need_to!(pipeline, :dcpca)
 if need_to(pipeline, :dcpca)
    if verbose println("# Performing Doppler constrained PCA analysis.")  end
    @assert !need_to(pipeline,:rvs_ccf_total)
@@ -262,7 +299,7 @@ if make_plot(pipeline, :dcpca)
   display(plt)
 end
 
-need_to!(pipeline,:fit_lines)
+#need_to!(pipeline,:fit_lines)
 if need_to(pipeline,:fit_lines)
    if verbose println("# Performing fresh search for lines in template spectra.")  end
    cl = ChunkList(map(grid->ChuckOfSpectrum(spectral_orders_matrix.λ,f_mean, var_mean, grid), spectral_orders_matrix.chunk_map))
@@ -338,7 +375,7 @@ need_to!(pipeline, :ccf_total);
  need_to!(pipeline, :template);
  need_to!(pipeline, :dcpca);
 
-need_to!(pipeline,:ccf_total)
+#need_to!(pipeline,:ccf_total)
 if need_to(pipeline,:ccf_total)
    if verbose println("# Computing CCFs with new line list.")  end
    @assert !need_to(pipeline,:extract_orders)
@@ -391,7 +428,7 @@ if need_to(pipeline, :rvs_ccf_total)
 end
 
 
-need_to!(pipeline, :template)
+#need_to!(pipeline, :template)
 if need_to(pipeline, :template)
    @assert !need_to(pipeline,:rvs_ccf_total)
    @assert !need_to(pipeline,:clean_line_list_blends)
@@ -425,7 +462,7 @@ end
 #std(rvs_dcpca2.rv)
 
 
-need_to!(pipeline, :dcpca)
+#need_to!(pipeline, :dcpca)
 if need_to(pipeline, :dcpca)
    @assert !need_to(pipeline,:rvs_ccf_total)
    @assert !need_to(pipeline,:template)

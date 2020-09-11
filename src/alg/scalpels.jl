@@ -12,6 +12,7 @@ module Scalpels
 using Statistics, StatsBase
 using LinearAlgebra
 #using MultivariateStats
+using Plots, ColorSchemes
 
 export clean_rvs_scalpels, make_plots_scalpels
 
@@ -32,7 +33,12 @@ function make_plots_scalpels(rvs::AbstractVector{T1}, ccfs::AbstractArray{T2,2}
     rvs_centered = rvs .- mean_rv
 
     ccfs_minus_mean = ccfs .- mean(ccfs,dims=2)
-    heatmap(v_grid, 1:size(ccfs,2),ccfs_minus_mean')
+    zvals =ccfs_minus_mean
+    colorscale = cgrad(:balance)
+    heatmap(v_grid, 1:size(ccfs,2),zvals',c=colorscale, clims=(-maximum(abs.(zvals)),maximum(abs.(zvals))) )
+
+
+
     title!("CCF(v)-<CCF(v)>")
     xlabel!("v (m/s)")
     ylabel!("Obs #")
@@ -41,8 +47,8 @@ function make_plots_scalpels(rvs::AbstractVector{T1}, ccfs::AbstractArray{T2,2}
     acfs = autocor(ccfs,0:size(ccfs,1)-1)
     acfs_minus_mean = acfs .- mean(acfs,dims=2)
     Δv_grid = convert(Float64,v_grid.step).*(0:size(acfs,1)-1)
-
-    heatmap(Δv_grid, 1:size(acfs,2),acfs_minus_mean')
+    zvals = acfs_minus_mean
+    heatmap(Δv_grid, 1:size(acfs,2),zvals',c=colorscale, clims=(-maximum(abs.(zvals)),maximum(abs.(zvals))) )
     title!("ACF(δv)-<ACF(δv)>")
     xlabel!("Δv (m/s)")
     ylabel!("Obs #")
@@ -62,9 +68,10 @@ function make_plots_scalpels(rvs::AbstractVector{T1}, ccfs::AbstractArray{T2,2}
 
     alpha = svd_acfs.U'*rvs_centered
     idx = sortperm(abs.(alpha),rev=true)
+    local rvs_clean, plt
     for num_basis in 1:max_num_basis
         U_keep = view(svd_acfs.U,:,idx[1:num_basis])
-        Δrv_shape = U_keep*U_keep'*rvs_ccf_gauss
+        Δrv_shape = U_keep*U_keep'*rvs_centered
         rvs_clean = rvs .- Δrv_shape
         plt = scatter(times,rvs, label="RVs orig")
         scatter!(plt, times,rvs_clean, label="RVs cleaned", legend=:bottomright)
@@ -73,7 +80,7 @@ function make_plots_scalpels(rvs::AbstractVector{T1}, ccfs::AbstractArray{T2,2}
         title!("Cleaning RVs via Scalpels (" * string(num_basis) * " basis vectors)")
         savefig(joinpath(output_path,"scalpels_rvs_" * string(num_basis) * ".png"))
     end
-    return rvs_clean
+    return plt
 end
 
 function clean_rvs_scalpels(rvs::AbstractVector{T1}, ccfs::AbstractArray{T2,2}

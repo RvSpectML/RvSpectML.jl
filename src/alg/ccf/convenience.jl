@@ -106,7 +106,7 @@ function calc_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries,
       λmax = minimum(map(obsid->last( clt.chunk_list[obsid].data[chid].λ), 1:length(clt) ))
       # extend λmin/λmax by the velocity range over which we don't want the mask to change
       λmin  = λmin*calc_doppler_factor(plan.v_center)*calc_doppler_factor(plan.v_range_no_mask_change)
-      λmax  = λmax*calc_doppler_factor(plan.v_center)*calc_doppler_factor(plan.v_range_no_mask_change)
+      λmax  = λmax*calc_doppler_factor(plan.v_center)*calc_doppler_factor(-plan.v_range_no_mask_change)
       # extend λmin/λmax by the mask width
       upper_edge_of_mask_for_line_at_λmin = λ_max(plan.mask_shape,λmin)
       lower_edge_of_mask_for_line_at_λmax = λ_min(plan.mask_shape,λmax)
@@ -160,7 +160,7 @@ function calc_ccf_chunklist_timeseries_expr(clt::AbstractChunkListTimeseries,
       λmax = minimum(map(obsid->last( clt.chunk_list[obsid].data[chid].λ), 1:length(clt) ))
       # extend λmin/λmax by the velocity range over which we don't want the mask to change
       λmin  = λmin*calc_doppler_factor(plan.v_center)*calc_doppler_factor(plan.v_range_no_mask_change)
-      λmax  = λmax*calc_doppler_factor(plan.v_center)*calc_doppler_factor(plan.v_range_no_mask_change)
+      λmax  = λmax*calc_doppler_factor(plan.v_center)*calc_doppler_factor(-plan.v_range_no_mask_change)
       # extend λmin/λmax by the mask width
       upper_edge_of_mask_for_line_at_λmin = λ_max(plan.mask_shape,λmin)
       lower_edge_of_mask_for_line_at_λmax = λ_min(plan.mask_shape,λmax)

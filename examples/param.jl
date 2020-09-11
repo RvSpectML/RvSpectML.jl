@@ -8,7 +8,7 @@ if fits_target_str == "Solar"
    hostname = gethostname()
    if occursin("aci.ics.psu.edu",hostname)
       global ancilary_solar_data_path = "/gpfs/group/ebf11/default/ebf11/neid_solar"
-   elseif occursin("nuc8")  # Eric's home machine :)
+   elseif occursin("nuc8",hostname)  # Eric's home machine :)
       global ancilary_solar_data_path = "/home/eford/Data/SolarSpectra/NEID_solar/"
    end
    global bjd_first_good = 2458745.1296134139

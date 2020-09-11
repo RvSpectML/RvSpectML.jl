@@ -250,6 +250,16 @@ if need_to(pipeline, :template)  # Compute order CCF's & measure RVs
    dont_need_to!(pipeline, :template);
 end
 
+if make_plot(pipeline,:template)
+   chunkid = 10
+   idx = spectral_orders_matrix.chunk_map[chunkid]
+   plt = scatter(spectral_orders_matrix.λ[idx],(f_mean[idx].-1.0)./maximum(abs.((f_mean[idx].-1.0))),markersize=1.0,label=:none)
+   scatter!(plt,spectral_orders_matrix.λ[idx],deriv[idx]./maximum(abs.(deriv[idx])),markersize=1.0,label=:none)
+   scatter!(plt,spectral_orders_matrix.λ[idx],deriv2[idx]./maximum(abs.(deriv2[idx])),markersize=1.0,label=:none)
+   xlabel!("λ(Å)")
+   ylabel!("f(λ), f'(λ), f''(λ), all standardized")
+   title!("Template spectrum for chunk " * string(chunkid) )
+end
 
 #need_to!(pipeline, :dcpca)
 if need_to(pipeline, :dcpca)

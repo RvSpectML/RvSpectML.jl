@@ -35,3 +35,6 @@ tmp.jl
 .AppleDouble
 .LSOverride
 ._*
+
+# VScode
+.vscode

@@ -7,11 +7,13 @@ if verbose   println("# Loading RvSpecML")    end
  if verbose   println("# Loading other packages")    end
  using DataFrames, Query, Statistics, Dates
 
-# USER:  The default paths that specify where datafiles can be entered here or overridden in examples/data_paths.jl
+# USER: You must create a data_paths.jl file in one of the default_paths_to_search listed below. It need only contain one line:
+# expres_data_path = "/path/to/EXPRES/data/not/including/target_subdir"
 target_subdir = "101501"   # USER: Replace with directory of your choice
  fits_target_str = "101501"
  output_dir = "examples/output"
  default_paths_to_search = [pwd(),"examples",joinpath(pkgdir(RvSpectML),"examples"),"/gpfs/group/ebf11/default/ebf11/expres/inputs"]
+ # NOTE: make_manifest does not update its paths_to_search when default_paths_to_search is defined here, so if you change the line above, you must also include "paths_to_search=default_paths_to_search" in the make_manifest() function call below
  pipeline = PipelinePlan()
 
 RvSpectML.Pipeline.reset_all_needs!(pipeline)

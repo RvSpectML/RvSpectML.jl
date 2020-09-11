@@ -101,10 +101,16 @@ function calc_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries,
   num_lines = length(plan.line_list.λ)
   plan_for_chunk = Vector{BasicCCFPlan}(undef,num_chunks(clt))
   for chid in 1:num_chunks(clt)
+      # find the maximum lower wavelength for the chunk, and the minumum upper wavelength, over all observations
       λmin = maximum(map(obsid->first(clt.chunk_list[obsid].data[chid].λ), 1:length(clt) ))
       λmax = minimum(map(obsid->last( clt.chunk_list[obsid].data[chid].λ), 1:length(clt) ))
+      # extend λmin/λmax by the velocity range over which we don't want the mask to change
+      λmin  = λmin*calc_doppler_factor(plan.v_center)*calc_doppler_factor(plan.v_range_no_mask_change)
+      λmax  = λmax*calc_doppler_factor(plan.v_center)*calc_doppler_factor(plan.v_range_no_mask_change)
+      # extend λmin/λmax by the mask width
       upper_edge_of_mask_for_line_at_λmin = λ_max(plan.mask_shape,λmin)
       lower_edge_of_mask_for_line_at_λmax = λ_min(plan.mask_shape,λmax)
+      # find the first and last mask entries to use in each chunk
       start_line_idx = searchsortedfirst(plan.line_list.λ,upper_edge_of_mask_for_line_at_λmin)
       if verbose
           flush(stdout)
@@ -122,6 +128,7 @@ function calc_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries,
       else  # No lines in this chunk!
           line_list_for_chunk = EmptyBasicLineList()
       end
+      #create a plan for this chunk that only includes the mask entries we want for this chunk
       plan_for_chunk[chid] = BasicCCFPlan( line_list=line_list_for_chunk, midpoint=plan.v_center, step=plan.v_step, max=plan.v_max, mask_shape=plan.mask_shape )
   end
   @threaded mapreduce(obsid->calc_ccf_chunklist(clt.chunk_list[obsid], plan_for_chunk),hcat, 1:length(clt) )
@@ -148,10 +155,16 @@ function calc_ccf_chunklist_timeseries_expr(clt::AbstractChunkListTimeseries,
   num_lines = length(plan.line_list.λ)
   plan_for_chunk = Vector{BasicCCFPlan}(undef,num_chunks(clt))
   for chid in 1:num_chunks(clt)
+      # find the maximum lower wavelength for the chunk, and the minumum upper wavelength, over all observations
       λmin = maximum(map(obsid->first(clt.chunk_list[obsid].data[chid].λ), 1:length(clt) ))
       λmax = minimum(map(obsid->last( clt.chunk_list[obsid].data[chid].λ), 1:length(clt) ))
+      # extend λmin/λmax by the velocity range over which we don't want the mask to change
+      λmin  = λmin*calc_doppler_factor(plan.v_center)*calc_doppler_factor(plan.v_range_no_mask_change)
+      λmax  = λmax*calc_doppler_factor(plan.v_center)*calc_doppler_factor(plan.v_range_no_mask_change)
+      # extend λmin/λmax by the mask width
       upper_edge_of_mask_for_line_at_λmin = λ_max(plan.mask_shape,λmin)
       lower_edge_of_mask_for_line_at_λmax = λ_min(plan.mask_shape,λmax)
+      # find the first and last mask entries to use in each chunk
       start_line_idx = searchsortedfirst(plan.line_list.λ,upper_edge_of_mask_for_line_at_λmin)
       if verbose
           flush(stdout)
@@ -169,6 +182,7 @@ function calc_ccf_chunklist_timeseries_expr(clt::AbstractChunkListTimeseries,
       else  # No lines in this chunk!
           line_list_for_chunk = EmptyBasicLineList()
       end
+      #create a plan for this chunk that only includes the mask entries we want for this chunk
       plan_for_chunk[chid] = BasicCCFPlan( line_list=line_list_for_chunk, midpoint=plan.v_center, step=plan.v_step, max=plan.v_max, mask_shape=plan.mask_shape )
   end
   @threaded mapreduce(obsid->calc_ccf_chunklist_expr(clt.chunk_list[obsid], plan_for_chunk),hcat, 1:length(clt) )

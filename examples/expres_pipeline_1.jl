@@ -94,7 +94,7 @@ if make_plot(pipeline, :ccf_total)
    scatter!(plt,v_grid,ccfs_expr[:,t_idx]./maximum(ccfs_expr[:,t_idx],dims=1),markersize=1.2,label=:none)
    xlabel!("v (m/s)")
    ylabel!("CCF")
-   if save_plot(pipeline,:ccf_total)   savefig(plt,"ccf_sum.png")   end
+   if save_plot(pipeline,:ccf_total)   savefig(plt,joinpath(output_dir,"ccf_sum.png"))   end
    display(plt)
 end
 
@@ -112,6 +112,7 @@ if need_to(pipeline, :rvs_ccf_total)
    println("# RMS of nightly RVs:  Tophat ", std(rms_rv_nightly), "   Gaussian ", std(rms_rv_expr_nightly))
    rms_rv_within_night = rms_rvs_within_night(times=order_list_timeseries.times,rvs=rvs_ccf_gauss)
    rms_rv_expr_within_night = rms_rvs_within_night(times=order_list_timeseries.times,rvs=rvs_ccf_gauss2)
+   println("# RMS within night RVs: Tophat ",rms_rv_within_night,  "   Gaussian ",rms_rv_expr_within_night)
    # Store estimated RVs in metadata
    map(i->order_list_timeseries.metadata[i][:rv_est] = rvs_ccf_gauss[i]-mean(rvs_ccf_gauss), 1:length(order_list_timeseries) )
    if save_data(pipeline, :rvs_ccf_total)
@@ -150,7 +151,7 @@ if make_plot(pipeline, :rvs_ccf_total)
    plt = scatter(order_list_timeseries.times,diff,markersize=4,label="Delta RV")
    ylabel!("v (m/s)")
    xlabel!("Time (d)")
-   if save_plot(pipeline,:rvs_ccf_total)   savefig(plt,"rvs_ccf_sum.png")   end
+   if save_plot(pipeline,:rvs_ccf_total)   savefig(plt,joinpath(output_dir,"rvs_ccf_sum.png"))   end
    display(plt)
 end
 
@@ -179,11 +180,12 @@ if make_plot(pipeline, :ccf_orders)
    # resudiuals of order ccfs to time and chunk averaged ccf
    plt = plot(v_grid,reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1),size(order_ccfs,1),size(order_ccfs[:,ord,:],2)).-
                reshape(sum(order_ccfs[:,ord,:],dims=(2,3))./maximum(sum(order_ccfs[:,ord,:],dims=(2,3))),size(order_ccfs,1) ), label=:none)
-   if save_plot(pipeline,:ccf_orders)   savefig(plt,"ccf_orders.png")   end
+   if save_plot(pipeline,:ccf_orders)   savefig(plt,joinpath(output_dir,"ccf_orders.png"))   end
    display(plt)
 end
 
 
+need_to!(pipeline, :template)
 if need_to(pipeline, :template)  # Compute order CCF's & measure RVs
    if verbose println("# Making template spectra.")  end
    @assert !need_to(pipeline,:extract_orders)
@@ -199,15 +201,17 @@ if need_to(pipeline, :template)  # Compute order CCF's & measure RVs
 end
 
 
+need_to!(pipeline, :dcpca)
 if need_to(pipeline, :dcpca)
    if verbose println("# Performing Doppler constrained PCA analysis.")  end
    @assert !need_to(pipeline,:rvs_ccf_total)
    @assert !need_to(pipeline,:template)
    using MultivariateStats
-   dcpca_out, M = RvSpectML.DCPCA.doppler_constrained_pca(spectral_orders_matrix.flux, deriv, rvs_ccf_gauss)
-   frac_var_explained = 1.0.-cumsum(principalvars(M))./tvar(M)
-   num_basis = length(frac_var_explained)
-   println("# Fraction of variance explained = ", frac_var_explained[1:min(5,num_basis)])
+   Δrvs_dcpca = calc_rvs_from_taylor_expansion(spectral_orders_matrix; mean=f_mean, deriv=deriv).rv
+   dcpca_out, M = RvSpectML.DCPCA.doppler_constrained_pca(spectral_orders_matrix.flux, deriv, Δrvs_dcpca)
+   frac_var_unexplained = 1.0.-cumsum(principalvars(M))./tvar(M)
+   num_basis = length(frac_var_unexplained)
+   println("# Fraction of variance unexplained = ", frac_var_unexplained[1:min(5,num_basis)])
    if save_data(pipeline, :dcpca)
       using CSV
       CSV.write(joinpath(output_dir,target_subdir * "_dcpca_basis.csv"),  Tables.table(M.proj) )
@@ -220,28 +224,28 @@ end
 if make_plot(pipeline, :dcpca)  # Ploting results from DCPCA
   using Plots
   # Set parameters for plotting analysis
-  plt = scatter(frac_var_explained, xlabel="Number of PCs", ylabel="Frac Variance Unexplained")
-  if save_plot(pipeline,:dcpca)   savefig(plt,"dcpca_frac_var.png")   end
+  plt = scatter(frac_var_unexplained, xlabel="Number of PCs", ylabel="Frac Variance Unexplained")
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca_frac_var.png"))   end
   display(plt)
 end
 
 if make_plot(pipeline, :dcpca)
-  plt_order = 5
+  plt_order = 10
   plt = RvSpectML.plot_basis_vectors(order_grids, f_mean, deriv, M.proj, idx_plt = spectral_orders_matrix.chunk_map[plt_order], num_basis=2 )
   #xlims!(5761.5,5766)
-  if save_plot(pipeline,:dcpca)   savefig(plt,"dcpca_basis.png")   end
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca_basis.png"))   end
   display(plt)
 end
 
 if make_plot(pipeline, :dcpca)
   plt = RvSpectML.plot_basis_scores(order_list_timeseries.times, rvs_ccf_gauss, dcpca_out, num_basis=min(5,num_basis) )
-  if save_plot(pipeline,:dcpca)   savefig(plt,"dcpca_scores.png")   end
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca_scores.png"))   end
   display(plt)
 end
 
 if make_plot(pipeline, :dcpca)
   plt = RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss, dcpca_out, num_basis=min(5,num_basis))
-  if save_plot(pipeline,:dcpca)   savefig(plt,"dcpca_scores_cor.png")   end
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca_scores_cor.png"))   end
   display(plt)
 end
 
@@ -249,12 +253,12 @@ need_to!(pipeline,:fit_lines)
 if need_to(pipeline,:fit_lines)
    if verbose println("# Performing fresh search for lines in template spectra.")  end
    cl = ChunkList(map(grid->ChuckOfSpectrum(spectral_orders_matrix.λ,f_mean, var_mean, grid), spectral_orders_matrix.chunk_map))
-   #= # We're done with this, so could release the memory
+   #= # We're done with the spectral_orders_matrix, so we can release the memory now
    spectral_orders_matrix = nothing
    GC.gc()
    need_to!(pipeline,:template)
    =#
-   lines_in_template = RvSpectML.LineFinder.find_lines_in_chunklist(cl, plan=RvSpectML.LineFinder.LineFinderPlan(min_deriv2=2e2))  # TODO: Automate threshold for finding a line
+   lines_in_template = RvSpectML.LineFinder.find_lines_in_chunklist(cl, plan=RvSpectML.LineFinder.LineFinderPlan(min_deriv2=3))  # TODO: Automate threshold for finding a line
 
    if verbose println("# Finding above lines in all spectra.")  end
    @time fits_to_lines = RvSpectML.LineFinder.fit_all_lines_in_chunklist_timeseries(order_list_timeseries, lines_in_template )
@@ -277,20 +281,17 @@ if need_to(pipeline,:clean_line_list_blends)
             @map( { median_a=median(_.fit_a), median_b=median(_.fit_b), median_depth=median(_.fit_depth), median_σ²=median(_.fit_σ²), median_λc=median(_.fit_λc),
                    std_a=std(_.fit_a), std_b=std(_.fit_b), std_depth=std(_.fit_depth), std_σ²=std(_.fit_σ²), std_λc=std(_.fit_λc), line_id=_.line_id, frac_converged=mean(_.fit_converged)  } ) |>
             @filter(_.frac_converged == 1.0 ) |> DataFrame
+                  # , min_telluric_model_all_obs=minimum(_.min_telluric_model_this_obs),
    good_lines = fit_distrib |>
-            # , min_telluric_model_all_obs=minimum(_.min_telluric_model_this_obs),
+            #@filter(_.min_telluric_model_all_obs == 1.0 ) |> # Already done
             @filter( _.median_depth > 0.1 ) |>
-            @filter( _.median_σ² < 0.015) |>  #
-            @filter( _.std_σ² < 0.004) |>  #
+            @filter( _.median_σ² < 0.015) |>
+            @filter( _.std_σ² < 0.004) |>
             @filter(_.std_b < 0.06) |>
             @filter( _.std_depth < 0.006 ) |>
-                        #@filter(_.min_telluric_model_all_obs == 1.0 ) |> # No telluric in any observations
-            #@filter(_.std_a < 0.025) |>
-            ##            @filter( 0.001 < _.median_σ² ) |>
-
-            #@filter( -0.25 < _.median_b < 0.25) |>  #
-            DataFrame # ~75th quantile
-      #good_lines = good_lines |> @filter(_.std_λc < 0.002 ) |> DataFrame
+            #@filter(_.std_a < 0.025) |>             # Unncessary?
+            #@filter( -0.25 < _.median_b < 0.25) |>  # Unncessary?
+            DataFrame
       println("# Found ", size(lines_in_template,1), " lines, including ",size(good_lines,1), " good lines, rejected ", size(lines_in_template,1)-size(good_lines,1), " lines.")
       bad_lines = fit_distrib |> @filter(_.std_λc >= 0.002 ) |> DataFrame
       good_lines_high_scatter = good_lines |> @filter(_.std_λc >= 0.002 ) |> DataFrame
@@ -332,8 +333,8 @@ if need_to(pipeline,:ccf_total)
    #mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor)
    perm = sortperm(lines_to_try.fit_λc)
    line_list2 = RvSpectML.CCF.BasicLineList(lines_to_try.fit_λc[perm], lines_to_try.fit_depth[perm] )
-   mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor*3)
-   #mask_shape = RvSpectML.CCF.GaussianCCFMask(order_list_timeseries.inst, scale_factor=4)
+   #mask_shape = RvSpectML.CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor*3)
+   mask_shape = RvSpectML.CCF.GaussianCCFMask(order_list_timeseries.inst, scale_factor=4)
    ccf_plan2 = RvSpectML.CCF.BasicCCFPlan(mask_shape = mask_shape, step=100.0, line_list=line_list2, midpoint=0.0)
    v_grid2 = RvSpectML.CCF.calc_ccf_v_grid(ccf_plan2)
    @time ccfs2 = RvSpectML.CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan2)
@@ -353,7 +354,7 @@ if make_plot(pipeline, :ccf_total)
    scatter!(plt,v_grid2,ccfs2[:,t_idx]./maximum(ccfs2[:,t_idx],dims=1),markersize=1.2,label=:none)
    xlabel!("v (m/s)")
    ylabel!("CCF")
-   if save_plot(pipeline,:ccf_total)   savefig(plt,"ccf2_sum.png")   end
+   if save_plot(pipeline,:ccf_total)   savefig(plt,joinpath(output_dir,"ccf2_sum.png"))   end
    display(plt)
 end
 
@@ -377,13 +378,15 @@ if need_to(pipeline, :rvs_ccf_total)
 end
 
 
+need_to!(pipeline, :template)
 if need_to(pipeline, :template)
    @assert !need_to(pipeline,:rvs_ccf_total)
    @assert !need_to(pipeline,:clean_line_list_blends)
    # Revert to velocities before cleaning for now
    map(i->order_list_timeseries.metadata[i][:rv_est] = rvs_ccf_gauss[i]-mean(rvs_ccf_gauss), 1:length(order_list_timeseries) )
    #chunk_list_df2 = lines_to_try |> @select(:fit_min_λ,:fit_max_λ) |> @rename(:fit_min_λ=>:lambda_lo, :fit_max_λ=>:lambda_hi) |> DataFrame
-   chunk_list_df2 = lines_to_try |> @select(:fit_λc,:fit_min_λ,:fit_max_λ) |> @map({:lambda_lo=>_.fit_λc-6*(_.fit_λc-_.fit_min_λ), :lambda_hi=>_.fit_λc+6*(_.fit_max_λ-_.fit_λc)}) |> DataFrame
+   expand_chunk_factor = 4
+   chunk_list_df2 = lines_to_try |> @select(:fit_λc,:fit_min_λ,:fit_max_λ) |> @map({:lambda_lo=>_.fit_λc-expand_chunk_factor*(_.fit_λc-_.fit_min_λ), :lambda_hi=>_.fit_λc+expand_chunk_factor*(_.fit_max_λ-_.fit_λc)}) |> DataFrame
    chunk_list_timeseries2 = RvSpectML.make_chunk_list_timeseries(expres_data,chunk_list_df2)
 
    # Check that no NaN's included
@@ -405,21 +408,22 @@ end
 
 #rvs_dcpca = calc_rvs_from_taylor_expansion(spectral_orders_matrix; mean=f_mean, deriv=deriv)
 #std(rvs_dcpca.rv)
-#rvs_dcpca2 = calc_rvs_from_taylor_expansion(spectral_orders_matrix2; mean=f_mean2, deriv=deriv_2)
+
 #std(rvs_dcpca2.rv)
 
 
-#need_to!(pipeline, :dcpca)
+need_to!(pipeline, :dcpca)
 if need_to(pipeline, :dcpca)
    @assert !need_to(pipeline,:rvs_ccf_total)
    @assert !need_to(pipeline,:template)
    if verbose println("# Performing Doppler constrained PCA analysis.")  end
    using MultivariateStats
-   dcpca2_out, M2 = RvSpectML.DCPCA.doppler_constrained_pca(spectral_orders_matrix2.flux, deriv_2, rvs_dcpca2.rv.-mean(rvs_dcpca2.rv))
-   frac_var_explained2 = 1.0.-cumsum(principalvars(M2))./tvar(M2)
-   num_basis = length(frac_var_explained)
-   println("# Fraction of variance explained (orig) = ", frac_var_explained[1:min(5,num_basis)])
-   println("# Fraction of variance explained (clean) = ", frac_var_explained2[1:min(5,num_basis)])
+   Δrvs_dcpca2 = calc_rvs_from_taylor_expansion(spectral_orders_matrix2; mean=f_mean2, deriv=deriv_2).rv
+   dcpca2_out, M2 = RvSpectML.DCPCA.doppler_constrained_pca(spectral_orders_matrix2.flux, deriv_2, Δrvs_dcpca2)
+   frac_var_unexplained2 = 1.0.-cumsum(principalvars(M2))./tvar(M2)
+   num_basis = length(frac_var_unexplained2)
+   println("# Fraction of variance unexplained (orig) = ", frac_var_unexplained[1:min(5,num_basis)])
+   println("# Fraction of variance unexplained (clean) = ", frac_var_unexplained2[1:min(5,num_basis)])
    if save_data(pipeline, :dcpca)
       using CSV
       CSV.write(joinpath(output_dir,target_subdir * "_dcpca_basis2.csv"),  Tables.table(M2.proj) )
@@ -431,29 +435,40 @@ end
 
 if make_plot(pipeline, :dcpca)  # Ploting results from DCPCA
   using Plots
-  plt = scatter(frac_var_explained2, xlabel="Number of PCs", ylabel="Frac Variance Unexplained")
-  if save_plot(pipeline,:dcpca)   savefig(plt,"dcpca2_frac_var.png")   end
+  plt = scatter(frac_var_unexplained2, xlabel="Number of PCs", ylabel="Frac Variance Unexplained")
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca2_frac_var.png"))   end
   display(plt)
 end
 
 if make_plot(pipeline, :dcpca)
-  plt_line = 103
-  plt = RvSpectML.plot_basis_vectors(order_grids2, f_mean2, deriv_2, M2.proj, idx_plt = spectral_orders_matrix2.chunk_map[plt_line], num_basis=min(4,num_basis) )
-  #xlims!(5761.5,5766)
-  if save_plot(pipeline,:dcpca)   savefig(plt,"dcpca2_basis.png")   end
+   plt_line = 10
+   plt = RvSpectML.plot_basis_vectors(order_grids2, f_mean2, deriv_2, M2.proj, idx_plt = spectral_orders_matrix2.chunk_map[plt_line], num_basis=min(4,num_basis), label=plt_line)
+   if save_plot(pipeline,:dcpca)
+     savefig(plt,joinpath(output_dir,"dcpca2_basis.png"))
+   end
+   suspicous_lines = Int[]
+   anim = @animate for plt_line ∈ 1:length(order_grids2)
+      idx = spectral_orders_matrix2.chunk_map[plt_line]
+      argmin_pixel = argmin(f_mean2[idx])
+      if 0.45*length(idx) <= argmin_pixel <= 0.55*length(idx)
+        RvSpectML.plot_basis_vectors(order_grids2, f_mean2, deriv_2, M2.proj, idx_plt = spectral_orders_matrix2.chunk_map[plt_line], num_basis=min(4,num_basis), label=plt_line  )
+     else
+        push!(suspicous_lines,plt_line)
+     end
+   end
+   gif(anim, joinpath(output_dir,"dcpca2_basis.gif"), fps = 25)
   display(plt)
-
 end
 
 if make_plot(pipeline, :dcpca)
   plt = RvSpectML.plot_basis_scores(order_list_timeseries.times, rvs_ccf_gauss2, dcpca2_out, num_basis=min(4,num_basis) )
-  if save_plot(pipeline,:dcpca)   savefig(plt,"dcpca2_scores.png")   end
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca2_scores.png"))   end
   display(plt)
 
 end
 
 if make_plot(pipeline, :dcpca)
   plt = RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss2, dcpca2_out, num_basis=min(4,num_basis))
-  if save_plot(pipeline,:dcpca)   savefig(plt,"dcpca2_score_cor.png")   end
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca2_score_cor.png"))   end
   display(plt)
 end

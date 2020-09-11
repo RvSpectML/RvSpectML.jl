@@ -10,7 +10,7 @@ Date:   September 2020
 """
 module DCPCA
 
-using MultivariateStats
+using Statistics, MultivariateStats
 
 #import .RvSpectML : speed_of_light_mps
 const speed_of_light_mps = 299792458.0 # TODO: Update value
@@ -25,7 +25,8 @@ function compute_spectra_perp_doppler_shift(spectra::AA, deriv::V1, rvs::V2) whe
 end
 
 function doppler_constrained_pca(flux::AbstractArray{T1,2}, deriv::AbstractVector{T2}, rvs::AbstractVector{T3} )  where { T1<:Real, T2<:Real, T3<:Real  }#, times::AbstractVector, rvs::AbstractVector)
-  fm_perp = compute_spectra_perp_doppler_shift(flux,deriv, rvs )
+  rv_shift = rvs .- mean(rvs)
+  fm_perp = compute_spectra_perp_doppler_shift(flux,deriv, rv_shift )
   idx_good_obs = 1:length(rvs)
   M = fit(PCA, fm_perp[:,idx_good_obs]; maxoutdim=10)
   pca_out = MultivariateStats.transform(M,fm_perp[:,idx_good_obs])

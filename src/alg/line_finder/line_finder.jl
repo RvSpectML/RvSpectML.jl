@@ -10,11 +10,11 @@ using LsqFit
 using ..TemporalGPInterpolation
 
 
-default_min_deriv2 = 1.5e5
+default_min_deriv2 = 3 # 1.5e5
 default_smooth_factor= 4.0
 default_min_pixels_in_line = 5
 default_use_logλ = true
-default_use_logflux = true
+default_use_logflux = false #true
 
 struct LineFinderPlan
   min_deriv2::Float64

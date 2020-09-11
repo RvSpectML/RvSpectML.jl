@@ -58,7 +58,7 @@ end
 
 
 
-AbstractSpectra2D
+#AbstractSpectra2D
 
 abstract type AbstractChunkList end
 

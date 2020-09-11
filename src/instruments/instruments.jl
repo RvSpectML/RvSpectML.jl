@@ -31,17 +31,24 @@ to implement the functions in neid/traits.jl for each instrument trait.
 =#
 
 include("theory/theory.jl")
+import .TheoreticalInstrument: TheoreticalInstrument1D, TheoreticalInstrument2D, AnyTheoreticalInstrument
 export TheoreticalInstrument, TheoreticalInstrument1D, TheoreticalInstrument2D, AnyTheoreticalInstrument
 
 include("neid/neid.jl")
+import .NEID: NEID1D, NEID2D, AnyNEID
 export NEID, NEID1D, NEID2D, AnyNEID
 
 include("expres/expres.jl")
+import .EXPRES: EXPRES1D, EXPRES2D, AnyEXPRES
 export EXPRES, EXPRES1D, EXPRES2D, AnyEXPRES
 
 # TODO: Add more instruments:  HARPS-N, HPF, etc.
 include("harps-n/harps-n.jl")
+import .HARPSN: HARPSN1D, HARPSN2D, AnyHARPSN
 export HARPSN, HARPSN1D, HARPSN2D, AnyHARPSN
+
+include("tellurics.jl")
+export find_worst_telluric_in_each_chunk_expres, make_clean_line_list_from_tellurics_expres
 
 export min_order, max_order, min_pixel_in_order, max_pixel_in_order, min_col_default, max_col_default
 export orders_all, pixels_all, max_pixels_in_spectra       # generic implementations avaliable

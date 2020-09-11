@@ -94,17 +94,39 @@ end
     line_list is a DataFrame containing :lambda_lo and :lambda_hi.
     Pads edges by Δ.
 """
-function make_chunk_list(spectra::AS, line_list::DataFrame; Δ::Real=Δλoλ_edge_pad_default) where { AS<:AbstractSpectra }
+function make_chunk_list(spectra::AS, line_list::DataFrame; rv_shift::Real = 0, Δ::Real=Δλoλ_edge_pad_default) where { AS<:AbstractSpectra }
     @assert hasproperty(line_list,:lambda_lo)
     @assert hasproperty(line_list,:lambda_hi)
-    ChunkList(map(row->ChuckOfSpectrum(spectra,find_line_best(row.lambda_lo,row.lambda_hi,spectra,Δ=Δ)), eachrow(line_list) ))
+    boost_factor = calc_doppler_factor(rv_shift)
+    if rv_shift != 0
+        @warn("I haven't tested this yet, especially the sign.")
+    end
+    ChunkList(map(row->ChuckOfSpectrum(spectra,find_line_best(row.lambda_lo*boost_factor,row.lambda_hi*boost_factor,spectra,Δ=Δ)), eachrow(line_list) ))
 end
 
-function make_chunk_list_timeseries(spectra::AS,chunk_list_df::DataFrame) where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} }
+function make_chunk_list_timeseries(spectra::AS,chunk_list_df::DataFrame; rv_shift::Real = 0) where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} }
     times = map(s->s.metadata[:bjd],spectra)
     metadata = make_vec_metadata_from_spectral_timeseries(spectra)
-    time_series_of_chunk_lists = map(spec->RvSpectML.make_chunk_list(spec,chunk_list_df),spectra)
+    time_series_of_chunk_lists = map(spec->RvSpectML.make_chunk_list(spec,chunk_list_df, rv_shift=rv_shift),spectra)
     chunk_list_timeseries = ChunkListTimeseries(times, time_series_of_chunk_lists, inst=first(spectra).inst, metadata=metadata )
+end
+
+function extract_chunk_list_timeseries_for_order(clt::AbstractChunkListTimeseries, order::Integer) # where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} }
+    @assert min_order(clt.inst) <= order <= max_order(clt.inst)
+    num_chunks_to_search = num_chunks(clt)
+    chunk_order = map(ch->first(clt.chunk_list).data[ch].λ.indices[2], 1:num_chunks_to_search )
+    chunks_in_order = findall(chunk_order .== order)
+    num_chunks_in_order = sum(chunks_in_order)
+    if !(num_chunks_in_order >= 1)
+        return nothing
+    end
+    new_chunk_list_timeseries = Vector{ChunkList}(undef, length(clt.times))
+    for i in 1:length(clt.times)
+        chunk_list = ChunkList(clt.chunk_list[i].data[chunks_in_order])
+        new_chunk_list_timeseries[i] = chunk_list
+    end
+    output = ChunkListTimeseries(clt.times, new_chunk_list_timeseries, inst=clt.inst, metadata=clt.metadata )
+    return output
 end
 
 function make_order_list_timeseries(spectra::AS) #= , order_list::AOL ) =# where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} #=, CLT<:AbstractChunkList, AOL::AbstractArray{CLT,1} =# }
@@ -298,6 +320,7 @@ end
     line_linst:  DataFrame w/ lambda_lo, lambda_hi
     verbose: print debugging info (false)
 """
+#= Is there any reason to keep this version?
 function filter_bad_chunks(chunk_list_timeseries::ACLT, line_list::DataFrame; verbose::Union{Int,Bool} = false) where { ACLT<:AbstractChunkListTimeseries }
     @assert(length(chunk_list_timeseries)>=1)
     @assert(hasproperty(line_list,:lambda_lo))
@@ -341,8 +364,7 @@ function filter_bad_chunks(chunk_list_timeseries::ACLT, line_list::DataFrame; ve
         return (chunk_timeseries=ChunkListTimeseries(chunk_list_timeseries.times,new_chunk_list_timeseries, inst=inst, metadata=chunk_list_timeseries.metadata), line_list=new_line_list)
     end
 end
-
-
+=#
 function filter_bad_chunks(chunk_list_timeseries::ACLT; verbose::Bool = false) where { ACLT<:AbstractChunkListTimeseries }
     @assert(length(chunk_list_timeseries)>=1)
     idx_keep = trues(num_chunks(chunk_list_timeseries))
@@ -370,4 +392,46 @@ function filter_bad_chunks(chunk_list_timeseries::ACLT; verbose::Bool = false) w
         #return ChunkListTimeseries(chunk_list_timeseries.times[idx_keep],new_chunk_list_timeseries, inst=chunk_list_timeseries.inst, metadata=chunk_list_timeseries.metadata[idx_keep])
         return ChunkListTimeseries(chunk_list_timeseries.times,new_chunk_list_timeseries, inst=chunk_list_timeseries.inst, metadata=chunk_list_timeseries.metadata)
     end
+end
+
+""" Find pixels included in a range of wavelengths """
+function find_pixels_for_line_in_chunk( chunk::AbstractChuckOfSpectrum, λ_min::Real, λ_max::Real )# ; plan::LineFinderPlan = LineFinderPlan() )
+  idx_lo = searchsortedfirst(chunk.λ, λ_min, by=x->x>=λ_min)
+  idx_tmp = searchsortedlast(chunk.λ[idx_lo:end], λ_max, by=x->x<=λ_max, rev=true)
+  idx_hi = idx_lo + idx_tmp - 1
+  return idx_lo:idx_hi
+end
+
+function find_pixels_for_line_in_chunklist( chunk_list::AbstractChunkList, λ_min::Real, λ_max::Real; verbose::Bool = true )
+  ch_idx_all = findall(c-> (λ_min <= minimum(chunk_list.data[c].λ)) && (maximum(chunk_list.data[c].λ) <= λ_max) ,1:length(chunk_list))
+  println("Hello")
+  #map(c->(chunk_idx=c, pixels=find_pixels_for_line_in_chunk(chunk_list.data[c], λ_min, λ_max) ), ch_idx)
+  ch_idx = 0
+  if length(ch_idx_all) > 1
+    snr_of_chunks_with_line = map(c->RvSpectML.calc_snr(chunk_list.data[c].flux, chunk_list.data[c].var), ch_idx_all)
+    ch_idx_to_keep = argmax(snr_of_chunks_with_line)
+    ch_idx = ch_idx_all[ch_idx_to_keep]
+    if verbose
+      println(" Found λ=",λ_min,"-",λ_max," in chunks: ", ch_idx_all, " containing ", length.(ch_idx_all), " pixels.")
+      println(" SNRs = ", snr_of_chunks_with_line)
+      println(" Keeping chunk #",ch_idx)
+    end
+  elseif length(ch_idx_all) == 1
+    ch_idx = first(ch_idx_all)
+    if verbose
+      println(" Found λ=",λ_min,"-",λ_max," in chunk: ", ch_idx, " containing ", length(ch_idx), " pixels.")
+      snr_of_chunk_with_line = RvSpectML.calc_snr(chunk_list.data[ch_idx].flux, chunk_list.data[ch_idx].var)
+      println(" SNRs = ", snr_of_chunk_with_line)
+    end
+
+  end
+  if ch_idx == 0
+    error("Didn't find λ = " *string(λ_min)*" - " *string(λ_max)* " in chunklist.")
+
+  end
+  return (chunk_idx=ch_idx, pixels=find_pixels_for_line_in_chunk(chunk_list.data[ch_idx], λ_min, λ_max) )
+end
+
+function find_pixels_for_line_in_chunklist( chunk_list::AbstractChunkList, λ_min::Real, λ_max::Real, chunk_id::Integer)
+  return (chunk_idx=chunk_id, pixels=find_pixels_for_line_in_chunk(chunk_list.data[chunk_id], λ_min, λ_max) )
 end

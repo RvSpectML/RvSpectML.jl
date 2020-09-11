@@ -38,12 +38,17 @@ export make_chunk_list, make_orders_into_chunks, filter_bad_chunks, make_grid_fo
 # alg.jl  is responsible for exporting its own types, modules & functions
 include("alg/alg.jl")
 
-# instruments.jl & the ihstruments it contains are responsible for exporting their own functions & modules
+# instruments.jl & the instruments it contains are responsible for exporting their own functions & modules
 include("instruments/instruments.jl")
 
 # util/files.jl
 include("util/files.jl")
 export make_manifest, code_to_include_param_jl
+
+include("util/pipeline.jl")
+using .Pipeline
+export PipelinePlan
+export make_plot, save_plot, save_data, need_to, need_to!, dont_need_to!, has_cache, reset_all_needs!
 
 # util/plots.jl  is responsible for exporting its own functions
 include("util/plots.jl")

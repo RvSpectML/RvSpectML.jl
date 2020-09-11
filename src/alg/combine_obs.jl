@@ -212,3 +212,24 @@ function bin_times(spectra::AbstractSpectralTimeSeriesCommonWavelengths, times::
     @assert haskey(spectra.metadata,:time_idx)
     map(idx->mean(times[idx]), spectra.metadata[:time_idx])
 end
+
+"""  rms_rv_within_night(times, rvs)
+Return RMS of RVs taken within the same night
+"""
+function rms_rvs_within_night(;times::AbstractVector{T1}, rvs::AbstractVector{T2}) where { T1<:Real, T2<:Real }
+    Δt_threshold = 0.5
+    bin_idx = make_bin_indices_for_binning_max_Δt(times,Δt_threshold=Δt_threshold)
+    bin_labels = unique(bin_idx)
+    sum_rms = 0
+    sum_weight = 0
+    for (i,label) in enumerate(bin_labels)
+        idx = findall(isequal(label),bin_idx)
+        if length(idx) <= 1    continue    end
+        weight = length(idx)-1
+        sum_rms += std(rvs[idx])*weight
+        sum_weight += weight
+    end
+    @assert sum_weight > 0
+    within_night_rms = sum_rms/sum_weight
+    return within_night_rms
+end

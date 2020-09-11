@@ -39,12 +39,41 @@ function predict_intrinsic_stellar_line_width(Teff::Real; v_rot::Real=zero(Teff)
 end
 
 
+default_Δλ_over_λ_threshold_check_if_line_match = 2.25e-5
+""" check_if_line_match ( λ, list ; threshold )
+Return true if list contains a wavelength differing from λ by no more than threshold (in units of Δλ/λ)
+"""
+function check_if_line_match( λ::Real, list::AbstractVector{T} ; threshold::Real = default_Δλ_over_λ_threshold_check_if_line_match ) where { T<:Real }
+  idx = searchsortednearest(list, λ)
+  Δ = abs(list[idx]-λ)/λ
+  if Δ <= threshold
+    return true
+  else
+    return false
+  end
+end
+
+""" find_which_line_fits_in_line_list( fit_list, line_list; threshold )
+Return list of Bools indicatin which line(s) from fit_list match a line in line_list to within threshold (in units of Δλ/λ)
+Warning: Untested
+"""
+function find_which_line_fits_in_line_list(fit_list::AbstractVector{T1}, line_list::AbstractVector{T2} ; threshold::Real = default_Δλ_over_λ_threshold_check_if_line_match ) where { T1<:Real, T2<:Real }
+  @assert issorted(line_list)
+  perm = sortperm(fit_list)
+  idx = RvSpectML.searchsortednearest(line_list, fit_list[perm])
+  Δ = Array{Float64,1}(undef, size(df,1) )
+  Δ[perm] .= abs.(line_list[idx] .- fit_list[perm])./fit_list[perm]
+  line_matches = Δ .<= threshold
+  return line_matches
+end
+
+
 """
    searchsortednearest(a<:AbstractVector, x::Real; assume_sorted = false )
    searchsortednearest(a<:AbstractVector, x<:AbstractVector; assume_sorted = false )
 
    Find the index of vector a where the value of a is closest to x.
-   All vectors are assumed to already be sorted.  
+   All vectors are assumed to already be sorted.
    To turn off assertions, set assume_sorted to true.
 
 Credit: traktofon @ https://discourse.julialang.org/t/findnearest-function/4143/4
@@ -148,4 +177,79 @@ function _findminmax(a, ::Colon)
 
     end
     return (argmin=argmin, min=valmin, argmax=argmax, max=valmax)
+end
+
+""" calc_line_width(λ, flux; frac_depth )
+Returns the line width (units of λ) for specified fractional line depth (default of 0.5).
+Assumes continuum is the maximum flux provided.
+"""
+function calc_line_width(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}; frac_depth::Real = 0.5 ) where { T1<:Real, T2<:Real }
+   @assert 0.05 <= frac_depth <= 0.99
+   idx_min_flux = argmin(flux)
+   min_flux = flux[idx_min_flux]
+   continuum = maximum(flux)
+   depth = 1.0 - min_flux/continuum
+   target_flux = continuum*(1-frac_depth*depth)
+   idxhi = idx_min_flux-1+searchsortedfirst(view(flux,idx_min_flux:length(flux)), target_flux)
+   idxlo = idxhi-1
+   λ_hi = RvSpectML.interp_linear(x1=flux[idxlo],x2=flux[idxhi],y1=λ[idxlo],y2=λ[idxhi],xpred=target_flux)
+   idxlo = idx_min_flux+1-searchsortedfirst(view(flux,idx_min_flux:-1:1), target_flux )
+   idxhi = idxlo+1
+   λ_lo = RvSpectML.interp_linear(x1=flux[idxlo],x2=flux[idxhi],y1=λ[idxlo],y2=λ[idxhi],xpred=target_flux)
+   width = λ_hi-λ_lo
+   return width
+end
+
+""" calc_line_bisector_at_frac_depth(λ, flux, frac_depth )
+Returns the line average of wavelengths (units of λ) at specified fractional line depth.
+Assumes continuum is the maximum flux provided.
+"""
+function calc_line_bisector_at_frac_depth(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, frac_depth::Real ) where { T1<:Real, T2<:Real }
+   @assert 0.05 <= frac_depth <= 0.99
+   idx_min_flux = argmin(flux)
+   min_flux = flux[idx_min_flux]
+   continuum = maximum(flux)
+   depth = 1.0 - min_flux/continuum
+   abs_depth = frac_depth*depth
+
+   target_flux = continuum*(1-frac_depth*depth)
+   idxhi = idx_min_flux-1+searchsortedfirst(view(flux,idx_min_flux:length(flux)), target_flux)
+   idxlo = idxhi-1
+   λ_hi = RvSpectML.interp_linear(x1=flux[idxlo],x2=flux[idxhi],y1=λ[idxlo],y2=λ[idxhi],xpred=target_flux)
+   idxlo = idx_min_flux+1-searchsortedfirst(view(flux,idx_min_flux:-1:1), target_flux )
+   idxhi = idxlo+1
+   λ_lo = RvSpectML.interp_linear(x1=flux[idxlo],x2=flux[idxhi],y1=λ[idxlo],y2=λ[idxhi],xpred=target_flux)
+   bisector = (λ_hi+λ_lo)/2
+   return bisector
+end
+
+""" calc_line_bisector_at_frac_depth(λ, flux, abs_depth )
+Returns the line average of wavelengths (units of λ) at specified absolute line depth.
+Assumes continuum is the maximum flux provided.
+"""
+function calc_line_width(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, abs_depth::Real ) where { T1<:Real, T2<:Real }
+   @assert 0.05 <= abs_depth <= 0.99
+   idx_min_flux = argmin(flux)
+   continuum = maximum(flux)
+   if flux[idx_min_flux]/continuum > abs_depth  # Line isn't that deep!
+	   return nothing
+   end
+   target_flux = continuum*(1-abs_depth)
+   idxhi = idx_min_flux-1+searchsortedfirst(view(flux,idx_min_flux:length(flux)), target_flux)
+   idxlo = idxhi-1
+   λ_hi = RvSpectML.interp_linear(x1=flux[idxlo],x2=flux[idxhi],y1=λ[idxlo],y2=λ[idxhi],xpred=target_flux)
+   idxlo = idx_min_flux+1-searchsortedfirst(view(flux,idx_min_flux:-1:1), target_flux )
+   idxhi = idxlo+1
+   λ_lo = RvSpectML.interp_linear(x1=flux[idxlo],x2=flux[idxhi],y1=λ[idxlo],y2=λ[idxhi],xpred=target_flux)
+   width = λ_hi-λ_lo
+   return width
+end
+
+
+""" interp_linear(;x1::T1,x2::T1,y1::T2,y2::T2,xpred::T1)
+Return result of simple linear interpolant at xpred.
+Does not test that xpred is between x1 and x2.
+"""
+function interp_linear(;x1::T1,x2::T1,y1::T2,y2::T2,xpred::T1) where { T1<:Real, T2<:Real }
+  ypred = y1+(y2-y1)*((xpred-x1)/(x2-x1))
 end

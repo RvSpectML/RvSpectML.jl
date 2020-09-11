@@ -204,7 +204,16 @@ function interp_chunk_to_shifted_grid_gp_temporal!( flux_out::AA1, var_out::AA2,
     @assert size(flux_out) == size(grid)
     y = eltype(chunk.flux) == Float64  ? chunk.flux : convert.(Float64,chunk.flux)
     var = eltype(chunk.var) == Float64  ? chunk.var : convert.(Float64,chunk.var)
-    flux_out .= TemporalGPInterpolation.predict_mean(chunk.λ./boost_factor, y, grid, sigmasq_obs = var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
+
+    if !use_logy
+        mean_y = mean(y)
+        y_to_use = y./mean_y .- 1.0
+    else
+        y_to_use = y
+    end
+    #y_to_use = y
+    flux_out .= TemporalGPInterpolation.predict_mean(chunk.λ./boost_factor, y_to_use, grid, sigmasq_obs = var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
+    flux_out .= mean_y.*(flux_out.+1.0)
     # TODO: Update var_out to actually use the right GP or at least do something more sensible
     var_out .= TemporalGPInterpolation.predict_mean(chunk.λ./boost_factor, var, grid, sigmasq_obs = var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
     return flux_out
@@ -223,7 +232,15 @@ function interp_chunk_to_grid_gp_temporal!( flux_out::AA1, var_out::AA2, chunk::
     @assert size(flux_out) == size(grid)
     y = eltype(chunk.flux) == Float64  ? chunk.flux : convert.(Float64,chunk.flux)
     var = eltype(chunk.var) == Float64  ? chunk.var : convert.(Float64,chunk.var)
-    flux_out .= TemporalGPInterpolation.predict_mean(chunk.λ, y, grid, sigmasq_obs = var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
+    if !use_logy
+        mean_y = mean(y)
+        y_to_use = y./mean_y .- 1.0
+    else
+        y_to_use = y
+    end
+    y_to_use = y
+    flux_out .= TemporalGPInterpolation.predict_mean(chunk.λ, y_to_use, grid, sigmasq_obs = var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
+    flux_out .= mean_y.*(flux_out.+1.0)
     # TODO: Update var_out to actually use the right GP or at least do something more sensible
     var_out .= flux_out
     var_out .= TemporalGPInterpolation.predict_mean(chunk.λ, var, grid, sigmasq_obs = var, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor )
@@ -255,7 +272,7 @@ function pack_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Uni
     dfluxdlnλ = zeros(num_λ)
     d2fluxdlnλ2 = zeros(num_λ)
     if (alg == :GP) && (maximum(length.(chunk_grids))>1024)
-        @error "Don't use GPs with more than 1024 points in a chunk until implement more efficient factorization."
+        @error "To use a GP with more than 1024 points in a chunk, use a more efficient GP package, e.g., :TemporalGP."
     end
     if alg == :Sinc    # Setup workspace for Sync.  TODO: Put into functor
         filter_size=23
@@ -291,7 +308,7 @@ function pack_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Uni
                d2fluxdlnλ2[idx] .+= calc_d2fluxdlnlambda2(view(flux_matrix,idx,t),view(λ_vec,idx))
 
                flux_matrix[idx,t] ./= mean_flux_in_chunk
-               var_matrix[idx,t]  ./= mean_flux_in_chunk
+               var_matrix[idx,t]  ./= mean_flux_in_chunk^2
            else  # no flux in chunk?!?
                @warn "No flux in chunk " * string(c) * " at time " * string(t) * "."
            end
@@ -311,7 +328,7 @@ function pack_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Uni
         #println("Normalizing chunk ", c, " (",idx,") by ", mean_flux_in_chunk)
         #dmeanfluxdlnλ[idx] .= calc_dfluxdlnlambda(vec(sum(view(flux_matrix,idx,:),dims=2)),vec(sum(view(var_matrix,idx,:), dims=2)) ) ./mean_flux_in_chunk
         mean_flux[idx] ./= mean_flux_in_chunk
-        mean_var[idx] ./= mean_flux_in_chunk
+        mean_var[idx] ./= mean_flux_in_chunk^2
         #dfluxdlnλ[idx] ./= mean_flux_in_chunk
         #d2fluxdlnλ2[idx] ./= mean_flux_in_chunk
         dfluxdlnλ[idx] .= calc_dfluxdlnlambda(mean_flux[idx],view(λ_vec,idx))
@@ -348,7 +365,7 @@ function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_gr
         @assert haskey(first(timeseries.metadata),:rv_est)
     end
     if (alg == :GP) && (maximum(length.(chunk_grids))>1024)
-        @error "Don't use GPs with more than 1024 points in a chunk until implement more efficient factorization."
+        @error "To use a GP with more than 1024 points in a chunk, use a more efficient GP package, e.g., :TemporalGP."
     end
     if alg == :Sinc    # Setup workspace for Sync.  TODO: Put into functor
         filter_size=23
@@ -369,22 +386,22 @@ function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_gr
            end
            mean_flux_in_chunk = mean(timeseries.chunk_list[t].data[c].flux)
            if mean_flux_in_chunk > 0
-
-           if alg == :Linear
-               interp_chunk_to_shifted_grid_linear!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c], boost_factor )
-           elseif alg == :Sinc
-               interp_chunk_to_shifted_grid_sinc!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c], boost_factor, Filter=sinc_filter )
-           elseif alg == :GP
-               interp_chunk_to_shifted_grid_gp!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c], boost_factor)
-           elseif alg == :TemporalGP
-               interp_chunk_to_shifted_grid_gp_temporal!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c], boost_factor, use_logx=true, use_logy=false, smooth_factor=smooth_factor)
-           end
-           if t == 1
-               λ_vec[idx] .= chunk_grids[c]
-               chunk_map[c] = idx
-           end
+               #println(" mean flux in chunk ", c, " at time ", t, " = ", mean_flux_in_chunk)
+               if alg == :Linear
+                   interp_chunk_to_shifted_grid_linear!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c], boost_factor )
+               elseif alg == :Sinc
+                   interp_chunk_to_shifted_grid_sinc!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c], boost_factor, Filter=sinc_filter )
+               elseif alg == :GP
+                   interp_chunk_to_shifted_grid_gp!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c], boost_factor)
+               elseif alg == :TemporalGP
+                   interp_chunk_to_shifted_grid_gp_temporal!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c], boost_factor, use_logx=true, use_logy=false, smooth_factor=smooth_factor)
+               end
+               if t == 1
+                  λ_vec[idx] .= chunk_grids[c]
+                  chunk_map[c] = idx
+               end
             else  # no flux in chunk?!?
-           @warn "No flux in chunk " * string(c) * " at time " * string(t) * "."
+                @warn "No flux in chunk " * string(c) * " at time " * string(t) * "."
             end
 
            mean_flux[idx] .+= view(flux_matrix,idx,t)
@@ -393,7 +410,7 @@ function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_gr
            d2fluxdlnλ2[idx] .+= calc_d2fluxdlnlambda2(view(flux_matrix,idx,t),view(λ_vec,idx))
 
            flux_matrix[idx,t] ./= mean_flux_in_chunk
-           var_matrix[idx,t]  ./= mean_flux_in_chunk
+           var_matrix[idx,t]  ./= mean_flux_in_chunk^2
 
            idx_start += length(chunk_grids[c])
        end
@@ -412,7 +429,7 @@ function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_gr
         #dmeanfluxdlnλ[idx] .= calc_dfluxdlnlambda(vec(sum(view(flux_matrix,idx,:),dims=2)),vec(sum(view(var_matrix,idx,:), dims=2)) ) ./mean_flux_in_chunk
         #sum_in_chunk = vec(sum(view(flux_matrix,idx,:),dims=2))
         mean_flux[idx] ./= mean_flux_in_chunk
-        mean_var[idx] ./= mean_flux_in_chunk
+        mean_var[idx] ./= mean_flux_in_chunk^2
         #dfluxdlnλ[idx] ./= mean_flux_in_chunk
         #d2fluxdlnλ2[idx] ./= mean_flux_in_chunk
         dfluxdlnλ[idx] .= calc_dfluxdlnlambda(mean_flux[idx],view(λ_vec,idx))

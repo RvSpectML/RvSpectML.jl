@@ -12,7 +12,7 @@ using RvSpectML
 target_subdir = "20190918"   # USER: Replace with directory of your choice
  fits_target_str = "Solar"
  output_dir = "examples/output"
- default_paths_to_search = [pwd(),"examples",joinpath(pkgdir(RvSpectML),"examples"),"/gpfs/group/ebf11/default/ebf11/neid/inputs"]
+ default_paths_to_search = [pwd(),"examples",joinpath(pkgdir(RvSpectML),"examples"), "/gpfs/group/ebf11/default/ebf11/neid_solar"]
 
 make_plots = false
  write_ccf_to_csv = true

@@ -21,6 +21,8 @@ function make_manifest(data_path::String)
     if length(spectra_filelist) >= 2
         map(fn->add_metadata_from_fits!(df_files,fn),spectra_filelist[2:end])
     end
+    # Date transition Based on EXPRES webpage
+    df_files[!,:expres_epoch] = map(b-> b ? 5 : 4, df_files[!,:bjd] .> RvSpectML.EXPRES.jd2mjd(datetime2julian(DateTime(2019,8,4))))
     df_files
 end
 

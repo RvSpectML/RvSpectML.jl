@@ -89,7 +89,6 @@ if need_to(pipeline,:ccf_total)
 if make_plot(pipeline, :ccf_total)
    using Plots
    t_idx = 20
-   using Plots
    plt = plot(v_grid,ccfs[:,t_idx]./maximum(ccfs[:,t_idx],dims=1),label=:none)
    scatter!(plt,v_grid,ccfs_expr[:,t_idx]./maximum(ccfs_expr[:,t_idx],dims=1),markersize=1.2,label=:none)
    xlabel!("v (m/s)")
@@ -98,6 +97,18 @@ if make_plot(pipeline, :ccf_total)
    display(plt)
 end
 
+
+if make_plot(pipeline, :ccf_total)
+   using Plots
+   zvals = ccfs./maximum(ccfs,dims=1).-mean(ccfs./maximum(ccfs,dims=1),dims=2)
+   colorscale = cgrad(:balance)
+   plt = heatmap(v_grid,collect(1:size(ccfs,2)),zvals', c=colorscale, clims=(-maximum(abs.(zvals)),maximum(abs.(zvals))) )
+   xlabel!("v (m/s)")
+   ylabel!("Observation #")
+   title!("CCF(v,t)-<CCF>(v) vs time")
+   if save_plot(pipeline,:ccf_total)   savefig(plt,joinpath(output_dir,"ccf_sum_vs_time_heatmap.png"))   end
+   display(plt)
+end
 
 #need_to!(pipeline, :rvs_ccf_total)
 if need_to(pipeline, :rvs_ccf_total)

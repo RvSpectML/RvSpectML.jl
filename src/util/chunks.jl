@@ -94,16 +94,20 @@ end
     line_list is a DataFrame containing :lambda_lo and :lambda_hi.
     Pads edges by Δ.
 """
-function make_chunk_list(spectra::AS, line_list::DataFrame; Δ::Real=Δλoλ_edge_pad_default) where { AS<:AbstractSpectra }
+function make_chunk_list(spectra::AS, line_list::DataFrame; rv_shift::Real = 0, Δ::Real=Δλoλ_edge_pad_default) where { AS<:AbstractSpectra }
     @assert hasproperty(line_list,:lambda_lo)
     @assert hasproperty(line_list,:lambda_hi)
-    ChunkList(map(row->ChuckOfSpectrum(spectra,find_line_best(row.lambda_lo,row.lambda_hi,spectra,Δ=Δ)), eachrow(line_list) ))
+    boost_factor = calc_doppler_factor(rv_shift)
+    if rv_shift != 0
+        @warn("I haven't tested this yet, especially the sign.")
+    end
+    ChunkList(map(row->ChuckOfSpectrum(spectra,find_line_best(row.lambda_lo*boost_factor,row.lambda_hi*boost_factor,spectra,Δ=Δ)), eachrow(line_list) ))
 end
 
-function make_chunk_list_timeseries(spectra::AS,chunk_list_df::DataFrame) where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} }
+function make_chunk_list_timeseries(spectra::AS,chunk_list_df::DataFrame; rv_shift::Real = 0) where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} }
     times = map(s->s.metadata[:bjd],spectra)
     metadata = make_vec_metadata_from_spectral_timeseries(spectra)
-    time_series_of_chunk_lists = map(spec->RvSpectML.make_chunk_list(spec,chunk_list_df),spectra)
+    time_series_of_chunk_lists = map(spec->RvSpectML.make_chunk_list(spec,chunk_list_df, rv_shift=rv_shift),spectra)
     chunk_list_timeseries = ChunkListTimeseries(times, time_series_of_chunk_lists, inst=first(spectra).inst, metadata=metadata )
 end
 
@@ -398,8 +402,9 @@ function find_pixels_for_line_in_chunk( chunk::AbstractChuckOfSpectrum, λ_min::
   return idx_lo:idx_hi
 end
 
-function find_pixels_for_line_in_chunklist( chunk_list::AbstractChunkList, λ_min::Real, λ_max::Real; verbose::Bool = false )
+function find_pixels_for_line_in_chunklist( chunk_list::AbstractChunkList, λ_min::Real, λ_max::Real; verbose::Bool = true )
   ch_idx_all = findall(c-> (λ_min <= minimum(chunk_list.data[c].λ)) && (maximum(chunk_list.data[c].λ) <= λ_max) ,1:length(chunk_list))
+  println("Hello")
   #map(c->(chunk_idx=c, pixels=find_pixels_for_line_in_chunk(chunk_list.data[c], λ_min, λ_max) ), ch_idx)
   ch_idx = 0
   if length(ch_idx_all) > 1
@@ -407,12 +412,18 @@ function find_pixels_for_line_in_chunklist( chunk_list::AbstractChunkList, λ_mi
     ch_idx_to_keep = argmax(snr_of_chunks_with_line)
     ch_idx = ch_idx_all[ch_idx_to_keep]
     if verbose
-      println(" Found λ=",λ_min,"-",λ_max," in chunks: ", ch_idx_all)
+      println(" Found λ=",λ_min,"-",λ_max," in chunks: ", ch_idx_all, " containing ", length.(ch_idx_all), " pixels.")
       println(" SNRs = ", snr_of_chunks_with_line)
       println(" Keeping chunk #",ch_idx)
     end
   elseif length(ch_idx_all) == 1
     ch_idx = first(ch_idx_all)
+    if verbose
+      println(" Found λ=",λ_min,"-",λ_max," in chunk: ", ch_idx, " containing ", length(ch_idx), " pixels.")
+      snr_of_chunk_with_line = RvSpectML.calc_snr(chunk_list.data[ch_idx].flux, chunk_list.data[ch_idx].var)
+      println(" SNRs = ", snr_of_chunk_with_line)
+    end
+
   end
   if ch_idx == 0
     error("Didn't find λ = " *string(λ_min)*" - " *string(λ_max)* " in chunklist.")

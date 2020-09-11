@@ -255,7 +255,7 @@ function find_pixels_for_all_lines_in_chunklist( chunk_list::AbstractChunkList, 
   map(l->find_pixels_for_line_in_chunklist(chunk_list[1], lines[l,:fit_min_λ],  lines[l,:fit_max_λ], lines[l,:chunk_id] ), 1:size(lines,1) )
 end
 
-global count_msgs = 0
+global fit_line_in_chunklist_timeseries_count_msgs = 0
 function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmin::Real, λmax::Real, chid::Integer; show_trace::Bool = false)
   df = DataFrame()
   nobs = length(clt.chunk_list)
@@ -276,9 +276,9 @@ function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmi
     mean_flux = mean(clt.chunk_list[t][chid].flux[pixels[t]])
     flux = clt.chunk_list[t][chid].flux ./ mean_flux
     var = clt.chunk_list[t][chid].var ./ mean_flux^2
-    (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, clt.chunk_list[t][chid].flux, clt.chunk_list[t][chid].var, pixels[t], show_trace=show_trace )
+    (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, flux, var, pixels[t], show_trace=show_trace )
     #=
-    if count_msgs<20
+    if fit_line_in_chunklist_timeseries_count_msgs<5
       (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, flux, var, pixels[t], show_trace=true )
         println("lambda = ",extrema(clt.chunk_list[t][chid].λ[pixels[t]]))
       println("flux = ",extrema(clt.chunk_list[t][chid].flux[pixels[t]]))
@@ -289,7 +289,7 @@ function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmi
       println("param = ", param_tmp)
       println("gof = ", gof[t])
       println("fit_converged = ", fit_converged[t])
-      count_msgs += 1
+      fit_line_in_chunklist_timeseries_count_msgs += 1
     else
       (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, flux, var, pixels[t] )
     end
@@ -306,13 +306,13 @@ function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmi
 end
 
 
-function fit_all_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, lines::DataFrame ; plan::LineFinderPlan = LineFinderPlan() )
+function fit_all_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, lines::DataFrame ; plan::LineFinderPlan = LineFinderPlan(), show_trace::Bool = false )
   @assert size(lines,1) >= 2
   line_idx = 1
   λmin = lines[line_idx,:fit_min_λ]
   λmax = lines[line_idx,:fit_max_λ]
   chid = lines[line_idx,:chunk_id]
-  df = fit_line_in_chunklist_timeseries(clt, λmin, λmax, chid)
+  df = fit_line_in_chunklist_timeseries(clt, λmin, λmax, chid, show_trace=show_trace)
   df[!,:line_id] .= line_idx
   for line_idx in 2:size(lines,1)
     λmin = lines[line_idx,:fit_min_λ]

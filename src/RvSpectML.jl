@@ -45,6 +45,11 @@ include("instruments/instruments.jl")
 include("util/files.jl")
 export make_manifest, code_to_include_param_jl
 
+include("util/pipeline.jl")
+using .Pipeline
+export PipelinePlan
+export make_plot, save_plot, save_data, need_to, need_to!, dont_need_to!, has_cache, reset_all_needs!
+
 # util/plots.jl  is responsible for exporting its own functions
 include("util/plots.jl")
 export plot_spectrum_chunks

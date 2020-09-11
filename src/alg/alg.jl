@@ -12,6 +12,7 @@ export bin_spectra_consecutive, bin_spectra_max_Δt, bin_spectra_nightly
 export bin_times_consecutive, bin_rvs_consecutive
 export bin_times_max_Δt, bin_rvs_max_Δt, bin_times_and_rvs_max_Δt
 export bin_times_nightly, bin_rvs_nightly, bin_times_and_rvs_nightly
+export rms_rvs_within_night
 
 include("ccf/ccf.jl")
 export calc_ccf_Δv_grid

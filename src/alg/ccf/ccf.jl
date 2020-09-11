@@ -32,6 +32,7 @@ const default_v_center = 0.0    # m/s
 const default_v_step = 250.0    # m/s
 const default_v_max = 15.0e3    # m/s
 const default_v_width = 410.0   # m/s
+const default_v_range_no_mask_change = default_v_max # m/s
 
 include("plan.jl")
 export AbstractCCFPlan, BasicCCFPlan

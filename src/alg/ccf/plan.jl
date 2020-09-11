@@ -33,7 +33,7 @@ end
 - max: (default_v_max)
 """
 function BasicCCFPlan(;midpoint::Real=default_v_center, step::Real=default_v_step, max::Real=default_v_max,
-                       range_no_mask_change::Real=default_v_range_no_mask_change, mask_shape::MST,
+                       range_no_mask_change::Real=max, mask_shape::MST,
                        line_list::LLT ) where { MST<:AbstractCCFMaskShape, LLT<:AbstractLineList }
     BasicCCFPlan(midpoint, step, max, range_no_mask_change, mask_shape, line_list)
 end

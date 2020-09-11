@@ -12,15 +12,16 @@ struct BasicCCFPlan{MST<:AbstractCCFMaskShape, LLT<:AbstractLineList} <: Abstrac
     v_center::Float64
     v_step::Float64
     v_max::Float64
+    v_range_no_mask_change::Float64
     mask_shape::MST
     line_list::LLT
 
-    function BasicCCFPlan(midpoint::Real,step::Real, max::Real,
+    function BasicCCFPlan(midpoint::Real,step::Real, max::Real, range_no_mask_change::Real,
                           mask_shape::MST, line_list::LLT ) where { MST<:AbstractCCFMaskShape, LLT<:AbstractLineList }
         @assert 1.0e3 <= max <=100.0e3    # Reasonable range m/s, designed to prevent mistakes
         @assert 1 < step < 1000           # Reasonable range m/s
         @assert abs(midpoint) < max
-        new{MST,LLT}(midpoint,step,max, mask_shape, line_list)
+        new{MST,LLT}(midpoint, step, max, range_no_mask_change, mask_shape, line_list)
     end
 
 end
@@ -32,8 +33,9 @@ end
 - max: (default_v_max)
 """
 function BasicCCFPlan(;midpoint::Real=default_v_center, step::Real=default_v_step, max::Real=default_v_max,
-                       mask_shape::MST, line_list::LLT ) where { MST<:AbstractCCFMaskShape, LLT<:AbstractLineList }
-    BasicCCFPlan(midpoint,step,max, mask_shape, line_list)
+                       range_no_mask_change::Real=default_v_range_no_mask_change, mask_shape::MST,
+                       line_list::LLT ) where { MST<:AbstractCCFMaskShape, LLT<:AbstractLineList }
+    BasicCCFPlan(midpoint, step, max, range_no_mask_change, mask_shape, line_list)
 end
 
 """ calc_ccf_v_grid( plan )

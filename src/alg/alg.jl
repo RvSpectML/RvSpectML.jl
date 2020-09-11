@@ -26,6 +26,9 @@ export calc_dfluxdlnlambda, calc_d2fluxdlnlambda2
 export calc_mean_spectrum, calc_mean_dfluxdlnlambda, calc_mean_d2fluxdlnlambda2
 export calc_rvs_from_taylor_expansion, calc_chunk_rvs_from_taylor_expansion
 
+include("scalpels.jl")
+export Scalpels
+export clean_rvs_scalpels, make_plots_scalpels, scalpels_rms_vs_num_basis
 
 include("dcpca.jl")
 export doppler_constrained_pca

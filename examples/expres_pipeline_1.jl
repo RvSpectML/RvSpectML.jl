@@ -26,6 +26,8 @@ RvSpectML.Pipeline.reset_all_needs!(pipeline)
 
    if verbose println("# Reading in FITS files.")  end
    @time expres_data = map(EXPRES.read_data,eachrow(df_files_use))
+   RvSpectML.discard_blaze(expres_data)
+   RvSpectML.discard_continuum(expres_data)
    dont_need_to!(pipeline,:read_spectra)
    expres_data
  end
@@ -46,6 +48,8 @@ if need_to(pipeline,:read_line_list)
    espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks",linelist_for_ccf_filename)
    espresso_df = RvSpectML.read_linelist_espresso(espresso_filename)
    line_list_df = EXPRES.filter_line_list(espresso_df,first(expres_data).inst)
+   RvSpectML.discard_pixel_mask(expres_data)
+   RvSpectML.discard_excalibur_mask(expres_data)
    dont_need_to!(pipeline,:read_line_list);
  end
  #line_list_df
@@ -56,6 +60,7 @@ if need_to(pipeline,:clean_line_list_tellurics)
    @assert !need_to(pipeline,:read_line_list)
    @assert !need_to(pipeline,:read_spectra)
    line_list_no_tellurics_df  = make_clean_line_list_from_tellurics_expres(line_list_df, expres_data, Δv_to_avoid_tellurics = 30.0e3) #14000.0)
+   # RvSpectML.discard_tellurics(expres_data)  # Individual line fits use this data later.
    dont_need_to!(pipeline,:clean_line_list_tellurics);
  end
  #line_list_no_tellurics_df
@@ -246,6 +251,7 @@ if need_to(pipeline, :template)  # Compute order CCF's & measure RVs
    if verbose println("# Making template spectra.")  end
    @assert !need_to(pipeline,:extract_orders)
    @assert !need_to(pipeline,:rvs_ccf_total)
+   GC.gc()   # run garbage collector for deallocated memory
    @time ( spectral_orders_matrix, f_mean, var_mean, deriv, deriv2, order_grids )  = RvSpectML.make_template_spectra(order_list_timeseries)
    if save_data(pipeline, :template)
       #using CSV
@@ -460,6 +466,7 @@ if need_to(pipeline, :template)
    chunk_list_timeseries2 = RvSpectML.filter_bad_chunks(chunk_list_timeseries2)
    println(size(chunk_list_df2), " vs ", num_chunks(chunk_list_timeseries2) )
 
+   GC.gc()   # run garbage collector for deallocated memory
    if verbose println("# Making template spectra.")  end
    @time ( spectral_orders_matrix2, f_mean2, var_mean2, deriv_2, deriv2_2, order_grids2 )  = RvSpectML.make_template_spectra(chunk_list_timeseries2)
 

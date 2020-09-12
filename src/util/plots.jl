@@ -190,3 +190,23 @@ function plot_basis_scores_cor(rvs::V2, scores::A3;
   end
   pltall
 end
+
+function add_time_gap_lines(plt::AbstractPlot, times::AbstractVector{T} ; Δt_boundaries::AbstractVector{T2} = [0.5, 1.5, 7, 14, 42],
+                                    lweights::AbstractVector{T3} = [ 1, 1, 1, 1, 2, 2, 3, 3  ],
+                                    lstyles::AbstractVector{Symbol} = [ :dot, :dashdot, :dash, :solid, :dash, :solid, :dash, :solid ]
+                                          ) where { T<:Real, T2<:Real, T3<:Real  }
+   @assert 2 <= length(Δt_boundaries) <= length(lstyles)-1
+   Δt = times[2:end] .- times[1:end-1]
+   xvals = [xlims(plt)[1], xlims(plt)[2]]
+   for i in 1:(length(Δt_boundaries)-1)
+      idx = findall(x -> Δt_boundaries[i]<=x<Δt_boundaries[i+1], Δt)
+      if length(idx) >= 1
+         map( y->plot!(plt,xvals, (y+0.5).*[1, 1],label=:none, color=:black, linewidth=lweights[i], linestyle=lstyles[i]), idx )
+      end
+   end
+   idx = findall(x -> x > last(Δt_boundaries), Δt)
+   if length(idx) >= 1
+      map(y->plot!(plt,xvals, (y+0.5).*[1, 1],label=:none, color=:black, linewidth=lweights[length(idx)], linestyle=lstyles[length(idx)]), idx )
+   end
+   return plt
+end

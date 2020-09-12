@@ -32,6 +32,7 @@ ThreadedIterables = "11d239b0-c0b9-11e8-1935-d5cfa53abb03"
 
 [compat]
 CSV = "0.7"
+ColorSchemes = "3.9"
 DSP = "0.6"
 DataFrames = "0.21"
 Distributions = "0.23"

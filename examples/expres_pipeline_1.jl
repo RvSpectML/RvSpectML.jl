@@ -60,7 +60,7 @@ if need_to(pipeline,:clean_line_list_tellurics)
    if verbose println("# Removing lines with telluric contamination.")  end    # Currently only works for EXPRES data
    @assert !need_to(pipeline,:read_line_list)
    @assert !need_to(pipeline,:read_spectra)
-   line_list_no_tellurics_df  = make_clean_line_list_from_tellurics_expres(line_list_df, expres_data, Δv_to_avoid_tellurics = 30.0e3) #14000.0)
+   line_list_no_tellurics_df  = make_clean_line_list_from_tellurics_expres(line_list_df, expres_data, Δv_to_avoid_tellurics = 22e3)
    # RvSpectML.discard_tellurics(expres_data)  # Individual line fits use the tellurics info data later.
    dont_need_to!(pipeline,:clean_line_list_tellurics);
  end
@@ -74,7 +74,7 @@ if need_to(pipeline,:clean_line_list_tellurics)
    mask_shape = CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor)
    #line_list = RvSpectML.CCF.BasicLineList(line_list_df.lambda, line_list_df.weight)
    line_list = CCF.BasicLineList(line_list_no_tellurics_df.lambda, line_list_no_tellurics_df.weight)
-   ccf_plan = CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity, range_no_mask_change=30e3)
+   ccf_plan = CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity, range_no_mask_change=22e3)
    v_grid = CCF.calc_ccf_v_grid(ccf_plan)
    @time ccfs = CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan)
    mask_shape_expr = CCF.GaussianCCFMask(order_list_timeseries.inst, scale_factor=9)

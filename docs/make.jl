@@ -14,6 +14,12 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "API" => [
+            "Overview" => "contents.md",
+            "Modules" => "modules.md",
+            "Functions" => "functions.md",
+            "Types" => "types.md"
+            ],
         "Internals" => "internals.md",
         "Index" => "longlist.md",
     ],
@@ -21,5 +27,5 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/eford/RvSpectML.jl",
-    devbranch="main" 
+    devbranch="main"
 )

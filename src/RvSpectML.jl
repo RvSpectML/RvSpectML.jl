@@ -13,7 +13,7 @@ module RvSpectML
 # Packages we know we'll use in many places
 using LinearAlgebra, Statistics
 using DataFrames, Query
-# Packages thare are being used and likely can be shared
+# Packages that are being used and likely can be shared
 using Distributions, Interpolations, MultivariateStats, PDMats
 # Packages we might use soon
 #using Optim, Stheno

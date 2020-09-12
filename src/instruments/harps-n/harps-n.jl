@@ -3,6 +3,10 @@
 Author: Eric Ford
 Created: August 2020
 """
+
+"""
+Module providing types and traits and customized functions for the HARPS-N Spectrograph.
+"""
 module HARPSN
 using RvSpectML
 using DataFrames, FITSIO

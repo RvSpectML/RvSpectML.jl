@@ -5,6 +5,9 @@ Author: Eric Ford and collaborators
 Created: August 2020
 """
 
+"""
+Module providing types and traits and customized functions for the NEID Spectrograph.
+"""
 module NEID
 using ..RvSpectML
 import ..RvSpectML: AbstractInstrument, AbstractInstrument1D, AbstractInstrument2D

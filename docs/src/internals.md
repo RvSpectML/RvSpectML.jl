@@ -1,37 +1,83 @@
 ```@meta
 CurrentModule = RvSpectML
 ```
-# RvSpectML
-# Internals Types & Functions
+# RvSpectML Internals
+
+As a heads up, these functions and types are more likely to change going forward than functions and types that are exported.  
 
 ```@contents
+Pages = ["internals.md"]
+Depth = 3
 ```
+## Functions
 
-## General purpose
+### General purpose
 ```@autodocs
 Modules = [RvSpectML ]
 Public = false
-Order = [:type, :function ]
+Order = [ :function ]
 ```
 
-## Radial Velocity Related
+### Radial Velocity Related
 ```@autodocs
-Modules = [ RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA ] #, RvSpectML.PPCA ]
+Modules = [RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA, RvSpectML.Scalpels, RvSpectML.LineFinder ] #, RvSpectML.PPCA ]
 Public = false
-Order = [:type, :function ]
+Order = [ :function ]
 ```
 
-## Interpolation
+### Interpolation
 ```@autodocs
 Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.TemporalGPInterpolation ]  # RvSpectML.GPInterpolation,
 Public = false
-Order = [:type, :function]
+Order = [ :function]
 ```
 
-## Instrument specific
+### Instrument specific
 ```@autodocs
 Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID, RvSpectML.TheoreticalInstrument  ]
 Public = false
-Order = [:type, :function]
+Order = [ :function]
 ```
 
+## Other
+```@autodocs
+Modules = [Pipeline  ]
+Public = false
+Order = [:function]
+```
+
+## Types
+
+### General purpose
+```@autodocs
+Modules = [RvSpectML ]
+Public = false
+Order = [:type ]
+```
+
+### Radial Velocity Related
+```@autodocs
+Modules = [RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA, RvSpectML.Scalpels, RvSpectML.LineFinder ] #, RvSpectML.PPCA ]
+Public = false
+Order = [:type ]
+```
+
+### Interpolation
+```@autodocs
+Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.TemporalGPInterpolation ]  # RvSpectML.GPInterpolation,
+Public = false
+Order = [:type ]
+```
+
+### Instrument specific
+```@autodocs
+Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID, RvSpectML.TheoreticalInstrument  ]
+Public = false
+Order = [:type ]
+```
+## Other
+```@autodocs
+Modules = [Pipeline  ]
+Public = false
+Order = [:type]
+```

@@ -1,9 +1,13 @@
 """
    Delegates loading functions & traits for the EXPRES spectrograph
-   http://exoplanets.astro.yale.edu/expresBlog/
-   https://ui.adsabs.harvard.edu/abs/2016SPIE.9908E..6TJ/abstract
 Author: Eric Ford and collaborators
 Created: August 2020
+"""
+
+"""
+Module providing types and traits and customized functions for the EXPRES Spectrograph.
+    http://exoplanets.astro.yale.edu/expresBlog/
+    https://ui.adsabs.harvard.edu/abs/2016SPIE.9908E..6TJ/abstract
 """
 module EXPRES
 using ..RvSpectML

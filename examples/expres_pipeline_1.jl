@@ -15,6 +15,7 @@ target_subdir = "101501"   # USER: Replace with directory of your choice
  default_paths_to_search = [pwd(),"examples",joinpath(pkgdir(RvSpectML),"examples"),"/gpfs/group/ebf11/default/ebf11/expres/inputs"]
  # NOTE: make_manifest does not update its paths_to_search when default_paths_to_search is defined here, so if you change the line above, you must also include "paths_to_search=default_paths_to_search" in the make_manifest() function call below
  pipeline = PipelinePlan()
+ RvSpectML.dont_make_plot!(pipeline, :movie)
 
 RvSpectML.Pipeline.reset_all_needs!(pipeline)
  if need_to(pipeline,:read_spectra)
@@ -112,12 +113,14 @@ if make_plot(pipeline, :ccf_total)
    zvals = ccfs./maximum(ccfs,dims=1).-mean(ccfs./maximum(ccfs,dims=1),dims=2)
    colorscale = cgrad(:balance)
    plt = heatmap(v_grid,collect(1:size(ccfs,2)),zvals', c=colorscale, clims=(-maximum(abs.(zvals)),maximum(abs.(zvals))) )
+   add_time_gap_lines(plt,order_list_timeseries.times)
    xlabel!("v (m/s)")
    ylabel!("Observation #")
    title!("CCF(v,t)-<CCF>(v) vs time")
    if save_plot(pipeline,:ccf_total)   savefig(plt,joinpath(output_dir,target_subdir * "_ccf_sum_vs_time_heatmap.png"))   end
    display(plt)
 end
+
 
 #need_to!(pipeline, :rvs_ccf_total)
 if need_to(pipeline, :rvs_ccf_total)
@@ -197,16 +200,13 @@ end
 end
 
 if make_plot(pipeline, :ccf_orders)
-   # order ccfs averaged over time
-   obs = 3:40   # TODO:  I think this order illustrates the issue Alex is going to fix with lines dropping off at the boundary of orders.  Check his fix solves the issue.
-   #plot(v_grid,reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1), size(order_ccfs,1),size(order_ccfs[:,ord,:],2)), label=:none)
-   # resudiuals of order ccfs to time and chunk averaged ccf
-   #plt = plot(v_grid,reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1),size(order_ccfs,1),size(order_ccfs[:,ord,:],2)).-
-   #            reshape(sum(order_ccfs[:,ord,:],dims=(2,3))./maximum(sum(order_ccfs[:,ord,:],dims=(2,3))),size(order_ccfs,1) ), label=:none)
+   # order ccfs averaged over observations at multiple times
+   obs = 1:length(order_list_timeseries.times)
    order_labels = map(c->order_list_timeseries.chunk_list[1].data[c].λ.indices[2], 1:size(order_ccfs,2))
-   zvals = reshape(sum(order_ccfs[:,:,obs],dims=3)./maximum(sum(order_ccfs[:,:,obs],dims=3),dims=1),size(order_ccfs,1),size(order_ccfs[:,:,obs],2)).-
-   reshape(sum(order_ccfs[:,:,obs],dims=(2,3))./maximum(sum(order_ccfs[:,:,obs],dims=(2,3))),size(order_ccfs,1) )
-   plt = heatmap(v_grid,order_labels, zvals',c = cgrad(:balance), clims=(-maximum(abs.(zvals)),maximum(abs.(zvals))) )
+   orders_to_plot = findall(c->sum(order_ccfs[:,c,obs])>0, 1:size(order_ccfs,2))
+   zvals =  reshape(sum(order_ccfs[:,orders_to_plot,obs],dims=3)./maximum(sum(order_ccfs[:,orders_to_plot,obs],dims=3),dims=1)   ,size(order_ccfs,1),size(order_ccfs[:,orders_to_plot,obs],2)) .-
+            reshape(sum(order_ccfs[:,orders_to_plot,obs],dims=(2,3))./maximum(sum(order_ccfs[:,orders_to_plot,obs],dims=(2,3))),size(order_ccfs,1) )
+   plt = heatmap(v_grid,order_labels[orders_to_plot], zvals',c = cgrad(:balance), clims=(-maximum(abs.(zvals)),maximum(abs.(zvals))) )
 
    xlabel!("v (m/s)")
    ylabel!("Order ID")
@@ -215,20 +215,67 @@ if make_plot(pipeline, :ccf_orders)
    display(plt)
 end
 
+#RvSpectML.make_plot!(pipeline, :movie)
+if make_plot(pipeline, :ccf_orders) && make_plot(pipeline, :movie)
+   # order ccfs averaged over observations at multiple times
+   anim = @animate for obs ∈  1:length(order_list_timeseries.times)
+      order_labels = map(c->order_list_timeseries.chunk_list[1].data[c].λ.indices[2], 1:size(order_ccfs,2))
+      orders_to_plot = findall(c->sum(order_ccfs[:,c,obs])>0, 1:size(order_ccfs,2))
+      zvals =  reshape(sum(order_ccfs[:,orders_to_plot,obs],dims=3)./maximum(sum(order_ccfs[:,orders_to_plot,obs],dims=3),dims=1)   ,size(order_ccfs,1),size(order_ccfs[:,orders_to_plot,obs],2)) .-
+               reshape(sum(order_ccfs[:,orders_to_plot,obs],dims=(2,3))./maximum(sum(order_ccfs[:,orders_to_plot,obs],dims=(2,3))),size(order_ccfs,1) )
+      plt = heatmap(v_grid,order_labels[orders_to_plot], zvals',c = cgrad(:balance), clims=(-maximum(abs.(zvals)),maximum(abs.(zvals))) )
+
+      xlabel!("v (m/s)")
+      ylabel!("Order ID")
+      title!("CCF-<CCF> for obs ID=" * string(obs))
+   end
+   #gif(anim, joinpath(output_dir,joinpath(output_dir,target_subdir * "_ccf_order_movie=" * string(ord) * ".gif")), fps = 25)
+   gif(anim, "ccf_order_movie_obs=.gif", fps = 10)
+end
+
 if make_plot(pipeline, :ccf_orders)
-   ord = 3  # TODO:  I think this order illustrates the issue Alex is going to fix with lines dropping off at the boundary of orders.  Check his fix solves the issue.
-   #plot(v_grid,reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1), size(order_ccfs,1),size(order_ccfs[:,ord,:],2)), label=:none)
-   # resudiuals of order ccfs to time and chunk averaged ccf
-   #plt = plot(v_grid,reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1),size(order_ccfs,1),size(order_ccfs[:,ord,:],2)).-
-   #            reshape(sum(order_ccfs[:,ord,:],dims=(2,3))./maximum(sum(order_ccfs[:,ord,:],dims=(2,3))),size(order_ccfs,1) ), label=:none)
+   ord = 3
    zvals = reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1),size(order_ccfs,1),size(order_ccfs[:,ord,:],2)).-
    reshape(sum(order_ccfs[:,ord,:],dims=(2,3))./maximum(sum(order_ccfs[:,ord,:],dims=(2,3))),size(order_ccfs,1) )
    plt = heatmap(v_grid,1:size(order_ccfs,3), zvals',c = cgrad(:balance), clims=(-maximum(abs.(zvals)),maximum(abs.(zvals))) )
+   add_time_gap_lines(plt,order_list_timeseries.times)
    xlabel!("v (m/s)")
    ylabel!("Observation ID")
    title!("CCF-<CCF> for order=" * string(ord))
    if save_plot(pipeline,:ccf_orders)   savefig(plt,joinpath(output_dir,target_subdir * "_ccf_obs_order=" * string(ord) * ".png"))   end
    display(plt)
+end
+
+if make_plot(pipeline, :ccf_orders) && make_plot(pipeline, :movie)
+   orders_to_plot = findall(c->sum(order_ccfs[:,c,obs])>0, 1:size(order_ccfs,2))
+   min_z_val = Inf
+   max_z_val = -Inf
+   for ord ∈ orders_to_plot
+      local zvals = reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1),size(order_ccfs,1),size(order_ccfs[:,ord,:],2)) .-
+                    reshape(sum(order_ccfs[:,ord,:],dims=(2,3))./maximum(sum(order_ccfs[:,ord,:],dims=(2,3))),size(order_ccfs,1) )
+      lo, hi = extrema(zvals)
+      #println(" ord = ", ord, " lo = ", lo, " hi = ", hi)
+      global min_z_val = min(min_z_val,lo)
+      global max_z_val = max(max_z_val,hi)
+   end
+   #println(min_z_val, " - ", max_z_val)
+   if -min_z_val > max_z_val
+         max_z_val = -min_z_val
+   else
+         min_z_val = -max_z_val
+   end
+   #println(min_z_val, " - ", max_z_val)
+   anim = @animate for ord ∈ orders_to_plot
+      local zvals = reshape(sum(order_ccfs[:,ord,:],dims=3)./maximum(sum(order_ccfs[:,ord,:],dims=3),dims=1),size(order_ccfs,1),size(order_ccfs[:,ord,:],2)).-
+      reshape(sum(order_ccfs[:,ord,:],dims=(2,3))./maximum(sum(order_ccfs[:,ord,:],dims=(2,3))),size(order_ccfs,1) )
+      local plt = heatmap(v_grid,1:size(order_ccfs,3), zvals',c = cgrad(:balance), clims=(min_z_val,max_z_val) )
+      add_time_gap_lines(plt,order_list_timeseries.times)
+      xlabel!("v (m/s)")
+      ylabel!("Observation ID")
+      title!("CCF-<CCF> for order=" * string(order_labels[ord]))
+   end
+   #gif(anim, joinpath(output_dir,joinpath(output_dir,target_subdir * "_ccf_order_movie=" * string(ord) * ".gif")), fps = 25)
+   gif(anim, "ccf_order_movie_order.gif", fps = 10)
 end
 
 if need_to(pipeline,:scalpels)

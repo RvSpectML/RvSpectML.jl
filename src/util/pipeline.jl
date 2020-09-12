@@ -18,10 +18,10 @@ module Pipeline
 export PipelinePlan
 export make_plot, save_plot, save_data, need_to, has_cache
 
-export make_plot!, make_all_plots!,  make_no_plots!
-export save_plot!, save_all_plots!,  save_no_plots!
-export save_data!, save_all_data!,   save_no_data!
-export need_to!,   dont_need_to!,    reset_all_needs!, reset_no_needs!
+export make_plot!, dont_make_plot!, make_all_plots!,  make_no_plots!
+export save_plot!, dont_save_plot!, save_all_plots!,  save_no_plots!
+export save_data!, dont_save_data!, save_all_data!,   save_no_data!
+export need_to!,   dont_need_to!,   reset_all_needs!, reset_no_needs!
 export read_cache, set_cache!, reset_all_cache!
 
 # Default steps for the PipelinePlan to track

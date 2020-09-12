@@ -54,5 +54,6 @@ export make_plot, save_plot, save_data, need_to, need_to!, dont_need_to!, has_ca
 include("util/plots.jl")
 export plot_spectrum_chunks
 export plot_basis_vectors, plot_basis_scores
+export add_time_gap_lines
 
 end

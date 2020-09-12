@@ -11,7 +11,7 @@ if verbose   println("# Loading RvSpecML")    end
 # solar_data_path = "/home/eford/Data/SolarSpectra/NEID_solar/"
 target_subdir = "20190918"   # USER: Replace with directory of your choice
  fits_target_str = "Solar"
- output_dir = "examples/output/solar"
+ output_dir = "examples/output"
  default_paths_to_search = [pwd(),"examples",joinpath(pkgdir(RvSpectML),"examples"), "/gpfs/group/ebf11/default/ebf11/neid_solar"]
  # NOTE: make_manifest does not update its paths_to_search when default_paths_to_search is defined here, so if you change the line above, you must also include "paths_to_search=default_paths_to_search" in the make_manifest() function call below
  pipeline = PipelinePlan()
@@ -108,7 +108,7 @@ if make_plot(pipeline, :ccf_total)
    scatter!(plt,v_grid,ccfs_expr[:,t_idx]./maximum(ccfs_expr[:,t_idx],dims=1),markersize=1.2,label=:none)
    xlabel!("v (m/s)")
    ylabel!("CCF")
-   if save_plot(pipeline,:ccf_total)   savefig(plt,joinpath(output_dir,"ccf_sum.png"))   end
+   if save_plot(pipeline,:ccf_total)   savefig(plt,joinpath(output_dir, target_subdir * "_ccf_sum.png"))   end
    display(plt)
 end
 
@@ -121,7 +121,7 @@ if make_plot(pipeline, :ccf_total)
    xlabel!("v (m/s)")
    ylabel!("Observation #")
    title!("CCF(v,t)-<CCF>(v) vs time")
-   if save_plot(pipeline,:ccf_total)   savefig(plt,joinpath(output_dir,"ccf_sum_vs_time_heatmap.png"))   end
+   if save_plot(pipeline,:ccf_total)   savefig(plt,joinpath(output_dir, target_subdir * "_ccf_sum_vs_time_heatmap.png"))   end
    display(plt)
 end
 
@@ -157,7 +157,7 @@ if make_plot(pipeline, :rvs_ccf_total)
    scatter!(plt,rvs_ccf_gauss2,markersize=3,label="RVs CCF Gaussian")
    ylabel!("v (m/s)")
    xlabel!("Time (#)")
-   if save_plot(pipeline,:rvs_ccf_total)   savefig(plt,joinpath(output_dir,"rvs_ccf_sum.png"))   end
+   if save_plot(pipeline,:rvs_ccf_total)   savefig(plt,joinpath(output_dir, target_subdir * "_rvs_ccf_sum.png"))   end
    display(plt)
 
    #=
@@ -183,7 +183,7 @@ if make_plot(pipeline, :rvs_ccf_total)
    plt = scatter(order_list_timeseries.times,diff,markersize=4,label="Delta RV")
    ylabel!("Δv (m/s) (Two mask shapes)")
    xlabel!("Time (d)")
-   if save_plot(pipeline,:rvs_ccf_total)   savefig(plt,joinpath(output_dir,"rvs_ccf_sum.png"))   end
+   if save_plot(pipeline,:rvs_ccf_total)   savefig(plt,joinpath(output_dir, target_subdir * "_rvs_ccf_sum.png"))   end
    display(plt)
 end
 
@@ -220,7 +220,7 @@ if make_plot(pipeline, :ccf_orders)
    xlabel!("v (m/s)")
    ylabel!("Order ID")
    title!("CCF-<CCF> for obs ID=" * string(obs))
-   if save_plot(pipeline,:ccf_orders)   savefig(plt,joinpath(output_dir,"ccf_orders.png"))   end
+   if save_plot(pipeline,:ccf_orders)   savefig(plt,joinpath(output_dir, target_subdir * "_ccf_orders.png"))   end
    display(plt)
 end
 
@@ -236,7 +236,7 @@ if make_plot(pipeline, :ccf_orders)
    xlabel!("v (m/s)")
    ylabel!("Observation ID")
    title!("CCF-<CCF> for order=" * string(ord))
-   if save_plot(pipeline,:ccf_orders)   savefig(plt,joinpath(output_dir,"ccf_orders.png"))   end
+   if save_plot(pipeline,:ccf_orders)   savefig(plt,joinpath(output_dir, target_subdir * "_ccf_orders.png"))   end
    display(plt)
 end
 
@@ -299,7 +299,7 @@ if make_plot(pipeline, :dcpca)  # Ploting results from DCPCA
   using Plots
   # Set parameters for plotting analysis
   plt = scatter(frac_var_unexplained, xlabel="Number of PCs", ylabel="Frac Variance Unexplained")
-  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca_frac_var.png"))   end
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir, target_subdir * "_dcpca_frac_var.png"))   end
   display(plt)
 end
 
@@ -307,19 +307,19 @@ if make_plot(pipeline, :dcpca)
   plt_order = 10
   plt = RvSpectML.plot_basis_vectors(order_grids, f_mean, deriv, M.proj, idx_plt = spectral_orders_matrix.chunk_map[plt_order], num_basis=2 )
   #xlims!(5761.5,5766)
-  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca_basis.png"))   end
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir, target_subdir * "_dcpca_basis.png"))   end
   display(plt)
 end
 
 if make_plot(pipeline, :dcpca)
   plt = RvSpectML.plot_basis_scores(order_list_timeseries.times, rvs_ccf_gauss, dcpca_out, num_basis=min(5,num_basis) )
-  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca_scores.png"))   end
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir, target_subdir * "_dcpca_scores.png"))   end
   display(plt)
 end
 
 if make_plot(pipeline, :dcpca)
   plt = RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss, dcpca_out, num_basis=min(5,num_basis))
-  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca_scores_cor.png"))   end
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir, target_subdir * "_dcpca_scores_cor.png"))   end
   display(plt)
 end
 
@@ -428,7 +428,7 @@ if make_plot(pipeline, :ccf_total)
    scatter!(plt,v_grid2,ccfs2[:,t_idx]./maximum(ccfs2[:,t_idx],dims=1),markersize=1.2,label=:none)
    xlabel!("v (m/s)")
    ylabel!("CCF")
-   if save_plot(pipeline,:ccf_total)   savefig(plt,joinpath(output_dir,"ccf2_sum.png"))   end
+   if save_plot(pipeline,:ccf_total)   savefig(plt,joinpath(output_dir, target_subdir * "_ccf2_sum.png"))   end
    display(plt)
 end
 
@@ -513,7 +513,7 @@ end
 if make_plot(pipeline, :dcpca)  # Ploting results from DCPCA
   using Plots
   plt = scatter(frac_var_unexplained2, xlabel="Number of PCs", ylabel="Frac Variance Unexplained")
-  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca2_frac_var.png"))   end
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir, target_subdir * "_dcpca2_frac_var.png"))   end
   display(plt)
 end
 
@@ -521,7 +521,7 @@ if make_plot(pipeline, :dcpca)
    plt_line = 10
    plt = RvSpectML.plot_basis_vectors(order_grids2, f_mean2, deriv_2, M2.proj, idx_plt = spectral_orders_matrix2.chunk_map[plt_line], num_basis=min(4,num_basis), label=plt_line)
    if save_plot(pipeline,:dcpca)
-     savefig(plt,joinpath(output_dir,"dcpca2_basis.png"))
+     savefig(plt,joinpath(output_dir, target_subdir * "_dcpca2_basis.png"))
    end
    suspicous_lines = Int[]
    anim = @animate for plt_line ∈ 1:length(order_grids2)
@@ -533,19 +533,19 @@ if make_plot(pipeline, :dcpca)
         push!(suspicous_lines,plt_line)
      end
    end
-   gif(anim, joinpath(output_dir,"dcpca2_basis.gif"), fps = 25)
+   gif(anim, joinpath(output_dir, target_subdir * "_dcpca2_basis.gif"), fps = 25)
   display(plt)
 end
 
 if make_plot(pipeline, :dcpca)
   plt = RvSpectML.plot_basis_scores(order_list_timeseries.times, rvs_ccf_gauss2, dcpca2_out, num_basis=min(4,num_basis) )
-  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca2_scores.png"))   end
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir, target_subdir * "_dcpca2_scores.png"))   end
   display(plt)
 
 end
 
 if make_plot(pipeline, :dcpca)
   plt = RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss2, dcpca2_out, num_basis=min(4,num_basis))
-  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca2_score_cor.png"))   end
+  if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir, target_subdir * "_dcpca2_score_cor.png"))   end
   display(plt)
 end

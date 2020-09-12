@@ -97,12 +97,12 @@ function clean_rvs_scalpels(rvs::AbstractVector{T1}, ccfs::AbstractArray{T2,2}
     acfs = autocor(ccfs,0:size(ccfs,1)-1)
     acfs_minus_mean = acfs .- mean(acfs,dims=2)
     #Δv_grid = convert(Float64,v_grid.step).*(0:size(acfs,1)-1)
+    svd_acfs = svd(acfs_minus_mean')
     alpha = svd_acfs.U'*rvs_centered
 
     idx = sortperm(abs.(alpha),rev=true)
     U_keep = view(svd_acfs.U,:,idx[1:num_basis])
-    #Δrv_shape = svd_acfs.U[:,idx[1:num_basis]]*svd_acfs.U[:,idx[1:num_basis]]'*rvs_ccf_gauss
-    Δrv_shape = U_keep*U_keep'*rvs_ccf_gauss
+    Δrv_shape = U_keep*U_keep'*rvs_centered
     rvs_clean = rvs .- Δrv_shape
     return rvs_clean
 end

@@ -9,7 +9,8 @@ export AbstractSpectra, AbstractSpectra1D, AbstractSpectra2D
 export Spectra1DBasic, Spectra2DBasic
 export AbstractSpectralTimeSeriesCommonWavelengths
 export SpectralTimeSeriesCommonWavelengths
-export make_vec_metadata_from_spectral_timeseries
+#export make_vec_metadata_from_spectral_timeseries
+export make_spectral_time_series_common_wavelengths_with_selected_times
 
 include("chunks.jl")
 export AbstractChuckOfSpectrum, ChuckOfSpectrum

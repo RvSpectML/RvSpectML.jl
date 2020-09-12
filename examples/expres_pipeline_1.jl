@@ -2,7 +2,7 @@ using Pkg
  Pkg.activate(".")
 
 verbose = true
-if verbose   println("# Loading RvSpecML")    end
+ if verbose   println("# Loading RvSpecML")    end
  using RvSpectML
  if verbose   println("# Loading other packages")    end
  using DataFrames, Query, Statistics, Dates
@@ -226,11 +226,17 @@ if make_plot(pipeline, :ccf_orders)
    display(plt)
 end
 
+if need_to(pipeline,:scalpels)
+   rvs_scalpels = map(n->Scalpels.clean_rvs_scalpels(rvs_ccf_gauss, ccfs, num_basis=n), 1:5)
+   println("RMS RVs cleaned by Scalpels: ",std.(rvs_scalpels) )
+   dont_need_to!(pipeline,:scalpels)
+end
+
 RvSpectML.Pipeline.make_plot!(pipeline,:scalpels)
 if make_plot(pipeline, :scalpels)
    @assert !need_to(pipeline, :rvs_ccf_total)
    @assert !need_to(pipeline, :ccf_total)
-   plt = Scalpels.make_plots_scalpels(rvs_ccf_gauss, ccfs, max_num_basis=4, v_grid=v_grid, times=order_list_timeseries.times, output_path="examples/output/figures")
+   plt = Scalpels.make_plots_scalpels(rvs_ccf_gauss, ccfs, max_num_basis=2, v_grid=v_grid, times=order_list_timeseries.times, output_path="examples/output/solar/figures")
    display(plt)
 end
 
@@ -472,17 +478,20 @@ end
 #std(rvs_dcpca2.rv)
 
 
-#need_to!(pipeline, :dcpca)
-if need_to(pipeline, :dcpca)
+need_to!(pipeline, :dcpca)
+ if need_to(pipeline, :dcpca)
    @assert !need_to(pipeline,:rvs_ccf_total)
    @assert !need_to(pipeline,:template)
    if verbose println("# Performing Doppler constrained PCA analysis.")  end
    using MultivariateStats
+   # Second EXPRES observation of 101501 is very weird. Let's try leaving it out of the DCPCA analysis.
+   obs_incl_for_dcpca = vcat([1], collect(3:size(spectral_orders_matrix2.flux,2)) )
+   spectral_orders_matrix2 = make_spectral_time_series_common_wavelengths_with_selected_times(spectral_orders_matrix2, obs_incl_for_dcpca)
    Δrvs_dcpca2 = calc_rvs_from_taylor_expansion(spectral_orders_matrix2; mean=f_mean2, deriv=deriv_2).rv
    dcpca2_out, M2 = RvSpectML.DCPCA.doppler_constrained_pca(spectral_orders_matrix2.flux, deriv_2, Δrvs_dcpca2)
    frac_var_unexplained2 = 1.0.-cumsum(principalvars(M2))./tvar(M2)
    num_basis = length(frac_var_unexplained2)
-   println("# Fraction of variance unexplained (orig) = ", frac_var_unexplained[1:min(5,num_basis)])
+   println("# Fraction of variance unexplained (orig) = ", frac_var_unexplained[1:min(5,length(frac_var_unexplained))])
    println("# Fraction of variance unexplained (clean) = ", frac_var_unexplained2[1:min(5,num_basis)])
    if save_data(pipeline, :dcpca)
       using CSV
@@ -506,9 +515,10 @@ if make_plot(pipeline, :dcpca)
    if save_plot(pipeline,:dcpca)
      savefig(plt,joinpath(output_dir,"dcpca2_basis.png"))
    end
+   #=  # Making animations is slow.  # TODO: Add animations key to pipeline?
    suspicous_lines = Int[]
    anim = @animate for plt_line ∈ 1:length(order_grids2)
-      idx = spectral_orders_matrix2.chunk_map[plt_line]
+      local idx = spectral_orders_matrix2.chunk_map[plt_line]
       argmin_pixel = argmin(f_mean2[idx])
       if 0.45*length(idx) <= argmin_pixel <= 0.55*length(idx)
         RvSpectML.plot_basis_vectors(order_grids2, f_mean2, deriv_2, M2.proj, idx_plt = spectral_orders_matrix2.chunk_map[plt_line], num_basis=min(4,num_basis), label=plt_line  )
@@ -517,18 +527,19 @@ if make_plot(pipeline, :dcpca)
      end
    end
    gif(anim, joinpath(output_dir,"dcpca2_basis.gif"), fps = 25)
+   =#
   display(plt)
 end
 
 if make_plot(pipeline, :dcpca)
-  plt = RvSpectML.plot_basis_scores(order_list_timeseries.times, rvs_ccf_gauss2, dcpca2_out, num_basis=min(4,num_basis) )
+  plt = RvSpectML.plot_basis_scores(order_list_timeseries.times[obs_incl_for_dcpca], rvs_ccf_gauss2[obs_incl_for_dcpca], dcpca2_out, num_basis=min(4,num_basis) )
   if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca2_scores.png"))   end
   display(plt)
 
 end
 
 if make_plot(pipeline, :dcpca)
-  plt = RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss2, dcpca2_out, num_basis=min(4,num_basis))
+  plt = RvSpectML.plot_basis_scores_cor( rvs_ccf_gauss2[obs_incl_for_dcpca], dcpca2_out, num_basis=min(4,num_basis))
   if save_plot(pipeline,:dcpca)   savefig(plt,joinpath(output_dir,"dcpca2_score_cor.png"))   end
   display(plt)
 end

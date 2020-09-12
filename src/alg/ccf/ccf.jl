@@ -21,7 +21,7 @@ import ..RvSpectML: num_chunks
 const c_ms = 2.99782458e8    # m/s
 #const c_kms = 2.99782458e5   # km/s
 
-include("mask_shapes.jl")
+include("mask_shapes/mask_shapes.jl")
 export AbstractCCFMaskShape, TopHatCCFMask
 
 include("line_list.jl")

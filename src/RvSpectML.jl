@@ -32,7 +32,9 @@ export speed_of_light_mps
 include("util/spectra.jl")
 export calc_normalization, normalize_spectrum!, get_λ_range
 include("util/chunks.jl")
-export make_chunk_list, make_orders_into_chunks, filter_bad_chunks, make_grid_for_chunk
+export make_chunk_list, make_orders_into_chunks
+export make_chunk_list_timeseries, make_order_list_timeseries
+export make_grid_for_chunk, filter_bad_chunks
 #export find_cols..., find_orders..., findall_line,...
 
 # alg.jl  is responsible for exporting its own types, modules & functions
@@ -48,12 +50,15 @@ export make_manifest, code_to_include_param_jl
 include("util/pipeline.jl")
 using .Pipeline
 export PipelinePlan
-export make_plot, save_plot, save_data, need_to, need_to!, dont_need_to!, has_cache, reset_all_needs!
+export make_plot,  save_plot, save_data, need_to, has_cache  # Query pipeline
+export need_to!, dont_need_to!, reset_all_needs!             # Write to pipeline
+export make_plot!, dont_make_plot!, make_all_plots!,  make_no_plots!
 
 # util/plots.jl  is responsible for exporting its own functions
-include("util/plots.jl")
+include("util/plots/spectra.jl")
 export plot_spectrum_chunks
-export plot_basis_vectors, plot_basis_scores
 export add_time_gap_lines
+include("util/plots/dcpca.jl")
+export plot_basis_vectors, plot_basis_scores, plot_basis_scores_cor
 
 end

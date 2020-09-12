@@ -14,7 +14,7 @@ default_min_deriv2 = 3 # 1.5e5
 default_smooth_factor= 4.0
 default_min_pixels_in_line = 5
 default_use_logλ = true
-default_use_logflux = false #true
+default_use_logflux = false
 
 struct LineFinderPlan
   min_deriv2::Float64
@@ -164,7 +164,7 @@ Convenience function to find lines in one chunk of spectrum.
 - line_fit_list
 """
 function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPlan = LineFinderPlan(),
-                              chunk_id::Integer = 0, keep_bad_fits::Bool = false, verbose::Bool = true) where {T <:Real}
+                              chunk_id::Integer = 0, keep_bad_fits::Bool = false, verbose::Bool = false) where {T <:Real}
 
   function fit_line(idx::UnitRange)
     #RvSpectML.LineFinder.fit_line(view(chunk.λ,idx), view(flux,idx), view(chunk.var, idx) )   # some bug in this version of function causes non-convergence

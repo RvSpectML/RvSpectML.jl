@@ -224,7 +224,7 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
         if !on_mask
             if λsre_cur > mask_lo
                 if λsre_cur > mask_hi   # Pixel overshot this mask entry, so weight based on mask filling only a portion of the pixel,
-                    projection[p] += mask_weight * (mask_hi - mask_lo) / (λsre_cur - λsle_cur)
+                    projection[p] += mask_weight * (mask_hi - mask_lo) / (mask_hi-mask_lo) # (λsre_cur - λsle_cur)
                     m += 1
                     if m<=length(plan.line_list)      # Move to next line
                         mask_lo = λ_min(plan.mask_shape,plan.line_list.λ[m]) * shift_factor
@@ -234,7 +234,7 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
                         break
                     end
                 else                       # Right edge of current pixel has entered the mask for this line, but left edge hasn't
-                    projection[p] += mask_weight * (λsre_cur - mask_lo) / (λsre_cur - λsle_cur)
+                    projection[p] += mask_weight * (λsre_cur - mask_lo) / (mask_hi-mask_lo) # (λsre_cur - λsle_cur)
                     on_mask = true         # Indicate next pixel will hav something to contribute based on the current line
                     p_left_edge_of_current_line = p                 # Mark the starting pixel of the line in case the lines overlap
                     p+=1                   # Move to next pixel
@@ -248,7 +248,7 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
             end
         else
             if λsre_cur > mask_hi               # Right edge of this pixel moved past the edge of the current line's mask
-                projection[p] += mask_weight * (mask_hi - λsle_cur) / (λsre_cur - λsle_cur)
+                projection[p] += mask_weight * (mask_hi - λsle_cur) /(mask_hi-mask_lo) # (λsre_cur - λsle_cur)
                 on_mask = false                 # Indicate that we're done with this line
                 m += 1                          # Move to next line
                 if m<=length(plan.line_list)
@@ -335,8 +335,9 @@ function project_mask_expr!(projection::A2, λs::A1, plan::PlanT ; shift_factor:
             if λsre_cur > mask_lo
                 if λsre_cur > mask_hi   # Pixel overshot this mask entry, so weight based on mask filling only a portion of the pixel,
                     #For Tophat: projection[p] += mask_weight * (mask_hi - mask_lo) / (λsre_cur - λsle_cur)
-                    frac_of_psf_in_v_pixel = integrate(plan.mask_shape, (mask_lo-mask_mid)/mask_mid*c_mps, (mask_hi-mask_mid)/mask_mid*c_mps)
-                    projection[p] += frac_of_psf_in_v_pixel  * mask_weight
+                    frac_of_psf_in_v_pixel = 1.0
+                    frac_of_pixel_in_mask = (mask_hi - mask_lo) / (λsre_cur - λsle_cur)
+                    projection[p] += frac_of_psf_in_v_pixel * frac_of_pixel_in_mask * mask_weight
                     m += 1
                     if m<=length(plan.line_list)      # Move to next line
                         mask_mid = plan.line_list.λ[m] * shift_factor
@@ -349,7 +350,8 @@ function project_mask_expr!(projection::A2, λs::A1, plan::PlanT ; shift_factor:
                 else                       # Right edge of current pixel has entered the mask for this line, but left edge hasn't
                     #For Tophat: projection[p] += mask_weight * (λsre_cur - mask_lo) / (λsre_cur - λsle_cur)
                     frac_of_psf_in_v_pixel = integrate(plan.mask_shape, (mask_lo-mask_mid)/mask_mid*c_mps, (λsre_cur-mask_mid)/mask_mid*c_mps)
-                    projection[p] += frac_of_psf_in_v_pixel * mask_weight
+                    frac_of_pixel_in_mask = (λsre_cur - mask_lo) / (λsre_cur - λsle_cur)
+                    projection[p] += frac_of_psf_in_v_pixel * frac_of_pixel_in_mask * mask_weight
                     on_mask = true         # Indicate next pixel will hav something to contribute based on the current line
                     p_left_edge_of_current_line = p                 # Mark the starting pixel of the line in case the lines overlap
                     p+=1                   # Move to next pixel
@@ -365,7 +367,8 @@ function project_mask_expr!(projection::A2, λs::A1, plan::PlanT ; shift_factor:
             if λsre_cur > mask_hi               # Right edge of this pixel moved past the edge of the current line's mask
                 #For Tophat: projection[p] += mask_weight * (mask_hi - λsle_cur) / (λsre_cur - λsle_cur)
                 frac_of_psf_in_v_pixel = integrate(plan.mask_shape, (λsle_cur-mask_mid)*c_mps/mask_mid, (mask_hi-mask_mid)*c_mps/mask_mid)
-                projection[p] += frac_of_psf_in_v_pixel * mask_weight
+                frac_of_pixel_in_mask = (mask_hi - λsle_cur) / (λsre_cur - λsle_cur)
+                projection[p] += frac_of_psf_in_v_pixel * frac_of_pixel_in_mask * mask_weight
                 on_mask = false                 # Indicate that we're done with this line
                 m += 1                          # Move to next line
                 if m<=length(plan.line_list)
@@ -380,9 +383,12 @@ function project_mask_expr!(projection::A2, λs::A1, plan::PlanT ; shift_factor:
                 else                            # We're done with all lines, can return early
                     break
                 end
-            else                                # Mask window is entirely within this pixel
+            else                                # This pixel is entirely within the mask
                 # assumes plan.mask_shape is normalized to integrate to unity and flux is constant within pixel
-                projection[p] += mask_weight    # Add the full mask weight
+                #projection[p] += mask_weight    # Add the full mask weight
+                frac_of_psf_in_v_pixel = integrate(plan.mask_shape, (λsle_cur-mask_mid)/mask_mid*c_mps, (λsre_cur-mask_mid)/mask_mid*c_mps)
+                frac_of_pixel_in_mask = 1.0
+                projection[p] += frac_of_psf_in_v_pixel * frac_of_pixel_in_mask * mask_weight
                 p += 1                          # move to next pixel
                 λsle_cur = λsle[p]
                 λsre_cur = λsle[p+1]

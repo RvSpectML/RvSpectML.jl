@@ -203,11 +203,11 @@ CCF is evaluated using line list and mask_shape provided by the ccf plan for eac
 A 2-d array containing the CCF at each (velocity, chunk)
 """
 function calc_order_ccfs_chunklist(chunk_list::AbstractChunkList,
-    plan_for_chunk::AbstractVector{PlanT} = BasicCCFPlan() ) where {
+    plan_for_chunk::AbstractVector{PlanT} = BasicCCFPlan(); assume_sorted::Bool = false ) where {
                         PlanT<:AbstractCCFPlan }
     @assert length(chunk_list) == length(plan_for_chunk)
-    @assert issorted( plan.line_list.λ )
-    mapreduce(chid->calc_ccf_chunk(chunk_list.data[chid], plan_for_chunk[chid], assume_sorted=true), hcat, 1:length(chunk_list.data) )
+    @assert assume_sorted || issorted( first(plan_for_chunk).line_list.λ )
+    mapreduce(chid->calc_ccf_chunk(chunk_list.data[chid], plan_for_chunk[chid], assume_sorted=assume_sorted), hcat, 1:length(chunk_list.data) )
 end
 
 """  calc_order_ccf_chunklist_timeseries( chunklist_timeseries, ccf_plan )

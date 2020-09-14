@@ -14,11 +14,12 @@ Convenience function to compute CCF for one chunk of spectrum.
 CCF for one chunk of spectrum, evaluated using mask_shape and line list from ccf plan
 """
 function calc_ccf_chunk(chunk::AbstractChuckOfSpectrum,
-                                plan::PlanT = BasicCCFPlan() ) where {
+                                plan::PlanT = BasicCCFPlan(); assume_sorted::Bool = false ) where {
                                     PlanT<:AbstractCCFPlan }
+  @assert assume_sorted || issorted( plan.line_list.λ )
   v_grid = calc_ccf_v_grid(plan)
   ccf_out = zeros(size(v_grid))
-  ccf_1D!(ccf_out, chunk.λ, chunk.flux, plan)
+  ccf_1D!(ccf_out, chunk.λ, chunk.flux, plan; assume_sorted=true)
   # TODO Change once ready use generic CCF mask shape (currently don't understand why normalization of output CCF differs)
   #ccf_1D_expr!(ccf_out, chunk.λ, chunk.flux, plan)
   return ccf_out
@@ -36,13 +37,14 @@ Need to understand why difference before merging this in.
 CCF for one chunk of spectrum, evaluated using mask_shape and line list from ccf plan
 """
 function calc_ccf_chunk_expr(chunk::AbstractChuckOfSpectrum,
-                                plan::PlanT = BasicCCFPlan() ) where {
+                                plan::PlanT = BasicCCFPlan(); assume_sorted::Bool = false ) where {
                                     PlanT<:AbstractCCFPlan }
+  @assert assume_sorted || issorted( plan.line_list.λ )
   v_grid = calc_ccf_v_grid(plan)
   ccf_out = zeros(size(v_grid))
   #ccf_1D!(ccf_out, chunk.λ, chunk.flux, plan)
   # TODO Change once ready use generic CCF mask shape (currently don't understand why normalization of output CCF differs)
-  ccf_1D_expr!(ccf_out, chunk.λ, chunk.flux, plan)
+  ccf_1D_expr!(ccf_out, chunk.λ, chunk.flux, plan; assume_sorted=true)
   return ccf_out
 end
 
@@ -57,10 +59,10 @@ CCF summed over all chunks in a spectrum's chunklist, evaluated using the
 line list and mask_shape from the ccf plan for each chunk.
 """
 function calc_ccf_chunklist(chunk_list::AbstractChunkList,
-                                plan_for_chunk::AbstractVector{PlanT}  ) where {
+                                plan_for_chunk::AbstractVector{PlanT}; assume_sorted::Bool = false  ) where {
                                             PlanT<:AbstractCCFPlan }
   @assert length(chunk_list) == length(plan_for_chunk)
-  mapreduce(chid->calc_ccf_chunk(chunk_list.data[chid], plan_for_chunk[chid]), +, 1:length(chunk_list.data) )
+  mapreduce(chid->calc_ccf_chunk(chunk_list.data[chid], plan_for_chunk[chid], assume_sorted=assume_sorted), +, 1:length(chunk_list.data) )
 end
 
 """  calc_ccf_chunklist_expr ( chunklist, ccf_plans )
@@ -75,10 +77,10 @@ CCF summed over all chunks in a spectrum's chunklist, evaluated using the
 line list and mask_shape from the ccf plan for each chunk.
 """
 function calc_ccf_chunklist_expr(chunk_list::AbstractChunkList,
-                                plan_for_chunk::AbstractVector{PlanT}  ) where {
+                                plan_for_chunk::AbstractVector{PlanT}; assume_sorted::Bool = false ) where {
                                             PlanT<:AbstractCCFPlan }
   @assert length(chunk_list) == length(plan_for_chunk)
-  mapreduce(chid->calc_ccf_chunk_expr(chunk_list.data[chid], plan_for_chunk[chid]), +, 1:length(chunk_list.data) )
+  mapreduce(chid->calc_ccf_chunk_expr(chunk_list.data[chid], plan_for_chunk[chid], assume_sorted=assume_sorted), +, 1:length(chunk_list.data) )
 end
 
 """  calc_ccf_chunklist_timeseries( chunklist_timeseries, line_list )
@@ -98,6 +100,7 @@ function calc_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries,
                                 plan::PlanT = BasicCCFPlan(); verbose::Bool = false ) where {
                                     PlanT<:AbstractCCFPlan }
 
+  @assert issorted( plan.line_list.λ )
   num_lines = length(plan.line_list.λ)
   plan_for_chunk = Vector{BasicCCFPlan}(undef,num_chunks(clt))
   for chid in 1:num_chunks(clt)
@@ -131,7 +134,7 @@ function calc_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries,
       #create a plan for this chunk that only includes the mask entries we want for this chunk
       plan_for_chunk[chid] = BasicCCFPlan( line_list=line_list_for_chunk, midpoint=plan.v_center, step=plan.v_step, max=plan.v_max, mask_shape=plan.mask_shape )
   end
-  @threaded mapreduce(obsid->calc_ccf_chunklist(clt.chunk_list[obsid], plan_for_chunk),hcat, 1:length(clt) )
+  @threaded mapreduce(obsid->calc_ccf_chunklist(clt.chunk_list[obsid], plan_for_chunk, assume_sorted=true),hcat, 1:length(clt) )
 end
 
 """  calc_ccf_chunklist_timeseries_expr( chunklist_timeseries, line_list )
@@ -152,6 +155,7 @@ function calc_ccf_chunklist_timeseries_expr(clt::AbstractChunkListTimeseries,
                                 plan::PlanT = BasicCCFPlan(); verbose::Bool = false ) where {
                                     PlanT<:AbstractCCFPlan }
 
+  @assert issorted( plan.line_list.λ )
   num_lines = length(plan.line_list.λ)
   plan_for_chunk = Vector{BasicCCFPlan}(undef,num_chunks(clt))
   for chid in 1:num_chunks(clt)
@@ -185,7 +189,7 @@ function calc_ccf_chunklist_timeseries_expr(clt::AbstractChunkListTimeseries,
       #create a plan for this chunk that only includes the mask entries we want for this chunk
       plan_for_chunk[chid] = BasicCCFPlan( line_list=line_list_for_chunk, midpoint=plan.v_center, step=plan.v_step, max=plan.v_max, mask_shape=plan.mask_shape )
   end
-  @threaded mapreduce(obsid->calc_ccf_chunklist_expr(clt.chunk_list[obsid], plan_for_chunk),hcat, 1:length(clt) )
+  @threaded mapreduce(obsid->calc_ccf_chunklist_expr(clt.chunk_list[obsid], plan_for_chunk, assume_sorted=true),hcat, 1:length(clt) )
 end
 
 
@@ -202,7 +206,8 @@ function calc_order_ccfs_chunklist(chunk_list::AbstractChunkList,
     plan_for_chunk::AbstractVector{PlanT} = BasicCCFPlan() ) where {
                         PlanT<:AbstractCCFPlan }
     @assert length(chunk_list) == length(plan_for_chunk)
-    mapreduce(chid->calc_ccf_chunk(chunk_list.data[chid], plan_for_chunk[chid]), hcat, 1:length(chunk_list.data) )
+    @assert issorted( plan.line_list.λ )
+    mapreduce(chid->calc_ccf_chunk(chunk_list.data[chid], plan_for_chunk[chid], assume_sorted=true), hcat, 1:length(chunk_list.data) )
 end
 
 """  calc_order_ccf_chunklist_timeseries( chunklist_timeseries, ccf_plan )
@@ -221,6 +226,7 @@ Note that the ccf_plan provided is used as a template for creating a custom ccf_
 function calc_order_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries,
                 plan::PlanT = BasicCCFPlan(); verbose::Bool = false ) where {
                     PlanT<:AbstractCCFPlan }
+  @assert issorted( plan.line_list.λ )
   nvs = length(calc_ccf_v_grid(plan))
   norders = length(clt.chunk_list[1].data)
   nobs =  length(clt.chunk_list)
@@ -263,7 +269,7 @@ function calc_order_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries,
     #  order_ccfs[:,:,i] .= calc_order_ccfs_chunklist(clt.chunk_list[i], plan)
   #end
   Threads.@threads for i in 1:nobs
-    order_ccfs[:,:,i] .= calc_order_ccfs_chunklist(clt.chunk_list[i], plan_for_chunk)
+    order_ccfs[:,:,i] .= calc_order_ccfs_chunklist(clt.chunk_list[i], plan_for_chunk, assume_sorted=true)
   end
 
   return order_ccfs

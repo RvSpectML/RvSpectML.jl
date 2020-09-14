@@ -5,7 +5,7 @@ Created: September 2019
 """
 
 using QuadGK
-
+#using StaticArrays
 
 """   SuperGaussianCCFMask
 A truncated Gaussian mask with two parameters, it's stdandard deviation and where to truncate it, both as a velocity in m/s.
@@ -26,9 +26,9 @@ struct SuperGaussianCCFMask <: AbstractCCFMaskShape
         @assert 1 <= p <= 2
         @assert 0 < w <= 4
         function integrand(x)
-            exp(-(0.5*(Δv/σ)^2)^p)
+            exp(-(0.5*(x/σ)^2)^p)
         end
-        integral = quadgk(integrand, -w*σ, w*σ)
+        integral = quadgk(integrand, -w*σ/2, w*σ/2)[1]
         norm = 1.0/integral
         new(σ*sqrt(2.0),p,σ*w,norm)
     end
@@ -36,21 +36,25 @@ struct SuperGaussianCCFMask <: AbstractCCFMaskShape
 end
 
 """ SuperGaussianCCFMask( inst ; scale_factor ) """
-function SuperGaussianCCFMask(inst::AbstractInstrument; power::Real = 1, fwhm::Real = default_supergaussian_ccf_fwhm, scale_factor::Real = 1)
+function SuperGaussianCCFMask(inst::InstT; power::Real = 1, fwhm::Real = default_supergaussian_ccf_fwhm, scale_factor::Real = 1) where { InstT<:AbstractInstrument }
     # TODO: Update default values
     σ = scale_factor * fwhm/sqrt(8 * log(2)^(1/power))  # From Ryan Petersburg email 9/11/2020
     w = scale_factor * RvSpectML.default_ccf_mask_v_width(inst) / σ
-    SuperGaussianCCFMask(σ,power,w)
+    SuperGaussianCCFMask(σ,power,w/2)
 end
 
 λ_min(m::SuperGaussianCCFMask,λ::Real) = λ/calc_doppler_factor(m.half_width_truncation)
 λ_max(m::SuperGaussianCCFMask,λ::Real) = λ*calc_doppler_factor(m.half_width_truncation)
+
+function integrate(m::SuperGaussianCCFMask, v_lo::Real,v_hi::Real)
+    quadgk(m, v_lo, v_hi)[1]
+end
 
 """ Functor for returning PSF for Δv <= half_width.  """
 function (m::SuperGaussianCCFMask)(Δv::Real)
     if abs2(Δv) > abs2(m.half_width_truncation)
         return zero(Δv)
     else
-        return m.normalization*exp(-((Δv/m.σ_sqrt2)^2)^p)
+        return m.normalization*exp(-((Δv/m.σ_sqrt2)^2)^m.power)
     end
 end

@@ -14,13 +14,15 @@ struct GaussianCCFMask <: AbstractCCFMaskShape
     σ_sqrt2::Float64
     half_width_truncation::Float64
     normalization::Float64
+    cdf_normalization::Float64
 
     """ GaussianCCFMask( σ ; half_truncation_width_in_σ=2 ) """
     function GaussianCCFMask(σ::Real, w::Real=2 )
         @assert 0 < σ <= 300000   # 300km/s is arbitrary choice for an upper limit
         @assert 0 < w <= 4
         norm = 1.0/(sqrt(2π)*σ*erf(w/(sqrt(2.0))))
-        new(σ*sqrt(2.0),σ*w,norm)
+        cdf_norm = 0.5/(erf(w/(sqrt(2.0))))
+        new(σ*sqrt(2.0),σ*w,norm,cdf_norm)
     end
 
 end
@@ -35,11 +37,17 @@ function GaussianCCFMask(inst::AbstractInstrument; scale_factor::Real = 1)
     =#
     σ = scale_factor * default_gaussian_ccf_σ
     w = scale_factor * RvSpectML.default_ccf_mask_v_width(inst) / σ
-    GaussianCCFMask(σ,w)
+    GaussianCCFMask(σ,w/2)
 end
 
 λ_min(m::GaussianCCFMask,λ::Real) = λ/calc_doppler_factor(m.half_width_truncation)
 λ_max(m::GaussianCCFMask,λ::Real) = λ*calc_doppler_factor(m.half_width_truncation)
+
+function integrate(m::GaussianCCFMask, v_lo::Real,v_hi::Real)
+    #quadgk(m, v_lo, v_hi)[1]
+    m.cdf_normalization*(erf(v_hi/m.σ_sqrt2)-erf(v_lo/m.σ_sqrt2))
+end
+
 
 """ Functor for returning PSF for Δv <= half_width.  """
 function (m::GaussianCCFMask)(Δv::Real)

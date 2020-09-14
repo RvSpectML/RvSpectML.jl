@@ -22,13 +22,14 @@ Compute the cross correlation function of a spectrum with a mask.
 - plan.mask_shape: shape of mask to use (currently only works with TopHatCCFMask())
 """
 function ccf_1D!(ccf_out::A1, λ::A2, flux::A3,
-                plan::PlanT = BasicCCFPlan() ) where {
+                plan::PlanT = BasicCCFPlan(); assume_sorted::Bool = false ) where {
                 T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1}, T3<:Real, A3<:AbstractArray{T3,1},
                 PlanT<:AbstractCCFPlan }
     # make sure wavelengths and spectrum are 1D arrays
     @assert ndims(λ) == 1
     @assert ndims(flux) == 1
     @assert length(λ) == length(flux)
+    @assert assume_sorted || issorted( plan.line_list.λ )
     v_grid = calc_ccf_v_grid(plan)
     #ccf_out = zeros(size(v_grid))
     @assert size(ccf_out,1) == length(v_grid)
@@ -67,13 +68,14 @@ Compute the cross correlation function of a spectrum with a mask.
 - plan:  parameters for computing ccf (BasicCCFPlan())
 """
 function ccf_1D_expr!(ccf_out::A1, λ::A2, flux::A3,
-                plan::PlanT = BasicCCFPlan() ) where {
+                plan::PlanT = BasicCCFPlan(); assume_sorted::Bool = false ) where {
                 T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1}, T3<:Real, A3<:AbstractArray{T3,1},
                 PlanT<:AbstractCCFPlan }
     # make sure wavelengths and spectrum are 1D arrays
     @assert ndims(λ) == 1
     @assert ndims(flux) == 1
     @assert length(λ) == length(flux)
+    @assert assume_sorted || issorted( plan.line_list.λ )
     v_grid = calc_ccf_v_grid(plan)
     #ccf_out = zeros(size(v_grid))
     @assert size(ccf_out,1) == length(v_grid)
@@ -171,6 +173,7 @@ end
 
 Compute the projection of the mask onto the 1D array of wavelengths (λs) at a given shift factor (default: 1).
 The mask is computed from the ccf_plan, including a line_list and mask_shape (default: tophat).
+Assumes plan.line_list is already sorted.
 
 Note: Preliminary implementation for other mask_shapes is in project_mask_expr!
 """
@@ -200,10 +203,9 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
     p_left_edge_of_current_line = 1
     λsle_cur = λsle[p]   # Current pixel's left edge
     λsre_cur = λsle[p+1] # Current pixel's right edge
-    #m = 1  # I think this will fix the issue with mask lines starting before chunk's wavelengths.
-    #@assert issorted( plan.line_list.λ )
+    #@assert issorted( plan.line_list.λ )   # Moved outside of inner loop
     m = searchsortedfirst(plan.line_list.λ, λsle_cur/shift_factor)
-    if m <= length(plan.line_list.λ) && λ_min(plan.mask_shape,plan.line_list.λ[m]) * shift_factor < λsle_cur   # only includemask entry if it fit entirely in chunk
+    while m <= length(plan.line_list.λ) && λ_min(plan.mask_shape,plan.line_list.λ[m]) * shift_factor < λsle_cur   # only includemask entry if it fit entirely in chunk
         m += 1
     end
     if m >= length(plan.line_list.λ)
@@ -260,7 +262,7 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
                     break
                 end
             else                                # Mask window is entirely within this pixel
-                projection[p] += mask_weight    # Add the full mask weight
+                #projection[p] += mask_weight    # Add the full mask weight
                 p += 1                          # move to next pixel
                 λsle_cur = λsle[p]
                 λsre_cur = λsle[p+1]
@@ -276,6 +278,7 @@ end
 
 Compute the projection of the mask onto the 1D array of wavelengths (λs) at a given shift factor (default: 1).
 The mask is computed from the ccf_plan, including a line_list and mask_shape (default: tophat).
+Assumes plan.line_list is already sorted.
 
 Note: Preliminary implementation for other mask_shapes is in project_mask_expr!
 """
@@ -305,10 +308,9 @@ function project_mask_expr!(projection::A2, λs::A1, plan::PlanT ; shift_factor:
     p_left_edge_of_current_line = 1
     λsle_cur = λsle[p]   # Current pixel's left edge
     λsre_cur = λsle[p+1] # Current pixel's right edge
-    #m = 1  # I think this will fix the issue with mask lines starting before chunk's wavelengths.
-    #@assert issorted( plan.line_list.λ )
+    #@assert issorted( plan.line_list.λ )  # Moved outside of inner loop
     m = searchsortedfirst(plan.line_list.λ, λsle_cur/shift_factor)
-    if m <= length(plan.line_list.λ) && λ_min(plan.mask_shape,plan.line_list.λ[m]) * shift_factor < λsle_cur   # only includemask entry if it fit entirely in chunk
+    while m <= length(plan.line_list.λ) && λ_min(plan.mask_shape,plan.line_list.λ[m]) * shift_factor < λsle_cur   # only includemask entry if it fit entirely in chunk
         m += 1
     end
     if m >= length(plan.line_list.λ)
@@ -324,7 +326,7 @@ function project_mask_expr!(projection::A2, λs::A1, plan::PlanT ; shift_factor:
 
     c_mps = RvSpectML.speed_of_light_mps
     mask_weight = plan.line_list.weight[m]
-    mask_val_at_zero = plan.mask_shape(0.0)            # current liine's weight
+    #mask_val_at_zero = plan.mask_shape(0.0)            # current liine's weight
     #mask_at_last_mask_lo = plan.mask_shape(mask_lo)
     # loop through lines in mask, weight mask by amount in each wavelength bin
     # assumes no overlap in mask entries
@@ -332,13 +334,9 @@ function project_mask_expr!(projection::A2, λs::A1, plan::PlanT ; shift_factor:
         if !on_mask
             if λsre_cur > mask_lo
                 if λsre_cur > mask_hi   # Pixel overshot this mask entry, so weight based on mask filling only a portion of the pixel,
-                    # TODO check this is where should evaluate plan.mask_shape().
-                    integrand = 0.5*(0.5*(plan.mask_shape((mask_lo-mask_mid)/mask_mid*c_mps)+
-                                          plan.mask_shape((mask_hi-mask_mid)/mask_mid*c_mps))+
-                                          #plan.mask_shape((0.5*(mask_lo+mask_hi)-mask_mid)/mask_mid*c_mps))
-                                          mask_val_at_zero )
-
-                    projection[p] += (integrand * c_mps/mask_mid) * mask_weight * (mask_hi - mask_lo) # / (λsre_cur - λsle_cur)
+                    #For Tophat: projection[p] += mask_weight * (mask_hi - mask_lo) / (λsre_cur - λsle_cur)
+                    frac_of_psf_in_v_pixel = integrate(plan.mask_shape, (mask_lo-mask_mid)/mask_mid*c_mps, (mask_hi-mask_mid)/mask_mid*c_mps)
+                    projection[p] += frac_of_psf_in_v_pixel  * mask_weight
                     m += 1
                     if m<=length(plan.line_list)      # Move to next line
                         mask_mid = plan.line_list.λ[m] * shift_factor
@@ -349,13 +347,9 @@ function project_mask_expr!(projection::A2, λs::A1, plan::PlanT ; shift_factor:
                         break
                     end
                 else                       # Right edge of current pixel has entered the mask for this line, but left edge hasn't
-                     # TODO check this is where should evaluate plan.mask_shape().
-                     # TODO warning, trapezoid rule not good for masks that go to zero at boundary.  Make plan specify how to integrate mask
-                    integrand =  0.5*(0.5*(plan.mask_shape((mask_lo-mask_mid)/mask_mid*c_mps)+
-                                           plan.mask_shape((λsre_cur-mask_mid)/mask_mid*c_mps))+
-                                           plan.mask_shape((0.5*(mask_lo+λsre_cur)-mask_mid)/mask_mid*c_mps))
-#                                           plan.mask_shape((sqrt(mask_lo*λsre_cur)-mask_mid)/mask_mid*c_mps))
-                    projection[p] +=   (integrand * c_mps/mask_mid) * mask_weight * (λsre_cur - mask_lo)  # / (λsre_cur - λsle_cur)
+                    #For Tophat: projection[p] += mask_weight * (λsre_cur - mask_lo) / (λsre_cur - λsle_cur)
+                    frac_of_psf_in_v_pixel = integrate(plan.mask_shape, (mask_lo-mask_mid)/mask_mid*c_mps, (λsre_cur-mask_mid)/mask_mid*c_mps)
+                    projection[p] += frac_of_psf_in_v_pixel * mask_weight
                     on_mask = true         # Indicate next pixel will hav something to contribute based on the current line
                     p_left_edge_of_current_line = p                 # Mark the starting pixel of the line in case the lines overlap
                     p+=1                   # Move to next pixel
@@ -369,12 +363,9 @@ function project_mask_expr!(projection::A2, λs::A1, plan::PlanT ; shift_factor:
             end
         else
             if λsre_cur > mask_hi               # Right edge of this pixel moved past the edge of the current line's mask
-                # TODO check this is where should evaluate plan.mask_shape().
-                integrand =  0.5*(0.5*(plan.mask_shape((mask_hi-mask_mid)/mask_mid*c_mps)+
-                                       plan.mask_shape((λsle_cur-mask_mid)/mask_mid*c_mps))+
-                                       plan.mask_shape((0.5*(mask_hi+λsle_cur)-mask_mid)/mask_mid*c_mps))
-#                                       plan.mask_shape((sqrt(mask_hi*λsle_cur)-mask_mid)/mask_mid*c_mps))
-                projection[p] += (integrand * c_mps/mask_mid) * mask_weight * (mask_hi - λsle_cur) #/ (λsre_cur - λsle_cur)
+                #For Tophat: projection[p] += mask_weight * (mask_hi - λsle_cur) / (λsre_cur - λsle_cur)
+                frac_of_psf_in_v_pixel = integrate(plan.mask_shape, (λsle_cur-mask_mid)*c_mps/mask_mid, (mask_hi-mask_mid)*c_mps/mask_mid)
+                projection[p] += frac_of_psf_in_v_pixel * mask_weight
                 on_mask = false                 # Indicate that we're done with this line
                 m += 1                          # Move to next line
                 if m<=length(plan.line_list)
@@ -392,8 +383,6 @@ function project_mask_expr!(projection::A2, λs::A1, plan::PlanT ; shift_factor:
             else                                # Mask window is entirely within this pixel
                 # assumes plan.mask_shape is normalized to integrate to unity and flux is constant within pixel
                 #projection[p] += mask_weight    # Add the full mask weight
-                #assert false
-                projection[p] += mask_weight    # Add the full mask weight
                 p += 1                          # move to next pixel
                 λsle_cur = λsle[p]
                 λsre_cur = λsle[p+1]
@@ -418,8 +407,8 @@ function calc_doppler_factor(vel::Real)
 end
 
 #=
- Eric replaced this version with above.  Should double check that won't cause anyeone suprises.
-function calc_doppler_factor_old(vel::Real)
+ # Eric replaced this version with above.  Should double check that won't cause anyeone suprises.
+function calc_doppler_factor(vel::Real)
     num = one(vel) + vel/c_ms
     den = one(vel) - vel/c_ms
     return sqrt(num/den)

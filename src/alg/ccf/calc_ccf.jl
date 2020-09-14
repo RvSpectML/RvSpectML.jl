@@ -262,7 +262,7 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
                     break
                 end
             else                                # Mask window is entirely within this pixel
-                #projection[p] += mask_weight    # Add the full mask weight
+                projection[p] += mask_weight    # Add the full mask weight
                 p += 1                          # move to next pixel
                 λsle_cur = λsle[p]
                 λsre_cur = λsle[p+1]
@@ -382,7 +382,7 @@ function project_mask_expr!(projection::A2, λs::A1, plan::PlanT ; shift_factor:
                 end
             else                                # Mask window is entirely within this pixel
                 # assumes plan.mask_shape is normalized to integrate to unity and flux is constant within pixel
-                #projection[p] += mask_weight    # Add the full mask weight
+                projection[p] += mask_weight    # Add the full mask weight
                 p += 1                          # move to next pixel
                 λsle_cur = λsle[p]
                 λsre_cur = λsle[p+1]

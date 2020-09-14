@@ -66,20 +66,21 @@ if need_to(pipeline,:clean_line_list_tellurics)
  end
  #line_list_no_tellurics_df
 
-#need_to!(pipeline,:ccf_total)
+need_to!(pipeline,:ccf_total)
  if need_to(pipeline,:ccf_total)
    if verbose println("# Computing CCF.")  end
    @assert !need_to(pipeline,:extract_orders)
    @assert !need_to(pipeline,:clean_line_list_tellurics)
-   mask_shape = CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor)
+   mask_shape = CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor*4.5)
    #line_list = RvSpectML.CCF.BasicLineList(line_list_df.lambda, line_list_df.weight)
    line_list = CCF.BasicLineList(line_list_no_tellurics_df.lambda, line_list_no_tellurics_df.weight)
    ccf_plan = CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity, range_no_mask_change=22e3)
    v_grid = CCF.calc_ccf_v_grid(ccf_plan)
    @time ccfs = CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan)
-   mask_shape_expr = CCF.GaussianCCFMask(order_list_timeseries.inst, scale_factor=9)
+   mask_shape_expr = CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor*4.5)
+   #mask_shape_expr = CCF.GaussianCCFMask(order_list_timeseries.inst, scale_factor=9)
    # Warning:  CCF with a shape other than a tophat is still experimental
-   ccf_plan_expr = CCF.BasicCCFPlan(mask_shape = mask_shape_expr, line_list=line_list, midpoint=ccf_mid_velocity)
+   ccf_plan_expr = CCF.BasicCCFPlan(mask_shape = mask_shape_expr, line_list=line_list, midpoint=ccf_mid_velocity, range_no_mask_change=22e3)
    @time ccfs_expr = CCF.calc_ccf_chunklist_timeseries_expr(order_list_timeseries, ccf_plan_expr) #, verbose=true)
    println("# Ratio of max(ccfs_expr)/max(ccfs) = ", mean(maximum(ccfs_expr,dims=1)./maximum(ccfs,dims=1)) )
    #=
@@ -101,6 +102,8 @@ if make_plot(pipeline, :ccf_total)
    t_idx = 20
    plt = plot(v_grid,ccfs[:,t_idx]./maximum(ccfs[:,t_idx],dims=1),label=:none)
    scatter!(plt,v_grid,ccfs_expr[:,t_idx]./maximum(ccfs_expr[:,t_idx],dims=1),markersize=1.2,label=:none)
+   #plt = plot(v_grid,ccfs[:,t_idx],label=:none)
+   #scatter!(plt,v_grid,ccfs_expr[:,t_idx],markersize=1.2,label=:none)
    xlabel!("v (m/s)")
    ylabel!("CCF")
    if save_plot(pipeline,:ccf_total)   savefig(plt,joinpath(output_dir,target_subdir * "_ccf_sum.png"))   end
@@ -120,6 +123,7 @@ if make_plot(pipeline, :ccf_total)
    if save_plot(pipeline,:ccf_total)   savefig(plt,joinpath(output_dir,target_subdir * "_ccf_sum_vs_time_heatmap.png"))   end
    display(plt)
 end
+
 
 
 #need_to!(pipeline, :rvs_ccf_total)

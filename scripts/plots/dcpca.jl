@@ -5,6 +5,7 @@ Author: Eric Ford
 Created: August 2020
 """
 
+using RvSpectML
 using Plots
 
 function plot_basis_vectors(λ::VR1, f_mean::V1, deriv::V2, proj::A3;

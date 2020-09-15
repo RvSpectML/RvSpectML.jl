@@ -5,8 +5,8 @@ Author: Eric Ford
 Created: August 2020
 """
 
+using RvSpectML
 using Plots
-export plot_spectrum_chunks
 
 """ plot_spectrum_chunks( chunklist, chunks )
 Returns a plot based of flux versus wavelength for selected chunks from the spectra in chunklist.

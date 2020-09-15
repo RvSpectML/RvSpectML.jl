@@ -35,7 +35,7 @@ export calc_rvs_from_taylor_expansion, calc_chunk_rvs_from_taylor_expansion
 
 include("scalpels.jl")
 export Scalpels
-export clean_rvs_scalpels, make_plots_scalpels, scalpels_rms_vs_num_basis
+export clean_rvs_scalpels, scalpels_rms_vs_num_basis
 
 include("dcpca.jl")
 export DCPCA

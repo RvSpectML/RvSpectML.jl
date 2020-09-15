@@ -2,15 +2,17 @@ using RvSpectML
 using CSV
 
 function calc_rvs_from_ccf_total(ccfs::AbstractArray{T1,2}, pipeline::PipelinePlan; v_grid::AbstractVector{T2}, times::AbstractVector{T3},
-                                 recalc::Bool = false, verbose::Bool = true) where {T1<:Real, T2<:Real, T3<:Real }
+                                 alg_fit_rv::AbstractMeasureRvFromCCF = RVFromCCF.MeasureRvFromCCFGaussian(), recalc::Bool = false, verbose::Bool = true) where {T1<:Real, T2<:Real, T3<:Real }
    @assert length(v_grid) == size(ccfs,1)
    need_to!(pipeline_plan, :rvs_ccf_total)
    if need_to(pipeline_plan, :rvs_ccf_total)
       if verbose println("# Measuring RVs from CCF.")  end
       @assert !need_to(pipeline_plan,:ccf_total)
-
-      rvs_ccf = RVFromCCF.measure_rv_from_ccf(v_grid,ccfs,fit_type = :gaussian)
-      #rvs_ccf = RVFromCCF.measure_rv_from_ccf(v_grid,ccfs,fit_type = "quadratic")
+      #fit_gaussian_to_ccf = RVFromCCF.MeasureRvFromCCFGaussian()
+      #fit_quadratic_to_ccf = RVFromCCF.MeasureRvFromCCFQuadratic()
+      #rvs_ccf = RVFromCCF.measure_rvs_from_ccf(v_grid,ccfs,alg=fit_gaussian_to_ccf)
+      #rvs_ccf = RVFromCCF.measure_rvs_from_ccf(v_grid,ccfs,alg=fit_quadratic_to_ccf)
+      rvs_ccf = measure_rvs_from_ccf(v_grid,ccfs,alg=alg_fit_rv)
 
       rms_rv_nightly = bin_rvs_nightly(times=times,rvs=rvs_ccf.-mean(rvs_ccf))
       rms_rv_within_night = rms_rvs_within_night(times=times,rvs=rvs_ccf.-mean(rvs_ccf))

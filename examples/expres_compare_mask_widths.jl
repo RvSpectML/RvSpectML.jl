@@ -4,7 +4,7 @@ using Pkg
 verbose = true
  if verbose   println("# Loading RvSpecML")    end
  using RvSpectML
- include("shared/scripts.jl")
+include("shared/scripts.jl")
  if verbose   println("# Loading other packages")    end
  using DataFrames, Query, Statistics, Dates
 
@@ -25,7 +25,7 @@ mask_scale_factors = [1.0, 2.0, 4.0, 6.0, 8.0, 9.0, 10.0, 12.0, 14.0, 16.0 ]
    rms_nightly_rvs[i] = std(bin_rvs_nightly(times=order_list_timeseries.times,rvs=rvs_ccf.-mean(rvs_ccf)))
    rms_within_night_rvs[i] = rms_rvs_within_night(times=order_list_timeseries.times,rvs=rvs_ccf.-mean(rvs_ccf))
  end
- using Plots
+
 
 rms_rvs2 = zeros(length(mask_scale_factors))
  rms_nightly_rvs2 = zeros(length(mask_scale_factors))
@@ -38,6 +38,7 @@ rms_rvs2 = zeros(length(mask_scale_factors))
    rms_within_night_rvs2[i] = rms_rvs_within_night(times=order_list_timeseries.times,rvs=rvs_ccf_expr.-mean(rvs_ccf_expr))
  end
 
+using Plots
 scatter(mask_scale_factors, rms_rvs)
  scatter!(mask_scale_factors, rms_nightly_rvs)
  scatter!(mask_scale_factors, rms_within_night_rvs)

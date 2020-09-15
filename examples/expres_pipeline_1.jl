@@ -368,7 +368,8 @@ end
 if need_to(pipeline_plan, :rvs_ccf_total)
    if verbose println("# Measuring RVs from CCF.")  end
    @assert !need_to(pipeline_plan,:ccf_total)
-   rvs_ccf_gauss2 = RVFromCCF.measure_rv_from_ccf(v_grid2,ccfs2,fit_type = :gaussian)
+   fit_gaussian_to_ccf = RVFromCCF.MeasureRvFromCCFGaussian()
+   rvs_ccf_gauss2 = RVFromCCF.measure_rv_from_ccf(v_grid2,ccfs2,alg=fit_gaussian_to_ccf)
    # Store estimated RVs in metadata
    println("# RMS of RVs:           Orig lines ", std(rvs_ccf_gauss),  "    Cleaned lines ", std(rvs_ccf_gauss2))
    rms_rv_nightly2 = bin_rvs_nightly(times=order_list_timeseries.times,rvs=rvs_ccf_gauss2)

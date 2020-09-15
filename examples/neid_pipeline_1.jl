@@ -103,9 +103,11 @@ end
 if need_to(pipeline, :rvs_ccf_total)
    if verbose println("# Measuring RVs from CCF.")  end
    @assert !need_to(pipeline,:ccf_total)
-   rvs_ccf_gauss = RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs,fit_type = :gaussian)
-   rvs_ccf_gauss2 = RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs_expr,fit_type = :gaussian)
-   #rvs_ccf_gauss3 = RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs_expr2,fit_type = :gaussian)
+   fit_gaussian_to_ccf = RVFromCCF.MeasureRvFromCCFGaussian()
+   #fit_quadratic_to_ccf = RVFromCCF.MeasureRvFromCCFQuadratic()
+   rvs_ccf_gauss = RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs,alg=fit_gaussian_to_ccf)
+   rvs_ccf_gauss2 = RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs_expr,alg=fit_gaussian_to_ccf)
+   #rvs_ccf_gauss3 = RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid,ccfs_expr2,alg=fit_gaussian_to_ccf)
    println("# RMS of RVs:          Tophat ", std(rvs_ccf_gauss), "   Gaussian ", std(rvs_ccf_gauss))
    rms_rv_binned = bin_rvs_consecutive(rvs_ccf_gauss,4)
    rms_rv_expr_binned = bin_rvs_consecutive(rvs_ccf_gauss2,4)
@@ -410,7 +412,7 @@ end
 if need_to(pipeline, :rvs_ccf_total)
    if verbose println("# Measuring RVs from CCF.")  end
    @assert !need_to(pipeline,:ccf_total)
-   rvs_ccf_gauss2 = RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid2,ccfs2,fit_type = :gaussian)
+   rvs_ccf_gauss2 = RvSpectML.RVFromCCF.measure_rv_from_ccf(v_grid2,ccfs2,alg=fit_gaussian_to_ccf)
    # Store estimated RVs in metadata
    println("# RMS of RVs:           Orig lines ", std(rvs_ccf_gauss),  "    Cleaned lines ", std(rvs_ccf_gauss2))
    rms_rv_binned = bin_rvs_consecutive(rvs_ccf_gauss,4)

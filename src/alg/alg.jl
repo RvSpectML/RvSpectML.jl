@@ -23,7 +23,9 @@ export calc_ccf_Δv_grid
 export calc_ccf_chunk, calc_ccf_chunklist, calc_ccf_chunklist_timeseries
 
 include("calc_rv/ccf_std.jl")
+using .RVFromCCF
 export measure_rv_from_ccf, measure_rvs_from_ccf
+export AbstractMeasureRvFromCCF, MeasureRvFromCCFCentroid, MeasureRvFromCCFQuadratic, MeasureRvFromCCFGaussian, MeasureRvFromCCFBestFit
 
 include("calc_rv/project_flux.jl")
 export RVFromCCF

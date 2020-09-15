@@ -2,56 +2,30 @@ using Pkg|
  Pkg.activate(".")
 
 verbose = true
-if verbose   println("# Loading RvSpecML")    end
+if verbose && !isdefined(Main,:RvSpectML)  println("# Loading RvSpecML")    end
  using RvSpectML
+ include("shared/scripts.jl")
  if verbose   println("# Loading other packages")    end
  using DataFrames, Query, Statistics, Dates
 
-# USER: You must create a data_paths.jl file in one of the default_paths_to_search listed below. It need only contain one line:
-# solar_data_path = "/home/eford/Data/SolarSpectra/NEID_solar/"
-target_subdir = "20190918"   # USER: Replace with directory of your choice
- fits_target_str = "Solar"
- output_dir = "examples/output"
- default_paths_to_search = [pwd(),"examples",joinpath(pkgdir(RvSpectML),"examples"), "/gpfs/group/ebf11/default/ebf11/neid_solar"]
- # NOTE: make_manifest does not update its paths_to_search when default_paths_to_search is defined here, so if you change the line above, you must also include "paths_to_search=default_paths_to_search" in the make_manifest() function call below
- pipeline = PipelinePlan()
-
-RvSpectML.Pipeline.reset_all_needs!(pipeline)
- if need_to(pipeline,:read_spectra)
-   if verbose println("# Finding what data files are avaliable.")  end
-   df_files = make_manifest(target_subdir, NEID )
-
-   if verbose println("# Reading in customized parameters.")  end
-   eval(code_to_include_param_jl())
-
-   if verbose println("# Reading in FITS files.")  end
-   @time neid_data = map(NEID.read_solar_data,eachrow(df_files_use))
-   dont_need_to!(pipeline,:read_spectra)
-
-   if verbose println("# Applying wavelength corrections.")  end
-   NEID.read_drift_corrections!(joinpath(ancilary_solar_data_path,"SolarRV20190918_JD_SciRV_CalRV.txt"), df_files_use)
-   NEID.read_barycentric_corrections!(joinpath(ancilary_solar_data_path,"SolarTelescope2019-09-18_inclGravRedshiftAirMassAltitude.csv"), df_files_use)
-   NEID.read_differential_extinctions!(joinpath(ancilary_solar_data_path,"20190918_diff_ex_full_fixed.txt"), df_files_use)
-   apply_doppler_boost!(neid_data,df_files_use)
-   neid_data
- end
+include("read_neid_solar_data_20190918.jl")
 
 if need_to(pipeline,:extract_orders)
    if verbose println("# Extracting order list timeseries from spectra.")  end
    @assert !need_to(pipeline,:read_spectra)
-   order_list_timeseries = RvSpectML.make_order_list_timeseries(neid_data)
+   order_list_timeseries = RvSpectML.make_order_list_timeseries(all_spectra)
    order_list_timeseries = RvSpectML.filter_bad_chunks(order_list_timeseries,verbose=true)
-   #RvSpectML.normalize_spectra!(order_list_timeseries,neid_data);
+   #RvSpectML.normalize_spectra!(order_list_timeseries,all_spectra);
    dont_need_to!(pipeline,:extract_orders);
  end
  order_list_timeseries
 
 if need_to(pipeline,:read_line_list)
    if verbose println("# Reading line list for CCF: ", linelist_for_ccf_filename, ".")  end
-   lambda_range_with_good_data = get_λ_range(neid_data)
+   lambda_range_with_good_data = get_λ_range(all_spectra)
    espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks",linelist_for_ccf_filename)
    espresso_df = RvSpectML.read_linelist_espresso(espresso_filename)
-   line_list_df = NEID.filter_line_list(espresso_df,first(neid_data).inst)
+   line_list_df = NEID.filter_line_list(espresso_df,first(all_spectra).inst)
    dont_need_to!(pipeline,:read_line_list);
  end
  #line_list_df
@@ -65,7 +39,7 @@ if need_to(pipeline,:clean_line_list_tellurics)
    if verbose println("# Removing lines with telluric contamination.")  end    # Currently only works for EXPRES data
    @assert !need_to(pipeline,:read_line_list)
    @assert !need_to(pipeline,:read_spectra)
-   line_list_no_tellurics_df  = make_clean_line_list_from_tellurics_expres(line_list_df, neid_data, Δv_to_avoid_tellurics = 30.0e3) #14000.0)
+   line_list_no_tellurics_df  = make_clean_line_list_from_tellurics_expres(line_list_df, all_spectra, Δv_to_avoid_tellurics = 30.0e3) #14000.0)
    dont_need_to!(pipeline,:clean_line_list_tellurics);
  end
  #line_list_no_tellurics_df
@@ -464,7 +438,7 @@ if need_to(pipeline, :template)
    #chunk_list_df2 = lines_to_try |> @select(:fit_min_λ,:fit_max_λ) |> @rename(:fit_min_λ=>:lambda_lo, :fit_max_λ=>:lambda_hi) |> DataFrame
    expand_chunk_factor = 4
    chunk_list_df2 = lines_to_try |> @select(:fit_λc,:fit_min_λ,:fit_max_λ) |> @map({:lambda_lo=>_.fit_λc-expand_chunk_factor*(_.fit_λc-_.fit_min_λ), :lambda_hi=>_.fit_λc+expand_chunk_factor*(_.fit_max_λ-_.fit_λc)}) |> DataFrame
-   chunk_list_timeseries2 = RvSpectML.make_chunk_list_timeseries(neid_data,chunk_list_df2)
+   chunk_list_timeseries2 = RvSpectML.make_chunk_list_timeseries(all_spectra,chunk_list_df2)
 
    # Check that no NaN's included
    #(chunk_list_timeseries2, chunk_list_df2) = RvSpectML.filter_bad_chunks(chunk_list_timeseries2,chunk_list_df2)

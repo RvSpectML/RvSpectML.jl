@@ -1,4 +1,3 @@
-global ccf_mid_velocity = 0
 global tophap_ccf_mask_scale_factor=1.6
 
 global max_spectra_to_use = 200
@@ -11,6 +10,7 @@ if fits_target_str == "Solar"
    elseif occursin("nuc8",hostname)  # Eric's home machine :)
       global ancilary_solar_data_path = "/home/eford/Data/SolarSpectra/NEID_solar/"
    end
+   global ccf_mid_velocity = 0
    global bjd_first_good = 2458745.1296134139
    global bjd_last_good = 2458745.283
    global df_files

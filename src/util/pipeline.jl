@@ -22,7 +22,7 @@ export make_plot!, dont_make_plot!, make_all_plots!,  make_no_plots!
 export save_plot!, dont_save_plot!, save_all_plots!,  save_no_plots!
 export save_data!, dont_save_data!, save_all_data!,   save_no_data!
 export need_to!,   dont_need_to!,   reset_all_needs!, reset_no_needs!
-export read_cache, set_cache!, reset_all_cache!
+export has_cache,  read_cache, set_cache!, reset_all_cache!
 
 # Default steps for the PipelinePlan to track
 default_pipeline_input_collect(keys)  = [ :read_spectra, :read_line_list ]
@@ -85,7 +85,10 @@ save_all_data!(p::PipelinePlan, s::Symbol) = map(k -> p.save_data[k]=true, colle
 save_no_data!(p::PipelinePlan, s::Symbol) = map(k -> p.save_data[k]=false, collect(keys(p.save_data)) )
 
 need_to(p::PipelinePlan, s::Symbol) = haskey(p.need_to,s) && p.need_to[s]
-need_to!(p::PipelinePlan, s::Symbol) = p.need_to[s] = true
+function need_to!(p::PipelinePlan, s::Symbol)
+    p.need_to[s] = true
+    invalidate!(p,s)
+end
 dont_need_to!(p::PipelinePlan, s::Symbol) = p.need_to[s] = false
 reset_all_needs!(p::PipelinePlan) = map(k -> p.need_to[k]=true, collect(keys(p.need_to)) )
 reset_no_needs!(p::PipelinePlan) = map(k -> p.need_to[k]=false, collect(keys(p.need_to)) )

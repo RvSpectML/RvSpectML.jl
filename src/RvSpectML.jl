@@ -50,7 +50,7 @@ export make_manifest, code_to_include_param_jl
 include("util/pipeline.jl")
 using .Pipeline
 export PipelinePlan
-export make_plot,  save_plot, save_data, need_to, has_cache  # Query pipeline
+export make_plot,  save_plot, save_data, need_to, has_cache, read_cache, set_cache!  # Query pipeline
 export need_to!, dont_need_to!, reset_all_needs!             # Write to pipeline
 export make_plot!, dont_make_plot!, make_all_plots!,  make_no_plots!
 

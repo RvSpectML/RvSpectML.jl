@@ -9,7 +9,7 @@ function calc_rvs_from_ccf_total(ccfs::AbstractArray{T1,2}, pipeline::PipelinePl
       if verbose println("# Measuring RVs from CCF.")  end
       @assert !need_to(pipeline_plan,:ccf_total)
 
-      rvs_ccf = RVFromCCF.measure_rv_from_ccf(v_grid,ccfs,fit_type = "gaussian")
+      rvs_ccf = RVFromCCF.measure_rv_from_ccf(v_grid,ccfs,fit_type = :gaussian)
       #rvs_ccf = RVFromCCF.measure_rv_from_ccf(v_grid,ccfs,fit_type = "quadratic")
 
       rms_rv_nightly = bin_rvs_nightly(times=times,rvs=rvs_ccf.-mean(rvs_ccf))

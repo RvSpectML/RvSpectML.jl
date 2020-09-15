@@ -20,27 +20,41 @@ using LinearAlgebra
 import Polynomials
 
 """
-    measure_rv(wavs, spec, mask; fit_type="gaussian")
+    measure_rv(wavs, spec, mask; fit_type=:gaussian)
 
     TODO: Need to update for CCF refactoring.
 
 Compute the cross correlation function and fit to calculate a velocity
 using the specified method. Valid arguments for fit_type include
-"gaussian", "quadratic", and "centroid".
+:gaussian, :quadratic", and :centroid.
 
 """
-function measure_rv(wavs::A1, spec::A2, mask::A3; fit_type::String="gaussian") where  {
+function measure_rv(wavs::A1, spec::A2, mask::A3; fit_type::Symbol=:gaussian) where  {
                     T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1}, T3<:Real, A3<:AbstractArray{T3,2}  }
     vels, ccf = ccf_1D(wavs, spec, mask, res_factor=1.0)
 
     # do the fit for velocity
-    @assert fit_type in ["quadratic", "gaussian", "centroid"]
-    if fit_type == "quadratic"
+    @assert fit_type in [:quadratic, :gaussian, :centroid]
+    if fit_type == :quadratic
         return rv_from_ccf_quadratic(vels, ccf)
-    elseif fit_type == "gaussian"
+    elseif fit_type == :gaussian
         return rv_from_ccf_gaussian(vels, ccf)
-    elseif fit_type == "centroid"
+    elseif fit_type == :centroid
         return rv_from_ccf_centroid(vels, ccf)
+    else
+        return nothing
+    end
+end
+
+function measure_rv(wavs::A1, spec::A2, mask::A3; fit_type::String="gaussian") where  {
+                    T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2}, T3<:Real, A3<:AbstractArray{T3,2}  }
+    @warn "Please update call to measure_rv to use symbol instead of string for fit_type."
+    if fit_type == "quadratic"
+        return measure_rv(wavs,spec,mask,fit_type=:quadratic)
+    elseif fit_type == "gaussian"
+        return measure_rv(wavs,spec,mask,fit_type=:gaussian)
+    elseif fit_type == "centroid"
+        return measure_rv(wavs,spec,mask,fit_type=:centroid)
     else
         return nothing
     end
@@ -48,7 +62,7 @@ end
 
 # TODO: Need to update for CCF refactoring.
 function measure_rv(wavs::A1, spec::A2,
-                    mask::A3; fit_type::String="gaussian") where {
+                    mask::A3; fit_type::Symbol=:gaussian) where {
                     T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,2}, T3<:Real, A3<:AbstractArray{T3,2}  }
     RVs = zeros(size(spec,2))
     for i in eachindex(RVs)
@@ -59,31 +73,49 @@ end
 
 
 """
-    measure_rv_from_ccf(vels, ccf; fit_type="gaussian")
+    measure_rv_from_ccf(vels, ccf; fit_type=:gaussian)
 
 Fit a gaussian to the CCF to calculate a velocity
 using the specified method. Valid arguments for fit_type include
-"gaussian", "quadratic", and "centroid".
+:gaussian, :quadratic, and :centroid.
 """
 function measure_rv_from_ccf(vels::A1, ccf::A2,
-            ; fit_type::String="gaussian") where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
+            ; fit_type::Symbol=:gaussian) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
 
     # do the fit for velocity
-    @assert fit_type in ["quadratic", "gaussian", "centroid", "bestfit"]
-    if fit_type == "quadratic"
+    @assert fit_type in [:quadratic, :gaussian, :centroid, :bestfit]
+    if fit_type == :quadratic
         return rv_from_ccf_quadratic(vels, ccf)
-    elseif fit_type == "gaussian"
+    elseif fit_type == :gaussian
         return rv_from_ccf_gaussian(vels, ccf)
-    elseif fit_type == "centroid"
+    elseif fit_type == :centroid
         return rv_from_ccf_centroid(vels, ccf)
-    elseif fit_type == "bestfit"
+    elseif fit_type == :bestfit
         return rv_from_ccf_bestfit(vels, ccf)
     else
         return nothing
     end
 end
 
-function measure_rv_from_ccf(vels::A1, ccf::A2; fit_type::String="gaussian")  where { T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,2}, T3<:Real, A3<:AbstractArray{T3,2} }
+# Only kept around for compatability
+function measure_rv_from_ccf(vels::A1, ccf::A2,
+            ; fit_type::Symbol=:gaussian) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
+    @warn "Please update call to measure_rv_from_ccf to use symbol instead of string for fit_type."
+    # do the fit for velocity
+    if fit_type == :quadratic
+        return rv_from_ccf_quadratic(vels, ccf, fit_type=:quadratic)
+    elseif fit_type == :gaussian
+        return rv_from_ccf_gaussian(vels, ccf, fit_type=:gaussian)
+    elseif fit_type == :centroid
+        return rv_from_ccf_centroid(vels, ccf, fit_type=:centroid)
+    elseif fit_type == :bestfit
+        return rv_from_ccf_bestfit(vels, ccf, fit_type=:bestfit)
+    else
+        return nothing
+    end
+end
+
+function measure_rv_from_ccf(vels::A1, ccf::A2; fit_type::Symbol=:gaussian)  where { T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,2}, T3<:Real, A3<:AbstractArray{T3,2} }
     RVs = zeros(size(ccf,2))
     for i in eachindex(RVs)
         RVs[i] = measure_rv_from_ccf(vels, ccf[:,i], fit_type=fit_type)
@@ -94,14 +126,14 @@ end
 
 
 """
-    measure_rvs_from_ccf(vels, ccf; fit_type="gaussian")
+    measure_rvs_from_ccf(vels, ccf; fit_type=:gaussian)
 
 At each time, compute the cross correlation function and fit to calculate a velocity
 using the specified method. Valid arguments for fit_type include
-"gaussian", "quadratic", and "centroid".
+:gaussian, :quadratic, and :centroid.
 """
 function measure_rvs_from_ccf(vels::A1, ccfs::A2,
-            ; fit_type::String="gaussian") where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
+            ; fit_type::Symbol=:gaussian) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
  rvs = [ RvSpectML.RVFromCCF.measure_rv_from_ccf(vels,ccfs[:,i],fit_type=fit_type) for i in 1:size(ccfs,2) ]
  return rvs
 end

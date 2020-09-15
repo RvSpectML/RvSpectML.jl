@@ -54,11 +54,12 @@ export make_plot,  save_plot, save_data, need_to, has_cache, read_cache, set_cac
 export need_to!, dont_need_to!, reset_all_needs!             # Write to pipeline
 export make_plot!, dont_make_plot!, make_all_plots!,  make_no_plots!
 
+# Followering have been moved to scripts/plots
 # util/plots.jl  is responsible for exporting its own functions
-include("util/plots/spectra.jl")
-export plot_spectrum_chunks
-export add_time_gap_lines
-include("util/plots/dcpca.jl")
-export plot_basis_vectors, plot_basis_scores, plot_basis_scores_cor
+#include("util/plots/spectra.jl")
+#export plot_spectrum_chunks
+#export add_time_gap_lines
+#include("util/plots/dcpca.jl")
+#export plot_basis_vectors, plot_basis_scores, plot_basis_scores_cor
 
 end

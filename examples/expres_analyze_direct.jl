@@ -67,7 +67,8 @@ end
 
 
 if make_plot(pipeline_plan, :dcpca)  # Ploting results from DCPCA
-  using Plots
+  include("../scripts/plots/dcpca.jl")
+  #using Plots
   # Set parameters for plotting analysis
   plt = scatter(frac_var_unexplained, xlabel="Number of PCs", ylabel="Frac Variance Unexplained")
   if save_plot(pipeline_plan,:dcpca)   savefig(plt,joinpath(output_dir,target_subdir * "_dcpca_frac_var.png"))   end

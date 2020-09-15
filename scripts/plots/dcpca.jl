@@ -5,7 +5,10 @@ Author: Eric Ford
 Created: August 2020
 """
 
+using RvSpectML
 using Plots
+
+include("spectra.jl")
 
 function plot_basis_vectors(λ::VR1, f_mean::V1, deriv::V2, proj::A3;
                               num_basis::Integer = 4, idx_plt::AR = 1:length(f_mean),

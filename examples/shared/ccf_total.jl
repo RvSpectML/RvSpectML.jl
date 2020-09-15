@@ -9,7 +9,13 @@ function ccf_total(order_list_timeseries::AbstractChunkListTimeseries, line_list
       @assert !need_to(pipeline,:extract_orders)
       @assert !need_to(pipeline,:clean_line_list_tellurics)
       if mask_type == :tophat
-        mask_shape = CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor*mask_scale_factor)
+          mask_shape = CCF.TopHatCCFMask(order_list_timeseries.inst, scale_factor=tophap_ccf_mask_scale_factor*mask_scale_factor)
+      elseif mask_type == :gaussian
+          mask_shape = CCF.GaussianCCFMask(order_list_timeseries.inst, scale_factor=mask_scale_factor)
+      elseif mask_type == :supergaussian
+            mask_shape = CCF.SuperGaussianCCFMask(order_list_timeseries.inst, scale_factor=mask_scale_factor)
+      elseif mask_type == :halfcos
+          mask_shape = CCF.CosCCFMask(order_list_timeseries.inst, scale_factor=mask_scale_factor)
       else
         @error("Requested mask shape (" * string(mask_type) * " not avaliable.")
       end

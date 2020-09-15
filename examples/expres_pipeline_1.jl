@@ -32,7 +32,7 @@ end
 
 
 if make_plot(pipeline_plan, :ccf_total)
-   using Plots
+   include("../scripts/plots/spectra.jl")
    zvals = ccfs./maximum(ccfs,dims=1).-mean(ccfs./maximum(ccfs,dims=1),dims=2)
    colorscale = cgrad(:balance)
    plt = heatmap(v_grid,collect(1:size(ccfs,2)),zvals', c=colorscale, clims=(-maximum(abs.(zvals)),maximum(abs.(zvals))) )
@@ -175,6 +175,7 @@ make_plot!(pipeline_plan,:scalpels)
 if make_plot(pipeline_plan, :scalpels)
    @assert !need_to(pipeline_plan, :rvs_ccf_total)
    @assert !need_to(pipeline_plan, :ccf_total)
+   include("../scripts/plots/scalpels.jl")
    plt = Scalpels.make_plots_scalpels(rvs_ccf_gauss, ccfs, max_num_basis=2, v_grid=v_grid, times=order_list_timeseries.times, output_path="examples/output/solar/figures")
    display(plt)
 end

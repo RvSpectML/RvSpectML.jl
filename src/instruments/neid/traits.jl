@@ -31,9 +31,12 @@ metadata_strings_default(::AnyNEID) = String["OBSJD", "SKY-OBJ", "SSBZ000"]
 import ..RvSpectML: default_ccf_mask_v_width
 default_ccf_mask_v_width(::AnyNEID) = 620.953
 
+import ..RvSpectML: get_inst_module
+get_inst_module(::AnyNEID) = NEID
+
 import ..RvSpectML: get_λ_range
 function get_λ_range(data::CLT) where { T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2},
-                                       IT<:NEID.AnyNEID, CLT<:Spectra2DBasic{T1,T2,T3,A1,A2,A3,IT} }
+                                       IT<:AnyNEID, CLT<:Spectra2DBasic{T1,T2,T3,A1,A2,A3,IT} }
    (λmin, λmax) = extrema(data.λ)
    return (min=λmin, max=λmax)
 end
@@ -41,6 +44,7 @@ end
 default_λmin = 3950.0  # Based on HD solar data from PSU, should generalize
 default_λmax = 9500.0  #
 
+import ..RvSpectML: filter_line_list, find_worst_telluric_in_each_chunk
 function filter_line_list(df::DataFrame, inst::IT ; λmin::Real = default_λmin, λmax::Real = default_λmax ) where { # data::CLT) where { T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2},
                                        IT<:NEID.AnyNEID } #, CLT<:Spectra2DBasic{T1,T2,T3,A1,A2,A3,IT} }
    df |> @filter(λmin <= _.lambda <= λmax) |>

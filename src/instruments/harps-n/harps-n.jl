@@ -26,4 +26,7 @@ export metadata_symbols_default, metadata_strings_default
 export make_manifest, read_data, read_solar_data
 # read_header not exported to avoid conflict with FITSIO.read_header
 
+import ..RvSpectML: get_inst_module
+get_inst_module(::AnyHARPSN) = NEID
+
 end

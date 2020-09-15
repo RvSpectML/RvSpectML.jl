@@ -37,6 +37,9 @@ import ..RvSpectML: metadata_symbols_default, metadata_strings_default
 metadata_symbols_default(::AnyEXPRES) = Symbol[:midpoint, :target, :exposure_time, :airmass, :moondist, :sundist]
 metadata_strings_default(::AnyEXPRES) = String["MIDPOINT", "OBJECT", "AEXPTIME", "AIRMASS", "MOONDIST", "SUNDIST"]
 
+import ..RvSpectML: get_inst_module
+get_inst_module(::AnyEXPRES) = EXPRES
+
 #metadata_hdu2_symbols_default(::AnyEXPRES) = Symbol[:S_indicator, :Hα_indicator, :Hα_width, :ccf_width, :σ_ccf_width, :bis_indicator]
 #metadata_hdu2_strings_default(::AnyEXPRES) = String["S-VALUE", "HALPHA", "HWIDTH", "CCFFWHM", "CCFFWHME", "BIS"]
 # Left out S and BIS since their type is to be standardized in next update of input files
@@ -48,19 +51,38 @@ default_ccf_mask_v_width(::AnyEXPRES) = 448.0   # TODO: Update value for EXPRES
 
 import ..RvSpectML: get_λ_range
 function get_λ_range(data::CLT) where { T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2},
-                                       IT<:EXPRES.AnyEXPRES, CLT<:Spectra2DBasic{T1,T2,T3,A1,A2,A3,IT} }
+                                       IT<:AnyEXPRES, CLT<:Spectra2DBasic{T1,T2,T3,A1,A2,A3,IT} }
    mask = data.metadata[:excalibur_mask]
    (λmin, λmax) = extrema(data.λ[mask])
    return (min=λmin, max=λmax)
 end
 
+
+import ..RvSpectML: filter_line_list, find_worst_telluric_in_each_chunk
+
 default_λmin = 4738.0  # Based on HD 101501, should generalize
 default_λmax = 7227.0  #
-
 function filter_line_list(df::DataFrame, inst::IT ; λmin::Real = default_λmin, λmax::Real = default_λmax ) where { # data::CLT) where { T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2},
                                        IT<:EXPRES.AnyEXPRES } #, CLT<:Spectra2DBasic{T1,T2,T3,A1,A2,A3,IT} }
    df |> @filter(λmin <= _.lambda <= λmax) |>
     #    @filter( _.lambda < 6000.0 ) |>                       # Avoid tellurics at redder wavelengths
     #    @filter( _.lambda >6157 || _.lambda < 6155  ) |>   # Avoid "line" w/ large variability
     DataFrame
+end
+
+function find_worst_telluric_in_each_chunk( clt::AbstractChunkListTimeseries, data::AbstractArray{AS,1} )  where { T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2}, IT<:AnyEXPRES, AS<:Spectra2DBasic{T1,T2,T3,A1,A2,A3,IT}  }
+   num_lines = num_chunks(clt)
+   num_obs = length(clt)
+   min_telluric_model_one_obs = ones(num_lines, num_obs )
+   min_telluric_model_all_obs  = ones(num_lines)
+   for ch_idx in 1:num_chunks(clt)
+       for t_idx in 1:num_obs
+          view_indices = clt.chunk_list[t_idx].data[ch_idx].λ.indices
+          cols = view_indices[1]
+          order = view_indices[2]
+          min_telluric_model_one_obs[ch_idx, t_idx] = minimum(view(data[t_idx].metadata[:tellurics], cols, order))
+      end # times
+      min_telluric_model_all_obs[ch_idx] = minimum(min_telluric_model_one_obs[ch_idx, :])
+  end # lines
+  return min_telluric_model_all_obs
 end

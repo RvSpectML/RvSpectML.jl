@@ -107,6 +107,8 @@ Inputs:
 * vels: Array of velocites where CCF was evaluated.
 * ccf:  Array of values of CCF
 """
+function (mrv::AbstractMeasureRvFromCCF)(vels::A1, ccf::A2 ) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} } end
+
 function (mrv::MeasureRvFromCCFCentroid)(vels::A1, ccf::A2 ) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
     # find the min and use only that part of the CCF for computing centroid
     amin, inds = find_idx_at_and_around_minimum(vels, ccf, frac_of_width_to_fit=mrv.frac_of_width_to_fit, measure_width_at_frac_depth=mrv.measure_width_at_frac_depth)
@@ -137,13 +139,6 @@ function MeasureRvFromCCFQuadratic(; frac_of_width_to_fit::Real = default_frac_o
     MeasureRvFromCCFQuadratic(frac_of_width_to_fit,measure_width_at_frac_depth)
 end
 
-"""
-Estimate RV based on fitting a quadratic to the CCF.
-Inputs:
-* vels: Array of velocites where CCF was evaluated.
-* ccf:  Array of values of CCF
-TODO: Revisit logic
-"""
 function (mrv::MeasureRvFromCCFQuadratic)(vels::A1, ccf::A2 ) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
     # find the min and fit only the part near the minimum of the CCF
     amin, inds = find_idx_at_and_around_minimum(vels, ccf, frac_of_width_to_fit=mrv.frac_of_width_to_fit, measure_width_at_frac_depth=mrv.measure_width_at_frac_depth)
@@ -183,12 +178,6 @@ end
 
 @. gaussian_line_helper(x, p) = p[4] + p[3] * exp(-0.5*((x-p[1])/p[2])^2)
 
-"""
-Estimate RV based fitting a Gaussian to the CCF.
-Inputs:
-* vels: Array of velocites where CCF was evaluated.
-* ccf:  Array of values of CCF
-"""
 function (mrv::MeasureRvFromCCFGaussian)(vels::A1, ccf::A2 ) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
         # find the min and fit only the part near the minimum of the CCF
         amin, inds = find_idx_at_and_around_minimum(vels, ccf, frac_of_width_to_fit=mrv.frac_of_width_to_fit, measure_width_at_frac_depth=mrv.measure_width_at_frac_depth)
@@ -203,8 +192,10 @@ function (mrv::MeasureRvFromCCFGaussian)(vels::A1, ccf::A2 ) where {T1<:Real, A1
 
         # fit and return the mean of the distribution
         result = curve_fit(gaussian_line_helper, view(vels,inds), view(ccf,inds), p0)
-        @assert result.converged
-        return coef(result)[1]  # center of line is first parameter to gaussian_line_helper
+
+        # center of line is first parameter to gaussian_line_helper 
+        rv = result.converged ?  coef(result)[1] : NaN
+        return rv
 end
 
 
@@ -213,12 +204,6 @@ Warning:  Since a discrete grid of velocities are evaluated, this should only be
 struct MeasureRvFromCCFBestFit <: AbstractMeasureRvFromCCF
 end
 
-"""
-Estimate RV based on velocity at minimum of CCF.
-Inputs:
-* vels: Array of velocites where CCF was evaluated.
-* ccf:  Array of values of CCF
-"""
 function (mrv::MeasureRvFromCCFBestFit)(vels::A1, ccf::A2 ) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
     idx_min_ccf = findmin(ccf)[2]
     vels_min_ccf = vels[idx_min_ccf]

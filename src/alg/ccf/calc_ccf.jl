@@ -7,7 +7,6 @@ Based on code by Alex Wise (aw@psu.edu)
 Refactored and optimized by Eric Ford
 """
 
-
 """
     ccf_1D!(ccf_out, λs, fluxes; ccf_plan )
 
@@ -224,7 +223,7 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
         if !on_mask
             if λsre_cur > mask_lo
                 if λsre_cur > mask_hi   # Pixel overshot this mask entry, so weight based on mask filling only a portion of the pixel,
-                    projection[p] += mask_weight * (mask_hi - mask_lo) / (mask_hi-mask_lo) # (λsre_cur - λsle_cur)
+                    projection[p] += mask_weight * (mask_hi - mask_lo) / (λsre_cur - λsle_cur)
                     m += 1
                     if m<=length(plan.line_list)      # Move to next line
                         mask_lo = λ_min(plan.mask_shape,plan.line_list.λ[m]) * shift_factor
@@ -234,7 +233,7 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
                         break
                     end
                 else                       # Right edge of current pixel has entered the mask for this line, but left edge hasn't
-                    projection[p] += mask_weight * (λsre_cur - mask_lo) / (mask_hi-mask_lo) # (λsre_cur - λsle_cur)
+                    projection[p] += mask_weight * (λsre_cur - mask_lo) / (λsre_cur - λsle_cur)
                     on_mask = true         # Indicate next pixel will hav something to contribute based on the current line
                     p_left_edge_of_current_line = p                 # Mark the starting pixel of the line in case the lines overlap
                     p+=1                   # Move to next pixel
@@ -248,7 +247,7 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
             end
         else
             if λsre_cur > mask_hi               # Right edge of this pixel moved past the edge of the current line's mask
-                projection[p] += mask_weight * (mask_hi - λsle_cur) /(mask_hi-mask_lo) # (λsre_cur - λsle_cur)
+                projection[p] += mask_weight * (mask_hi - λsle_cur) / (λsre_cur - λsle_cur)
                 on_mask = false                 # Indicate that we're done with this line
                 m += 1                          # Move to next line
                 if m<=length(plan.line_list)
@@ -261,7 +260,7 @@ function project_mask_opt!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
                 else                            # We're done with all lines, can return early
                     break
                 end
-            else                                # Mask window is entirely within this pixel
+            else                                # This pixel is entirely within the mask
                 projection[p] += mask_weight    # Add the full mask weight
                 p += 1                          # move to next pixel
                 λsle_cur = λsle[p]

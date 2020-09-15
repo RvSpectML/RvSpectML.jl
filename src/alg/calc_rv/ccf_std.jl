@@ -99,16 +99,16 @@ end
 
 # Only kept around for compatability
 function measure_rv_from_ccf(vels::A1, ccf::A2,
-            ; fit_type::Symbol=:gaussian) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
+            ; fit_type::String) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
     @warn "Please update call to measure_rv_from_ccf to use symbol instead of string for fit_type."
     # do the fit for velocity
-    if fit_type == :quadratic
+    if fit_type == "quadratic"
         return rv_from_ccf_quadratic(vels, ccf, fit_type=:quadratic)
-    elseif fit_type == :gaussian
+    elseif fit_type == "gaussian"
         return rv_from_ccf_gaussian(vels, ccf, fit_type=:gaussian)
-    elseif fit_type == :centroid
+    elseif fit_type == "centroid"
         return rv_from_ccf_centroid(vels, ccf, fit_type=:centroid)
-    elseif fit_type == :bestfit
+    elseif fit_type == "bestfit"
         return rv_from_ccf_bestfit(vels, ccf, fit_type=:bestfit)
     else
         return nothing

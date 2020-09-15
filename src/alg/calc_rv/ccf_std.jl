@@ -79,13 +79,21 @@ default_measure_width_at_frac_depth = 0.5
 default_frac_of_width_to_fit = 0.5
 default_init_guess_ccf_σ = 500.0
 
+""" Abstract type for functors to estimate the raidal velocitiy from a CCF and its velocity grid.  """
 abstract type AbstractMeasureRvFromCCF end
 
+"""  Functor to estimate RV based on the centroid of the CCF.  """
 struct MeasureRvFromCCFCentroid <: AbstractMeasureRvFromCCF
     frac_of_width_to_fit::Float64
     measure_width_at_frac_depth::Float64
 end
 
+"""
+Construct functor to estimate RV based on the CCF.
+Optional Arguments:
+* frac_of_width_to_fit: (0.5)
+* measure_width_at_frac_depth: (0.5)
+"""
 function MeasureRvFromCCFCentroid(; frac_of_width_to_fit::Real = default_frac_of_width_to_fit,
                                     measure_width_at_frac_depth::Real = default_measure_width_at_frac_depth )
     @assert 0.25 <= measure_width_at_frac_depth <= 0.75
@@ -93,6 +101,12 @@ function MeasureRvFromCCFCentroid(; frac_of_width_to_fit::Real = default_frac_of
     MeasureRvFromCCFCentroid(frac_of_width_to_fit,measure_width_at_frac_depth)
 end
 
+"""
+Estimate RV based on centroid velocity of the CCF.
+Inputs:
+* vels: Array of velocites where CCF was evaluated.
+* ccf:  Array of values of CCF
+"""
 function (mrv::MeasureRvFromCCFCentroid)(vels::A1, ccf::A2 ) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
     # find the min and use only that part of the CCF for computing centroid
     amin, inds = find_idx_at_and_around_minimum(vels, ccf, frac_of_width_to_fit=mrv.frac_of_width_to_fit, measure_width_at_frac_depth=mrv.measure_width_at_frac_depth)
@@ -102,11 +116,20 @@ function (mrv::MeasureRvFromCCFCentroid)(vels::A1, ccf::A2 ) where {T1<:Real, A1
     return v_centroid
 end
 
+"""  Functor to estimate RV based on fitting quadratic near minimum of CCF.
+TODO: Revist the logic here and see if need to perform transformation first.
+"""
 struct MeasureRvFromCCFQuadratic <: AbstractMeasureRvFromCCF
     frac_of_width_to_fit::Float64
     measure_width_at_frac_depth::Float64
 end
 
+"""
+Construct functor to estimate RV based on the CCF.
+Optional Arguments:
+* frac_of_width_to_fit: (0.5)
+* measure_width_at_frac_depth: (0.5)
+"""
 function MeasureRvFromCCFQuadratic(; frac_of_width_to_fit::Real = default_frac_of_width_to_fit,
                                     measure_width_at_frac_depth::Real = default_measure_width_at_frac_depth )
     @assert 0.25 <= measure_width_at_frac_depth <= 0.75
@@ -114,6 +137,13 @@ function MeasureRvFromCCFQuadratic(; frac_of_width_to_fit::Real = default_frac_o
     MeasureRvFromCCFQuadratic(frac_of_width_to_fit,measure_width_at_frac_depth)
 end
 
+"""
+Estimate RV based on fitting a quadratic to the CCF.
+Inputs:
+* vels: Array of velocites where CCF was evaluated.
+* ccf:  Array of values of CCF
+TODO: Revisit logic
+"""
 function (mrv::MeasureRvFromCCFQuadratic)(vels::A1, ccf::A2 ) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
     # find the min and fit only the part near the minimum of the CCF
     amin, inds = find_idx_at_and_around_minimum(vels, ccf, frac_of_width_to_fit=mrv.frac_of_width_to_fit, measure_width_at_frac_depth=mrv.measure_width_at_frac_depth)
@@ -128,12 +158,20 @@ function (mrv::MeasureRvFromCCFQuadratic)(vels::A1, ccf::A2 ) where {T1<:Real, A
     return v_at_min_of_quadratic
 end
 
+"""  Functor to estimate RV based on fitting a Gaussian quadratic near minimum of the CCF. """
 struct MeasureRvFromCCFGaussian <: AbstractMeasureRvFromCCF
     frac_of_width_to_fit::Float64
     measure_width_at_frac_depth::Float64
     init_guess_ccf_σ::Float64
 end
 
+"""
+Construct functor to estimate RV based on the CCF.
+Optional Arguments:
+* frac_of_width_to_fit: (0.5)
+* measure_width_at_frac_depth: (0.5)
+* init_guess_ccf_σ: (500m/s)
+"""
 function MeasureRvFromCCFGaussian(; frac_of_width_to_fit::Real = default_frac_of_width_to_fit,
                                     measure_width_at_frac_depth::Real = default_measure_width_at_frac_depth,
                                     init_guess_ccf_σ::Real = default_init_guess_ccf_σ )
@@ -145,6 +183,12 @@ end
 
 @. gaussian_line_helper(x, p) = p[4] + p[3] * exp(-0.5*((x-p[1])/p[2])^2)
 
+"""
+Estimate RV based fitting a Gaussian to the CCF.
+Inputs:
+* vels: Array of velocites where CCF was evaluated.
+* ccf:  Array of values of CCF
+"""
 function (mrv::MeasureRvFromCCFGaussian)(vels::A1, ccf::A2 ) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
         # find the min and fit only the part near the minimum of the CCF
         amin, inds = find_idx_at_and_around_minimum(vels, ccf, frac_of_width_to_fit=mrv.frac_of_width_to_fit, measure_width_at_frac_depth=mrv.measure_width_at_frac_depth)
@@ -164,9 +208,17 @@ function (mrv::MeasureRvFromCCFGaussian)(vels::A1, ccf::A2 ) where {T1<:Real, A1
 end
 
 
+"""  Functor to estimate RV based on velocity at minimum of CCF.
+Warning:  Since a discrete grid of velocities are evaluated, this should only be used in limited situations (e.g., an initial guess). """
 struct MeasureRvFromCCFBestFit <: AbstractMeasureRvFromCCF
 end
 
+"""
+Estimate RV based on velocity at minimum of CCF.
+Inputs:
+* vels: Array of velocites where CCF was evaluated.
+* ccf:  Array of values of CCF
+"""
 function (mrv::MeasureRvFromCCFBestFit)(vels::A1, ccf::A2 ) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
     idx_min_ccf = findmin(ccf)[2]
     vels_min_ccf = vels[idx_min_ccf]

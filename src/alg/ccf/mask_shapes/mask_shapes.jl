@@ -12,6 +12,7 @@ default_gaussian_ccf_truncation_scale_factor = 2*(sqrt(2*log(2)))
 default_supergaussian_ccf_fwhm = 448.0*2*sqrt(2*log(2)) #*4.5
 default_supergaussian_ccf_exponent = 1.3
 default_supergaussian_ccf_truncation_scale_factor = 2
+default_gaussian_mixture_ccf_truncation_Δv = 20000.0
 
 include("tophat.jl")
 include("gaussian.jl")

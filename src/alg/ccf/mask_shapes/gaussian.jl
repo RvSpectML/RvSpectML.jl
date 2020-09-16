@@ -17,9 +17,6 @@ struct GaussianCCFMask <: AbstractCCFMaskShape
     """ GaussianCCFMask( σ ; half_truncation_width_in_σ=2 ) """
     function GaussianCCFMask(σ::Real, w::Real=2 )
         @assert 0 < σ <= 300000   # 300km/s is arbitrary choice for an upper limit
-        if !(0<w<=4)
-            println(" w = ", w, "  σ = ", σ)
-        end
         @assert 0 < w <= 4
         norm = 1.0/(sqrt(2π)*σ*erf(w/(sqrt(2.0))))
         cdf_norm = 0.5/(erf(w/(sqrt(2.0))))

@@ -25,8 +25,8 @@ struct ChunkWidthFuncOfλ <: AbstractCalcChunkWidth
 end
 
 function (f::ChunkWidthFuncOfλ)(λ::Real; chunk_size_factor::Real = default_chunk_size_factor,
-    line_width::Real = default_line_width_kmps, min_chunk_Δv::Real = default_min_chunk_Δv )
-    chunk_half_width = max(chunk_size_factor*line_width, min_chunk_Δv)*1000/speed_of_light_mps
+                                line_width::Real = default_line_width_mps, min_chunk_Δv::Real = default_min_chunk_Δv )
+    chunk_half_width = max(chunk_size_factor*line_width, min_chunk_Δv)/speed_of_light_mps
     psf_width = λ*1e-6*(1+(λ-6000)/60000)   # TODO: Repalce, just some random number for demo purposes
     Δlnλ = sqrt(chunk_half_width^2+psf_width^2)
     return Δlnλ

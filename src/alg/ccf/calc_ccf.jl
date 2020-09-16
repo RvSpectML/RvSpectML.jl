@@ -266,7 +266,7 @@ function project_mask_old!(projection::A2, λs::A1, plan::PlanT ; shift_factor::
                     break
                 end
             else                                # This pixel is entirely within the mask
-                projection[p] += mask_weight  0.5*(λsre_cur + λsle_cur)/(mask_hi - mask_lo) #= * (λsre_cur - λsle_cur)/(λsre_cur - λsle_cur) =# # Add the full mask weight
+                projection[p] += mask_weight * 0.5*(λsre_cur + λsle_cur)/(mask_hi - mask_lo) #= * (λsre_cur - λsle_cur)/(λsre_cur - λsle_cur) =# # Add the full mask weight
                 p += 1                          # move to next pixel
                 λsle_cur = λsle[p]
                 λsre_cur = λsle[p+1]

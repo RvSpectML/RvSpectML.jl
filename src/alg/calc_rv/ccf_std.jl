@@ -106,6 +106,7 @@ Estimate RV based on centroid velocity of the CCF.
 Inputs:
 * vels: Array of velocites where CCF was evaluated.
 * ccf:  Array of values of CCF
+Only makes sense if the CCF has been variance normalized.  So don't use this yet.
 """
 function (::AbstractMeasureRvFromCCF)(vels::A1, ccf::A2 ) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} } end
 
@@ -193,7 +194,7 @@ function (mrv::MeasureRvFromCCFGaussian)(vels::A1, ccf::A2 ) where {T1<:Real, A1
         # fit and return the mean of the distribution
         result = curve_fit(gaussian_line_helper, view(vels,inds), view(ccf,inds), p0)
 
-        # center of line is first parameter to gaussian_line_helper 
+        # center of line is first parameter to gaussian_line_helper
         rv = result.converged ?  coef(result)[1] : NaN
         return rv
 end

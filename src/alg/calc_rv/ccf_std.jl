@@ -107,7 +107,7 @@ Inputs:
 * vels: Array of velocites where CCF was evaluated.
 * ccf:  Array of values of CCF
 """
-function (mrv::AbstractMeasureRvFromCCF)(vels::A1, ccf::A2 ) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} } end
+function (::AbstractMeasureRvFromCCF)(vels::A1, ccf::A2 ) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} } end
 
 function (mrv::MeasureRvFromCCFCentroid)(vels::A1, ccf::A2 ) where {T1<:Real, A1<:AbstractArray{T1,1}, T2<:Real, A2<:AbstractArray{T2,1} }
     # find the min and use only that part of the CCF for computing centroid

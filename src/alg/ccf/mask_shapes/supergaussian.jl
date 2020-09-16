@@ -36,10 +36,11 @@ struct SuperGaussianCCFMask <: AbstractCCFMaskShape
 end
 
 """ SuperGaussianCCFMask( inst ; scale_factor ) """
-function SuperGaussianCCFMask(inst::InstT; power::Real = 1, fwhm::Real = default_supergaussian_ccf_fwhm, scale_factor::Real = 1) where { InstT<:AbstractInstrument }
+function SuperGaussianCCFMask(inst::InstT; power::Real = default_supergaussian_ccf_exponent, fwhm::Real = default_supergaussian_ccf_fwhm,
+        σ_scale_factor::Real = 1, truncation_scale_factor::Real = default_supergaussian_ccf_truncation_scale_factor ) where { InstT<:AbstractInstrument }
     # TODO: Update default values
-    σ = scale_factor * fwhm/sqrt(8 * log(2)^(1/power))  # From Ryan Petersburg email 9/11/2020
-    w = scale_factor * RvSpectML.default_ccf_mask_v_width(inst) / σ
+    σ = σ_scale_factor * fwhm/sqrt(8 * log(2)^(1/power))  # From Ryan Petersburg email 9/11/2020
+    w = truncation_scale_factor
     SuperGaussianCCFMask(σ,power,w/2)
 end
 
@@ -47,7 +48,8 @@ end
 λ_max(m::SuperGaussianCCFMask,λ::Real) = λ*calc_doppler_factor(m.half_width_truncation)
 
 function integrate(m::SuperGaussianCCFMask, v_lo::Real,v_hi::Real)
-    quadgk(m, v_lo, v_hi)[1]
+    #quadgk(m, v_lo, v_hi)[1]
+    quadgk(m, v_lo, v_hi, atol=1e-4)[1]
 end
 
 """ Functor for returning PSF for Δv <= half_width.  """

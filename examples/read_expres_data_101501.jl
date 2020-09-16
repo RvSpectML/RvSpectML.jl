@@ -1,6 +1,3 @@
-using Pkg
- Pkg.activate(".")
-
 verbose = true
  if verbose && !isdefined(Main,:RvSpectML)   println("# Loading RvSpecML")    end
  using RvSpectML
@@ -23,7 +20,7 @@ reset_all_needs!(pipeline_plan)
    if verbose println("# Reading in customized parameters from param.jl.")  end
    eval(code_to_include_param_jl())
 
-   if verbose println("# Reading in ", size(df_files,1), " FITS files.")  end
+   if verbose println("# Reading in ", size(df_files_use,1), " FITS files.")  end
    @time all_spectra = map(EXPRES.read_data,eachrow(df_files_use))
    RvSpectML.discard_blaze(all_spectra)
    RvSpectML.discard_continuum(all_spectra)

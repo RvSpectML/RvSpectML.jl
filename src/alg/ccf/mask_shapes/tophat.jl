@@ -40,8 +40,8 @@ function integrate(m::TopHatCCFMask, v_lo::Real,v_hi::Real)
     end
     =#
     #quadgk(m, v_lo, v_hi)[1]
-    #0.5*(v_hi-v_lo)/m.half_width
-    0.5*(v_hi-v_lo)/m.half_width * (1+m.half_width/RvSpectML.speed_of_light_mps)/(1+(m.half_width/RvSpectML.speed_of_light_mps)^2/2)
+    0.5*(v_hi-v_lo)/m.half_width
+    #0.5*(v_hi-v_lo)/m.half_width * (1+m.half_width/RvSpectML.speed_of_light_mps)/(1+(m.half_width/RvSpectML.speed_of_light_mps)^2/2)
 end
 
 """ Functor for returning 1 for any Δv <= width.  """

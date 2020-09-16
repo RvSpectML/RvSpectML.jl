@@ -5,7 +5,7 @@ using Test
 
     @testset "Util" begin
         @test RvSpectML.calc_doppler_factor(10) ≈ 1.0000000333564094
-        @test RvSpectML.predict_intrinsic_stellar_line_width(5780) ≈ 9.88342046054907
+        @test RvSpectML.predict_intrinsic_stellar_line_width(5780) ≈ 9883.42046054907
         @test RvSpectML.allequal([1,1,1,1])
         @test !RvSpectML.allequal([1,2,3,4])
 

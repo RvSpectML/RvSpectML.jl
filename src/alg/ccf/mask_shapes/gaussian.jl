@@ -1,7 +1,7 @@
 """
     Code for a Gaussian mask shape for use with CCF
 Author: Eric Ford
-Created: August 2019
+Created: August 2020
 """
 
 """   GaussianCCFMask

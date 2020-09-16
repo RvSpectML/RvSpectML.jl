@@ -4,7 +4,7 @@ Author: Michael Palumbo
 Created: December 2019
 Contact: mlp95@psu.edu
 Based on code by Alex Wise (aw@psu.edu)
-Refactors and optimized by Eric Ford
+Refactored and optimized by Eric Ford
 """
 
 """ Module for computing CCFs """

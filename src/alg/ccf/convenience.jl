@@ -1,7 +1,7 @@
 """
     Code for convenience functions for calculating CCFs on RvSpectML's types
 Author: Eric Ford
-Created: August 2019
+Created: August 2020
 """
 
 """  calc_ccf_chunk( chunk, ccf_plan )

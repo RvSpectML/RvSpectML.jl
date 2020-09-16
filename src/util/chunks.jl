@@ -99,7 +99,7 @@ function make_chunk_list(spectra::AS, line_list::DataFrame; rv_shift::Real = 0, 
     @assert hasproperty(line_list,:lambda_hi)
     boost_factor = calc_doppler_factor(rv_shift)
     if rv_shift != 0
-        @warn("I haven't tested this yet, especially the sign.")
+        @warn("I haven't tested this yet, especially the sign.")  # TODO 
     end
     ChunkList(map(row->ChuckOfSpectrum(spectra,find_line_best(row.lambda_lo*boost_factor,row.lambda_hi*boost_factor,spectra,Δ=Δ)), eachrow(line_list) ))
 end

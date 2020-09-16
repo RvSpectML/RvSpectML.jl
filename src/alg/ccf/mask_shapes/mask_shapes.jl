@@ -1,7 +1,7 @@
 """
     Code to loading mask shapes for CCF
 Author: Eric Ford
-Created: September 2019
+Created: September 2020
 """
 
 "A struct implementing a specific mask shapes should be a subtype of AbstractCCFMaskShape."

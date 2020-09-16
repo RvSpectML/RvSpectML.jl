@@ -1,7 +1,7 @@
 """
     Code for a super-Gaussian mask shape for use with CCF
 Author: Eric Ford
-Created: September 2019
+Created: September 2020
 """
 
 using QuadGK

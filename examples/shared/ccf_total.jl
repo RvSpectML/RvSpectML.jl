@@ -2,8 +2,8 @@ using RvSpectML
 using DataFrames, CSV
 
 function ccf_total(order_list_timeseries::AbstractChunkListTimeseries, line_list_df::DataFrame, pipeline::PipelinePlan; recalc::Bool = false,
-                  output_fn_suffix::String = "", range_no_mask_change::Real=30e3, ccf_mid_velocity::Real=0.0, v_step::Real=250.0, 
-                  mask_scale_factor::Real=1, mask_type::Symbol = :tophat, use_old::Bool = false )
+                  output_fn_suffix::String = "", range_no_mask_change::Real=30e3, ccf_mid_velocity::Real=0.0, v_step::Real=250.0,
+                  mask_scale_factor::Real=1, mask_type::Symbol = :tophat, use_old::Bool = false, use_pixel_vars::Bool = false )
     if need_to(pipeline,:ccf_total) || recalc
       if verbose println("# Computing CCF.")  end
       @assert !need_to(pipeline,:extract_orders)
@@ -26,7 +26,7 @@ function ccf_total(order_list_timeseries::AbstractChunkListTimeseries, line_list
       if use_old
         @time ccfs = CCF.calc_ccf_chunklist_timeseries_old(order_list_timeseries, ccf_plan)
       else
-        @time ccfs = CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan)
+        @time ccfs = CCF.calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan, use_pixel_vars=use_pixel_vars)
       end
       if save_data(pipeline, :ccf_total)
          CSV.write(joinpath(output_dir,target_subdir * "_ccfs" * output_fn_suffix * ".csv"),Tables.table(ccfs',header=Symbol.(v_grid)))

@@ -36,7 +36,7 @@ const default_v_range_no_mask_change = default_v_max # m/s
 
 include("plan.jl")
 export AbstractCCFPlan, BasicCCFPlan
-export calc_ccf_v_grid
+export calc_ccf_v_grid, calc_length_ccf_v_grid
 
 include("calc_ccf.jl")
 export ccf_1D, ccf_1D!

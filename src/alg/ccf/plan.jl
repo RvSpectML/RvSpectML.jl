@@ -46,3 +46,11 @@ function calc_ccf_v_grid(p::PlanT where PlanT<:BasicCCFPlan )
     n = ceil(Int, p.v_max/p.v_step)
     range(p.v_center-n*p.v_step, p.v_center+n*p.v_step, length=2*n+1)
 end
+
+""" calc_length_ccf_v_grid( plan )
+Return number of points in the velocity grid (without needing to create the range).
+"""
+function calc_length_ccf_v_grid(p::PlanT where PlanT<:BasicCCFPlan )
+    n = ceil(Int, p.v_max/p.v_step)
+    length=2*n+1
+end

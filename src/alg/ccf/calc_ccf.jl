@@ -95,8 +95,9 @@ function ccf_1D!(ccf_out::A1, λ::A2, flux::A3, var::A4,
         # compute the ccf value at the current velocity shift
         ccf_out[i] = sum(projection_workspace .* (flux ./ var) )
     end
-    weightsum =  sum(1.0 ./ var)
-    ccf_out ./= weightsum
+    #weightsum =  sum(1.0 ./ var)
+    #ccf_out ./= weightsum
+    ccf_out .*= mean(flux)
     return ccf_out
 end
 
@@ -123,8 +124,8 @@ function ccf_1D(λ::A2, flux::A3, #line_list::ALL, #mask_shape1::A3
     @assert ndims(flux) == 1
     @assert length(λ) == length(flux)
 
-    v_grid = calc_ccf_v_grid(plan)
-    ccf_out = zeros(size(v_grid))
+    len_v_grid = calc_length_ccf_v_grid(plan)
+    ccf_out = zeros(len_v_grid)
     if length(plan.line_list) < 1  # If no lines in chunk
         return ccf_out
     end
@@ -154,8 +155,8 @@ function ccf_1D(λ::A2, flux::A3, var::A4,
     @assert ndims(flux) == 1
     @assert length(λ) == length(flux)
 
-    v_grid = calc_ccf_v_grid(plan)
-    ccf_out = zeros(size(v_grid))
+    len_v_grid = calc_length_ccf_v_grid(plan)
+    ccf_out = zeros(len_v_grid)
     if length(plan.line_list) < 1  # If no lines in chunk
         return ccf_out
     end

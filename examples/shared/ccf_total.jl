@@ -2,7 +2,7 @@ using RvSpectML
 using DataFrames, CSV
 
 function ccf_total(order_list_timeseries::AbstractChunkListTimeseries, line_list_df::DataFrame, pipeline::PipelinePlan; recalc::Bool = false,
-                  output_fn_suffix::String = "", range_no_mask_change::Real=30e3, ccf_mid_velocity::Real=0.0,
+                  output_fn_suffix::String = "", range_no_mask_change::Real=30e3, ccf_mid_velocity::Real=0.0, v_step::Real=250.0, 
                   mask_scale_factor::Real=1, mask_type::Symbol = :tophat, use_old::Bool = false )
     if need_to(pipeline,:ccf_total) || recalc
       if verbose println("# Computing CCF.")  end
@@ -21,7 +21,7 @@ function ccf_total(order_list_timeseries::AbstractChunkListTimeseries, line_list
       end
 
       line_list = CCF.BasicLineList(line_list_df.lambda, line_list_df.weight)
-      ccf_plan = CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity, range_no_mask_change=range_no_mask_change)
+      ccf_plan = CCF.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity, range_no_mask_change=range_no_mask_change, step=v_step)
       v_grid = CCF.calc_ccf_v_grid(ccf_plan)
       if use_old
         @time ccfs = CCF.calc_ccf_chunklist_timeseries_old(order_list_timeseries, ccf_plan)

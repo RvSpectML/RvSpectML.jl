@@ -12,26 +12,42 @@ include("read_expres_data_101501.jl")
 
 order_list_timeseries = extract_orders(all_spectra,pipeline_plan)
 
-line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan,
-         v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = 21e3)
+line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan, v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = 30e3, recalc=true)
+ (ccfs, v_grid) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan,  mask_scale_factor=10.0, ccf_mid_velocity=ccf_mid_velocity, recalc=true)
+ line_width = RvSpectML.calc_line_width(v_grid,view(ccfs,:,1),frac_depth=0.05)
+line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = line_width)
+
+(ccfs, v_grid) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan,  mask_scale_factor=1.0, range_no_mask_change=line_width, ccf_mid_velocity=ccf_mid_velocity, v_step=100, recalc=true)
+alg_fit_rv = RVFromCCF.MeasureRvFromCCFGaussian(frac_of_width_to_fit=3)
+rvs_ccf = calc_rvs_from_ccf_total(ccfs, pipeline_plan, v_grid=v_grid, times = order_list_timeseries.times, recalc=true, bin_nightly=true, alg_fit_rv=alg_fit_rv)
+
+
+ if make_plot(pipeline_plan, :ccf_total)
+   using Plots
+   t_idx = 20
+   #plt = plot(v_grid,ccfs[:,t_idx]./maximum(ccfs[:,t_idx],dims=1),label=:none)
+   #scatter!(plt,v_grid,ccfs_expr[:,t_idx]./maximum(ccfs_expr[:,t_idx],dims=1),markersize=1.2,label=:none)
+   plt = plot(v_grid,ccfs[:,t_idx],label=:none)
+   xlabel!("v (m/s)")
+   ylabel!("CCF")
+   if save_plot(pipeline_plan,:ccf_total)   savefig(plt,joinpath(output_dir,target_subdir * "_ccf_sum.png"))   end
+   display(plt)
+end
+
 
 #need_to!(pipeline_plan, :template)
 if need_to(pipeline_plan, :template)  # Compute order CCF's & measure RVs
    if verbose println("# Making template spectra.")  end
    @assert !need_to(pipeline_plan,:extract_orders)
-#   @assert !need_to(pipeline_plan,:rvs_ccf_total)
    GC.gc()   # run garbage collector for deallocated memory
    map(i->order_list_timeseries.metadata[i][:rv_est] = 0.0, 1:length(order_list_timeseries) )
    @time ( spectral_orders_matrix, f_mean, var_mean, deriv, deriv2, order_grids )  = make_template_spectra(order_list_timeseries)
    if save_data(pipeline_plan, :template)
-      #using CSV
-      #CSV.write(joinpath(output_dir,target_subdir * "_template.csv"),DataFrame("λ"=>spectral_orders_matrix.λ,"flux_template"=>f_mean,"var"=>var_mean, "dfluxdlnλ_template"=>deriv,"d²fluxdlnλ²_template"=>deriv2))
       using JLD2, FileIO
       save(joinpath(output_dir,target_subdir * "_matrix.jld2"), Dict("λ"=>spectral_orders_matrix.λ,"spectra"=>spectral_orders_matrix.flux,"var_spectra"=>spectral_orders_matrix.var,"flux_template"=>f_mean,"var"=>var_mean, "dfluxdlnλ_template"=>deriv,"d²fluxdlnλ²_template"=>deriv2))
    end
    dont_need_to!(pipeline_plan, :template);
 end
-
 
 if make_plot(pipeline_plan,:template)
    using Plots
@@ -49,12 +65,11 @@ end
 if need_to(pipeline_plan,:fit_lines)
    if verbose println("# Performing fresh search for lines in template spectra.")  end
    cl = ChunkList(map(grid->ChuckOfSpectrum(spectral_orders_matrix.λ,f_mean, var_mean, grid), spectral_orders_matrix.chunk_map))
-   #= # We're done with the spectral_orders_matrix, so we can release the memory now
+   # We're done with the spectral_orders_matrix, so we can release the memory now
    spectral_orders_matrix = nothing
    GC.gc()
    need_to!(pipeline_plan,:template)
-   =#
-   lines_in_template = LineFinder.find_lines_in_chunklist(cl, plan=RvSpectML.LineFinder.LineFinderPlan(min_deriv2=3))  # TODO: Automate threshold for finding a line
+   lines_in_template = LineFinder.find_lines_in_chunklist(cl, plan=RvSpectML.LineFinder.LineFinderPlan(min_deriv2=0.5))  # TODO: Automate threshold for finding a line
 
    if verbose println("# Finding above lines in all spectra.")  end
    @time fits_to_lines = LineFinder.fit_all_lines_in_chunklist_timeseries(order_list_timeseries, lines_in_template )
@@ -68,43 +83,183 @@ if need_to(pipeline_plan,:fit_lines)
    dont_need_to!(pipeline_plan,:fit_lines);
 end
 
-
-#need_to!(pipeline_plan,:clean_line_list_blends)
-if need_to(pipeline_plan,:clean_line_list_blends)
-   # Exploratory data analysis of the distribution of line properties over time to figure out how to select "clean" lines
-   @assert !need_to(pipeline_plan,:fit_lines)
-   fit_distrib = fits_to_lines |> @groupby(_.line_id) |>
+function select_line_fits_with_good_std_v(line_fits_df::DataFrame, quantile_threshold::Real; verbose::Bool = false, write_csv::Bool = false)
+   fit_distrib = line_fits_df |> @groupby(_.line_id) |>
             @map( { median_a=median(_.fit_a), median_b=median(_.fit_b), median_depth=median(_.fit_depth), median_σ²=median(_.fit_σ²), median_λc=median(_.fit_λc),
-                   std_a=std(_.fit_a), std_b=std(_.fit_b), std_depth=std(_.fit_depth), std_σ²=std(_.fit_σ²), std_λc=std(_.fit_λc), line_id=_.line_id, frac_converged=mean(_.fit_converged)  } ) |>
+                   std_a=std(_.fit_a), std_b=std(_.fit_b), std_depth=std(_.fit_depth), std_σ²=std(_.fit_σ²), std_λc=std(_.fit_λc),
+                   line_id=first(_.line_id),  frac_converged=mean(_.fit_converged)  } ) |>
             @filter(_.frac_converged == 1.0 ) |> DataFrame
-                  # , min_telluric_model_all_obs=minimum(_.min_telluric_model_this_obs),
-   good_lines = fit_distrib |>
-            #@filter(_.min_telluric_model_all_obs == 1.0 ) |> # Already done
-            @filter( _.median_depth > 0.1 ) |>
-            @filter( _.median_σ² < 0.015) |>
-            @filter( _.std_σ² < 0.004) |>
-            @filter(_.std_b < 0.06) |>
-            @filter( _.std_depth < 0.006 ) |>
-            #@filter(_.std_a < 0.025) |>             # Unncessary?
-            #@filter( -0.25 < _.median_b < 0.25) |>  # Unncessary?
-            DataFrame
-      println("# Found ", size(lines_in_template,1), " lines, including ",size(good_lines,1), " good lines, rejected ", size(lines_in_template,1)-size(good_lines,1), " lines.")
-      bad_lines = fit_distrib |> @filter(_.std_λc >= 0.002 ) |> DataFrame
-      good_lines_high_scatter = good_lines |> @filter(_.std_λc >= 0.002 ) |> DataFrame
-      if size(bad_lines,1) >= 1
-         println("# ", size(bad_lines,1), " lines have large λc scatter, including ", size(good_lines_high_scatter,1), " good lines.")
-      end
-      lines_to_try = lines_in_template[first.(good_lines[!,:line_id]),:]
-      dont_need_to!(pipeline_plan,:clean_line_list_blends);
- end
- fit_distrib
 
+   std_v_threshold =  quantile(fit_distrib.std_λc./fit_distrib.median_λc.*RvSpectML.speed_of_light_mps ,quantile_threshold)
+   median_σ_width_treshold = 2000 # quantile(sqrt.(fit_distrib.median_σ²)./fit_distrib.median_λc.*RvSpectML.speed_of_light_mps,1-quantile_threshold)
+   good_lines_std_v = fit_distrib |>
+            @filter( _.std_λc./_.median_λc.*RvSpectML.speed_of_light_mps <= std_v_threshold ) |>
+            @filter( sqrt.(_.median_σ²)./_.median_λc.*RvSpectML.speed_of_light_mps >= median_σ_width_treshold ) |>
+                  DataFrame
+   if verbose
+      println("# Found ", size(good_lines_std_v,1), " good lines (std_v), rejected ", size(fit_distrib,1)-size(good_lines_std_v,1), " lines.")
+   end
+   if write_csv
+      val_str = Printf.@sprintf("%1.2f",quantile_threshold)
+      CSV.write(joinpath(output_dir,target_subdir * "_good_lines_stdv_quant=" * val_str * ".csv"), good_lines_std_v )
+   end
+   return good_lines_std_v
+end
+
+function select_line_fits_with_good_depth_width_slope(line_fits_df::DataFrame, quantile_threshold::Real; verbose::Bool = false, write_csv::Bool = false )
+   fit_distrib = line_fits_df |> @groupby(_.line_id) |>
+            @map( { median_a=median(_.fit_a), median_b=median(_.fit_b), median_depth=median(_.fit_depth), median_σ²=median(_.fit_σ²), median_λc=median(_.fit_λc),
+                   std_a=std(_.fit_a), std_b=std(_.fit_b), std_depth=std(_.fit_depth), std_σ²=std(_.fit_σ²), std_λc=std(_.fit_λc),
+                   line_id=first(_.line_id),  frac_converged=mean(_.fit_converged)  } ) |>
+            @filter(_.frac_converged == 1.0 ) |> DataFrame
+
+   std_depth_treshold = quantile(fit_distrib.std_depth,quantile_threshold)
+   median_σ_width_treshold = 2000 # quantile(sqrt.(fit_distrib.median_σ²)./fit_distrib.median_λc.*RvSpectML.speed_of_light_mps,1-quantile_threshold)
+   std_σ_width_treshold = quantile(sqrt.(fit_distrib.std_σ²)./fit_distrib.median_λc.*RvSpectML.speed_of_light_mps,quantile_threshold)
+   std_b_treshold = quantile(fit_distrib.std_b,quantile_threshold)
+   std_a_treshold = quantile(fit_distrib.std_a,quantile_threshold)
+   good_lines_alt = fit_distrib |>
+      @filter( 0.05 <= _.median_depth <= 0.95 ) |>
+      #@filter( sqrt.(_.median_σ²)./_.median_λc.*RvSpectML.speed_of_light_mps >= median_σ_width_treshold ) |>
+      @filter( sqrt.(_.std_σ²)./_.median_λc.*RvSpectML.speed_of_light_mps <= std_σ_width_treshold ) |>
+      @filter( _.std_b < std_b_treshold) |>
+
+      DataFrame
+   if verbose
+      println("# Found ", size(good_lines_alt,1), " good lines (std_depth_width_slope), rejected ", size(fit_distrib,1)-size(good_lines_alt,1), " lines.")
+   end
+   if write_csv
+      val_str = Printf.@sprintf("%1.2f",quantile_threshold)
+      CSV.write(joinpath(output_dir,target_subdir * "_good_lines_fit_quant=" * val_str * ".csv"), good_lines_alt )
+   end
+   return good_lines_alt
+end
+
+lines_in_template_vs_threshold = map(thresh->LineFinder.find_lines_in_chunklist(cl, plan=RvSpectML.LineFinder.LineFinderPlan(min_deriv2=thresh)),[0.05, 0.1, 0.2, 0.4] ) #, 0.6, 0.8, 1.0, 1.25, 1.5, 2.0])
+  map(x->size(x,1),lines_in_template_vs_threshold)
+lines_in_template = lines_in_template_vs_threshold[1]
+  @time fits_to_lines = LineFinder.fit_all_lines_in_chunklist_timeseries(order_list_timeseries, lines_in_template )
+
+
+good_lines_stdv = select_line_fits_with_good_std_v(fits_to_lines,0.75,write_csv=false)
+ good_lines_alt = select_line_fits_with_good_depth_width_slope(fits_to_lines,0.95)
+ if make_plot(pipeline_plan,:template)
+   using Plots
+   chunkid = 31
+   idx = spectral_orders_matrix.chunk_map[chunkid]
+   plt = [plot() for i in 1:3]
+   for i in 1:3
+      local line_plt_idx = findall(x->minimum(spectral_orders_matrix.λ[idx])<=x<=maximum(spectral_orders_matrix.λ[idx]) , good_lines_alt.median_λc)
+      map(x->plot!(plt[i],[x,x],[-0.5,0], color=:black,label=:none), good_lines_alt.median_λc[line_plt_idx])
+      line_plt_idx = findall(x->minimum(spectral_orders_matrix.λ[idx])<=x<=maximum(spectral_orders_matrix.λ[idx]) , good_lines_stdv.median_λc)
+      map(x->plot!(plt[i],[x,x],[ 0,0.5], color=:black,label=:none), good_lines_stdv.median_λc[line_plt_idx])
+      scatter!(plt[i],spectral_orders_matrix.λ[idx],(f_mean[idx].-1.0)./maximum(abs.((f_mean[idx].-1.0))),markersize=1.0,color=2,label=:none)
+      scatter!(plt[i],spectral_orders_matrix.λ[idx],deriv[idx]./maximum(abs.(deriv[idx])),markersize=1.0,color=3,label=:none)
+      scatter!(plt[i],spectral_orders_matrix.λ[idx],deriv2[idx]./maximum(abs.(deriv2[idx])),markersize=1.0,color=4,label=:none)
+      ylims!(plt[i],-0.5,0.5)
+   end
+   λ_div1 = spectral_orders_matrix.λ[idx][floor(Int,length(idx)/3)]
+   λ_div2 = spectral_orders_matrix.λ[idx][floor(Int,length(idx)*2/3)]
+   xlims!(plt[1],minimum(spectral_orders_matrix.λ[idx]),λ_div1)
+   xlims!(plt[2],λ_div1,λ_div2)
+   xlims!(plt[3],λ_div2,maximum(spectral_orders_matrix.λ[idx]))
+   xlabel!(plt[3],"λ (Å)")
+   ylabel!(plt[2],"f(λ), f'(λ), f''(λ), all standardized")
+   title!(plt[1],"Template spectrum for chunk " * string(chunkid) )
+   plt_combo = plot(plt[1], plt[2], plt[3], layout = (3,1))
+   display(plt_combo)
+end
+
+# Reset steps of pipeline_plan to rerun with new linelist.
+need_to!(pipeline_plan, :ccf_total);
+ need_to!(pipeline_plan, :rvs_ccf_total);
+ need_to!(pipeline_plan, :ccf_orders);
+ need_to!(pipeline_plan, :rvs_ccf_orders);
+ need_to!(pipeline_plan, :template);
+ need_to!(pipeline_plan, :dcpca);
+
+lines_to_try = good_lines_stdv[5] |> @map({ lambda=_.median_λc, weight=_.median_depth} ) |> DataFrame
+ need_to!(pipeline_plan, :ccf_total);
+ need_to!(pipeline_plan, :rvs_ccf_total);
+ sort!(lines_to_try,:lambda)
+ (ccfs2, v_grid2) = ccf_total(order_list_timeseries, lines_to_try, pipeline_plan,  mask_scale_factor=1.0, range_no_mask_change=line_width, ccf_mid_velocity=ccf_mid_velocity, v_step=100, recalc=true)
+ alg_fit_rv = RVFromCCF.MeasureRvFromCCFGaussian(frac_of_width_to_fit=3)
+ rvs_ccf2 = calc_rvs_from_ccf_total(ccfs2, pipeline_plan, v_grid=v_grid2, times = order_list_timeseries.times, recalc=true, bin_nightly=true, alg_fit_rv=alg_fit_rv)
+
+lines_to_try = good_lines_alt[4] |> @map({ lambda=_.median_λc, weight=_.median_depth} ) |> DataFrame
+  need_to!(pipeline_plan, :ccf_total);
+  need_to!(pipeline_plan, :rvs_ccf_total);
+  sort!(lines_to_try,:lambda)
+  (ccfs2, v_grid2) = ccf_total(order_list_timeseries, lines_to_try, pipeline_plan,  mask_scale_factor=1.0, range_no_mask_change=line_width, ccf_mid_velocity=ccf_mid_velocity, v_step=100, recalc=true)
+  alg_fit_rv = RVFromCCF.MeasureRvFromCCFGaussian(frac_of_width_to_fit=3)
+  rvs_ccf2 = calc_rvs_from_ccf_total(ccfs2, pipeline_plan, v_grid=v_grid2, times = order_list_timeseries.times, recalc=true, bin_nightly=true, alg_fit_rv=alg_fit_rv)
+
+if make_plot(pipeline_plan, :ccf_total)
+   using Plots
+   t_idx = 20
+   using Plots
+   plt = plot(v_grid,ccfs[:,t_idx]./maximum(ccfs[:,t_idx],dims=1),label=:none)
+   scatter!(plt,v_grid2,ccfs2[:,t_idx]./maximum(ccfs2[:,t_idx],dims=1),markersize=1.2,label=:none)
+   xlabel!("v (m/s)")
+   ylabel!("CCF")
+   if save_plot(pipeline_plan,:ccf_total)   savefig(plt,joinpath(output_dir,target_subdir * "_ccf2_sum.png"))   end
+   display(plt)
+end
+
+
+
+# Random plots that may be useful
+histogram(log10.(fit_distrib.std_λc./fit_distrib.median_λc.*RvSpectML.speed_of_light_mps ),nbins=100, alpha=0.5, label="All converged fits")
+ good_lines = select_line_fits_with_good_depth_width_slope(fits_to_lines,0.8)
+ histogram!(log10.(good_lines.std_λc./good_lines.median_λc.*RvSpectML.speed_of_light_mps),nbins=50,alpha=0.5,label="Consistent Fits")
+ good_lines = select_line_fits_with_good_std_v(fits_to_lines,0.7)
+ histogram!(log10.(good_lines.std_λc./good_lines.median_λc.*RvSpectML.speed_of_light_mps),nbins=50,alpha=0.5, label="Low σ v Fits")
+
+
+scatter(log10.(fit_distrib.median_depth),(fit_distrib.median_σ²),markersize=2.0)
+ scatter!(log10.(bad_lines.median_depth),(bad_lines.median_σ²),markersize=3.0)
+
+quantile(fit_distrib.std_λc./fit_distrib.median_λc.*RvSpectML.speed_of_light_mps , 0.8)
+
+histogram(sqrt.(fit_distrib.median_σ²)./fit_distrib.median_λc.*RvSpectML.speed_of_light_mps,nbins=200)
+ histogram!(sqrt.(good_lines.median_σ²)./good_lines.median_λc.*RvSpectML.speed_of_light_mps,nbins=200,alpha=0.5)
+
+quantile(sqrt.(good_lines.median_σ²)./good_lines.median_λc.*RvSpectML.speed_of_light_mps,0.05)
+
+
+scatter( sqrt.(fit_distrib.std_σ²)./fit_distrib.median_λc.*RvSpectML.speed_of_light_mps,good_lines.std_λc,markersize=2,label=:none)
+ scatter!( sqrt.(good_lines.std_σ²)./good_lines.median_λc.*RvSpectML.speed_of_light_mps,good_lines.std_λc,markersize=3,label=:none)
+
+std_depth_treshold = quantile(fit_distrib.std_depth,0.90)
+scatter(good_lines.std_depth,good_lines.std_λc,markersize=2,label=:none)
+
+histogram(good_lines.median_depth,nbins=100)
+
+sqrt.(good_lines.median_σ²)./good_lines.median_λc.*RvSpectML.speed_of_light_mps
 #scatter(good_lines.median_depth,good_lines.std_λc,markersize=2,label=:none)
 
+
+
+
+scatter(sqrt.(good_lines.median_σ²)./good_lines.median_λc.*RvSpectML.speed_of_light_mps,good_lines.std_λc,markersize=2,label=:none)
+
+scatter(good_lines.median_depth,good_lines.std_λc,markersize=2,label=:none)
+
+scatter(good_lines.median_a,good_lines.std_λc,markersize=2,label=:none)
+
+scatter(good_lines.median_b,good_lines.std_λc,markersize=2,label=:none)
+
+
+scatter(sqrt.(good_lines.std_σ²)./good_lines.median_λc.*RvSpectML.speed_of_light_mps,good_lines.std_λc,markersize=2,label=:none)
+
 scatter(good_lines.std_depth,good_lines.std_λc,markersize=2,label=:none)
-#scatter(good_lines.std_σ²,good_lines.std_λc,markersize=2,label=:none)
-#scatter(good_lines.median_σ²,good_lines.std_λc,markersize=2,label=:none)
-#scatter(good_lines.median_b,good_lines.std_λc,markersize=2,label=:none)
-#scatter(good_lines.std_b,good_lines.std_λc,markersize=2,label=:none)
-#scatter(good_lines.median_b,good_lines.std_λc,markersize=2,label=:none)
-#scatter(good_lines.std_b,good_lines.std_λc,markersize=2,label=:none)
+
+scatter(good_lines.std_a,good_lines.std_λc,markersize=2,label=:none)
+
+scatter(good_lines.std_b,good_lines.std_λc,markersize=2,label=:none)
+
+
+scatter(good_lines.std_b,good_lines.std_λc,markersize=2,label=:none)
+
+
+scatter(good_lines.std_b,good_lines.std_λc,markersize=2,label=:none)

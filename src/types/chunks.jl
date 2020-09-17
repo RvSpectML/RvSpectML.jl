@@ -18,7 +18,7 @@ end
 function ChuckOfSpectrum{T1,T2,T3}(λ::A1, flux::A2, var::A3) where {  T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,1}, A2<:AbstractArray{T2,1}, A3<:AbstractArray{T3,1} }
     @assert size(λ) == size(flux)
     @assert size(λ) == size(var)
-    min_pixels_in_chunk = 6
+    min_pixels_in_chunk = 3
     max_pixels_in_chunk = 10000
     @assert min_pixels_in_chunk <= length(λ) <= max_pixels_in_chunk
     ChuckOfSpectrum{eltype(λ),eltype(flux),eltype(var),typeof(λ),typeof(flux),typeof(var)}(λ,flux,var)

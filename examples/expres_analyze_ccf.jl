@@ -12,15 +12,13 @@ include("read_expres_data_101501.jl")
 
 order_list_timeseries = extract_orders(all_spectra,pipeline_plan)
 
-line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = 21e3)
+line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = 30e3)
 
-(ccfs, v_grid) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan,  mask_scale_factor=16.0, ccf_mid_velocity=ccf_mid_velocity, recalc=true, use_expr= false)
+(ccfs, v_grid) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan,  mask_scale_factor=10.0, ccf_mid_velocity=ccf_mid_velocity, recalc=true)
 
-if false  # Optionally, compute a second CCF to compare below
-   (ccfs_expr, v_grid_expr) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan, mask_scale_factor=16.0,  ccf_mid_velocity=ccf_mid_velocity, recalc=true, use_expr= true)
-   flush(stdout)
-   println("# Ratio of max(ccfs_expr)/max(ccfs) = ", mean(maximum(ccfs_expr,dims=1)./maximum(ccfs,dims=1)) )
-end
+line_width = RvSpectML.calc_line_width(v_grid,view(ccfs,:,1),frac_depth=0.05)
+
+line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = line_width)
 
 if make_plot(pipeline_plan, :ccf_total)
    using Plots

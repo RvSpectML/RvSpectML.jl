@@ -21,10 +21,12 @@ mask_scale_factors = [ 1.0,  2, 4, 6, 8, 10, 12, 14, 16 ]
  for (i,mask_scale_factor) in enumerate(mask_scale_factors)
    println("# mask_scale_factor = ", mask_scale_factor)
    local (ccfs, v_grid) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan, mask_scale_factor=mask_scale_factor, mask_type=:tophat,ccf_mid_velocity=ccf_mid_velocity, recalc=true, use_old = false)
-   local rvs_ccf = calc_rvs_from_ccf_total(ccfs, pipeline_plan, v_grid=v_grid, times = order_list_timeseries.times, recalc=true, bin_consecutive=4, bin_nightly=false)
+   alg_fit_rv = RVFromCCF.MeasureRvFromCCFGaussian(frac_of_width_to_fit=3)
+   local rvs_ccf = calc_rvs_from_ccf_total(ccfs, pipeline_plan, v_grid=v_grid, times = order_list_timeseries.times, recalc=true, bin_consecutive=4, bin_nightly=false, alg_fit_rv=alg_fit_rv)
    rms_rvs[i] = std(rvs_ccf.-mean(rvs_ccf))
    rms_binned_rvs[i] = std(RvSpectML.bin_rvs_consecutive(rvs_ccf.-mean(rvs_ccf), 4))
  end
+
  using Plots
    plt1 = plot(mask_scale_factors, rms_rvs, color=1, label="New Tophat")
    plt2 = plot(mask_scale_factors, rms_binned_rvs, color=1, label=:none)
@@ -126,7 +128,8 @@ plt1 = plot(mask_scale_factors, rms_rvs, color=1, label="New Tophat")
  #scatter!(plt1,mask_scale_factors4, rms_rvs4_cent, color=6, label="Gaussian- Centroid")
  #plot!(plt1,mask_scale_factors5, rms_rvs5, color=5, label="Super-Gaussian")
  #plot!(plt2,mask_scale_factors5, rms_binned_rvs5, color=5, label=:none)
- ylims!(plt1,0.8,1.5)
+
+ylims!(plt1,0.8,1.0)
  ylims!(plt2,0,0.5)
  plot(plt1,plt2,layout=(2,1) )
 

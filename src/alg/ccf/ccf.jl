@@ -40,11 +40,14 @@ export calc_ccf_v_grid
 
 include("calc_ccf.jl")
 export ccf_1D, ccf_1D!
-export ccf_1D_expr, ccf_1D_expr!
 
-using ThreadedIterables
 #using ThreadTools
 include("convenience.jl")
 export calc_ccf_chunk, calc_ccf_chunklist, calc_ccf_chunklist_timeseries
+
+# Will soon comment out to reduce precompilation time
+include("calc_ccf_old.jl")
+include("convenience_old.jl")
+export ccf_1D_old, ccf_1D_old!
 
 end # module

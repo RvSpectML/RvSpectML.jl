@@ -26,3 +26,18 @@ max_col_default(::TheoreticalInstrument2D, ord::Integer) = max_pixel_in_order(in
 
 import ..RvSpectML: default_ccf_mask_v_width
 default_ccf_mask_v_width(::AnyTheoreticalInstrument) = 500.0  #
+
+import ..RvSpectML: get_inst_module
+get_inst_module(::AnyTheoreticalInstrument) = TheoreticalInstrument
+
+import ..RvSpectML: get_λ_range
+function get_λ_range(data::CLT) where { T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2},
+                                       IT<:AnyTheoreticalInstrument, CLT<:Spectra2DBasic{T1,T2,T3,A1,A2,A3,IT} }
+   (λmin, λmax) = extrema(data.λ)
+   return (min=λmin, max=λmax)
+end
+
+import ..RvSpectML: filter_line_list, find_worst_telluric_in_each_chunk
+
+export filter_line_list, find_worst_telluric_in_each_chunk
+export get_inst_module

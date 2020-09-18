@@ -5,6 +5,9 @@ Author: Eric Ford and collaborators
 Created: August 2020
 """
 
+"""
+Module providing types and traits and customized functions for the NEID Spectrograph.
+"""
 module NEID
 using ..RvSpectML
 import ..RvSpectML: AbstractInstrument, AbstractInstrument1D, AbstractInstrument2D
@@ -26,6 +29,9 @@ export min_order, max_order, min_pixel_in_order, max_pixel_in_order
 export orders_to_use_default, min_col_default, max_col_default
 export metadata_symbols_default, metadata_strings_default
 export default_ccf_mask_v_width
+
+export filter_line_list, find_worst_telluric_in_each_chunk
+export get_inst_module
 
 include("io.jl")
 export make_manifest

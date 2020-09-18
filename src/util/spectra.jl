@@ -86,11 +86,79 @@ function normalize_spectra!(chunk_timeseries::ACLT, spectra::AS) where { ACLT<:A
 end
 
 
-""" Return the largest minimum wavelength and smallest maximum wavelength across an array of spectra. 
+""" Return the largest minimum wavelength and smallest maximum wavelength across an array of spectra.
 Calls get_λ_range(AbstractSpectra2D) that should be specialized for each instrument. """
 function get_λ_range(data::ACLT) where { CLT<:AbstractSpectra, ACLT<:AbstractArray{CLT} }
    λminmax = get_λ_range.(data)
    λmin = maximum(map(p->p[1],λminmax))
    λmax = minimum(map(p->p[2],λminmax))
    return (min = λmin, max = λmax)
+end
+
+function discard_large_metadata(data::Union{T1,T2}) where { T1<:AbstractChunkListTimeseries, AS<:AbstractSpectra, T2<:AbstractArray{AS} }
+    discard_blaze(data)
+    discard_continuum(data)
+    discard_tellurics(data)
+    discard_pixel_mask(data)
+    discard_excalibur_mask(data)
+end
+
+function discard_blaze(metadata::Dict{Symbol,Any} )
+    delete!(metadata,:blaze)
+end
+
+function discard_blaze(data::ACLT) where { CLT<:AbstractSpectra, ACLT<:AbstractArray{CLT} }
+   map(spectra->discard_blaze(spectra.metadata),data)
+end
+
+function discard_blaze(data::CLT) where { CLT<:AbstractChunkListTimeseries }
+   map(discard_blaze,data.metadata)
+end
+
+function discard_continuum(metadata::Dict{Symbol,Any} )
+    delete!(metadata,:continuum)
+end
+
+function discard_continuum(data::ACLT) where { CLT<:AbstractSpectra, ACLT<:AbstractArray{CLT} }
+   map(spectra->discard_continuum(spectra.metadata),data)
+end
+
+function discard_continuum(data::CLT) where { CLT<:AbstractChunkListTimeseries }
+   map(discard_continuum,data.metadata)
+end
+
+function discard_tellurics(metadata::Dict{Symbol,Any} )
+    delete!(metadata,:tellurics)
+end
+
+function discard_tellurics(data::ACLT) where { CLT<:AbstractSpectra, ACLT<:AbstractArray{CLT} }
+   map(spectra->discard_tellurics(spectra.metadata),data)
+end
+
+function discard_tellurics(data::CLT) where { CLT<:AbstractChunkListTimeseries }
+   map(discard_tellurics,data.metadata)
+end
+
+function discard_pixel_mask(metadata::Dict{Symbol,Any} )
+    delete!(metadata,:pixel_mask)
+end
+
+function discard_pixel_mask(data::ACLT) where { CLT<:AbstractSpectra, ACLT<:AbstractArray{CLT} }
+   map(spectra->discard_pixel_mask(spectra.metadata),data)
+end
+
+function discard_pixel_mask(data::CLT) where { CLT<:AbstractChunkListTimeseries }
+   map(discard_pixel_mask,data.metadata)
+end
+
+function discard_excalibur_mask(metadata::Dict{Symbol,Any} )
+    delete!(metadata,:excalibur_mask)
+end
+
+function discard_excalibur_mask(data::ACLT) where { CLT<:AbstractSpectra, ACLT<:AbstractArray{CLT} }
+   map(spectra->discard_excalibur_mask(spectra.metadata),data)
+end
+
+function discard_excalibur_mask(data::CLT) where { CLT<:AbstractChunkListTimeseries }
+   map(discard_excalibur_mask,data.metadata)
 end

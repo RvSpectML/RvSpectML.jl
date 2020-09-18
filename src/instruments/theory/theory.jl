@@ -1,10 +1,13 @@
 """
-   Delegates loading functions & traits for the NEID spectrograph
-   https://neid.psu.edu/
+   Delegates loading functions & traits for a generic theoretical spectrograph
+
 Author: Eric Ford and collaborators
 Created: August 2020
 """
 
+"""
+Module providing types and traits and customized functions for a generic theoretical spectrograph.
+"""
 module TheoreticalInstrument
 using ..RvSpectML
 #import ..RvSpectML: AbstractInstrument, AbstractInstrument1D, AbstractInstrument2D

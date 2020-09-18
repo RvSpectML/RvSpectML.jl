@@ -11,7 +11,7 @@ const speed_of_light_mps = 299792458.0 # TODO: Update value
 """
    calc_doppler_factor(rv; v_perp)
 
-Return the Doppler boost factor (non-relativistic) for rv in km/s.
+Return the Doppler boost factor (non-relativistic) for rv in m/s.
 """
 function calc_doppler_factor end
 
@@ -29,13 +29,13 @@ function absorption_line(x::T; mid=zero(T), width=one(T), depth=one(T)) where T<
 end
 
 """
-Estimate line width based on stellar Teff (K) and optionally v_rot (km/s).  Output in km/s.
+Estimate line width based on stellar Teff (K) and optionally v_rot (m/s).  Output in m/s.
 """
 function predict_intrinsic_stellar_line_width(Teff::Real; v_rot::Real=zero(Teff))
     @assert 3000 < Teff < 10000 # K
-    @assert 0 <= v_rot <=100 # km/s
-    line_width_thermal = 13*sqrt(Teff/1e4) # km/s
-    line_width = sqrt(v_rot^2+line_width_thermal^2) # km/s
+    @assert 0 <= v_rot <=100e3 # m/s
+    line_width_thermal = 13e3*sqrt(Teff/1e4) # m/s
+    line_width = sqrt(v_rot^2+line_width_thermal^2) # m/s
 end
 
 

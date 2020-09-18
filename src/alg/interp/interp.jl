@@ -444,3 +444,80 @@ function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_gr
     #dmeanfluxdlnλ ./= num_obs
     return ( matrix=SpectralTimeSeriesCommonWavelengths(λ_vec,flux_matrix,var_matrix,chunk_map, Generic1D() ), mean_flux=mean_flux, mean_var=mean_var, deriv=dfluxdlnλ, deriv2=d2fluxdlnλ2 )
 end
+
+"""   repack_flux_vector_to_chunk_matrix(λ, flux, var, chunk_map, λc; alg )
+Warning:  This doesn't work yet
+"""
+function repack_flux_vector_to_chunk_matrix(λ::AA1, flux::AA2, var::AA3, chunk_map::CMT, λc::AA4; alg::Symbol = :TemporalGP,
+    oversample_factor::Real = 1, smooth_factor::Real=1, verbose::Bool = false ) where {
+        T1<:Real, AA1<:AbstractVector{T1}, T2<:Real, AA2<:AbstractVector{T2}, T3<:Real, AA3<:AbstractVector{T3}, T4<:Real, AA4<:AbstractVector{T4},
+        CMT<:AbstractArray{UnitRange{Int64}} } #RT<:AbstractRange, AR<:AbstractArray{RT,1}, T<:Real, AV<:AbstractVector{T}, AAV<:AbstractArray{AV,1} }
+    @assert alg == :Linear || alg == :GP  || alg == :Sinc || alg == :TemporalGP # TODO: Eventually move to traits-based system?
+    num_chunks = length(chunk_map)
+    num_λ_per_chunk = minimum(length.(chunk_map))
+    flux_matrix = zeros(num_λ_per_chunk,num_chunks)
+    var_matrix = zeros(num_λ_per_chunk,num_chunks)
+    if (alg == :GP) && (num_λ_per_chunk>1024)
+        @error "To use a GP with more than 1024 points in a chunk, use a more efficient GP package, e.g., :TemporalGP."
+    end
+    if alg == :Sinc    # Setup workspace for Sync.  TODO: Put into functor
+        filter_size=23
+        kaiserB=13
+        sinc_filter = SincInterpolation.create_filter_curve(filter_size*21; filter_size=filter_size, kaiserB=kaiserB)
+    end
+
+   idx_start = 0
+   for c in 1:length(chunk_map)
+       idx_in = (idx_start+1):(idx_start+length(chunk_map[c]))
+       idx_out_begin = floor(Int,(idx_in[1]+idx_in[end])//2)-floor(Int,num_λ_per_chunk//2)
+       idx_out_end = idx_out_begin+num_λ_per_chunk-1
+       idx_out = idx_out_begin:idx_out_end
+       Δλ_in_chunk = λ[idx_out].-λc[c]
+       mean_flux_in_chunk = mean(flux[idx_out])
+       chunk_of_spectrum = ChuckOfSpectrum{eltype(λ),eltype(flux),eltype(var)}(view(λ,idx_out), view(flux,idx_out), view(var,idx_out))
+       Δv = 400  # TODO: Figure out good choice for Δv
+       Δλ = Δv /RvSpectML.speed_of_light_mps*λc[c]
+       if mean_flux_in_chunk > 0
+           if alg == :Linear
+               interp_chunk_to_grid_linear!(view(flux_matrix,:,c), view(var_matrix,:,c), chunk_of_spectrum, chunk_grid)
+           elseif alg == :Sinc
+               chunk_grid = range(λc[c]-(num_λ_per_chunk-1)//2*Δλ, stop=λc[c]+(num_λ_per_chunk-1)//2*Δλ, length=num_λ_per_chunk )
+               interp_chunk_to_grid_sinc!(view(flux_matrix,:,c), view(var_matrix,:,c), chunk_of_spectrum, chunk_grid, Filter=sinc_filter)
+           elseif alg == :GP
+               interp_chunk_to_grid_gp!(view(flux_matrix,:,c), view(var_matrix,:,c), chunk_of_spectrum, chunk_grid)
+           elseif alg == :TemporalGP
+               interp_chunk_to_grid_gp_temporal!(view(flux_matrix,:,c), view(var_matrix,:,c), chunk_of_spectrum, chunk_grid , use_logx=true, use_logy=false, smooth_factor=smooth_factor)
+           end
+       else  # no flux in chunk?!?
+           @warn "No flux in chunk " * string(c) * " at time " * string(t) * "."
+       end
+       idx_start += length(chunk_map[c])
+   end # for c
+   return flux_matrix
+    #flush(stdout)
+    #println("# mean flux pre-normalize = ", mean(mean_flux))
+    #=
+    idx_start = 0
+    for c in 1:length(chunk_grids)
+        idx = (idx_start+1):(idx_start+length(chunk_grids[c]))
+        mean_flux_in_chunk = mean(mean_flux[idx])
+        #println("Normalizing chunk ", c, " (",idx,") by ", mean_flux_in_chunk)
+        #dmeanfluxdlnλ[idx] .= calc_dfluxdlnlambda(vec(sum(view(flux_matrix,idx,:),dims=2)),vec(sum(view(var_matrix,idx,:), dims=2)) ) ./mean_flux_in_chunk
+        mean_flux[idx] ./= mean_flux_in_chunk
+        mean_var[idx] ./= mean_flux_in_chunk^2
+        #dfluxdlnλ[idx] ./= mean_flux_in_chunk
+        #d2fluxdlnλ2[idx] ./= mean_flux_in_chunk
+        dfluxdlnλ[idx] .= calc_dfluxdlnlambda(mean_flux[idx],view(λ_vec,idx))
+        d2fluxdlnλ2[idx] .= calc_d2fluxdlnlambda2(mean_flux[idx],view(λ_vec,idx))
+
+        #dmeanfluxdlnλ[idx] .= calc_dfluxdlnlambda(vec(sum(view(flux_matrix,idx,:),dims=2)),view(λ_vec,idx))  ./mean_flux_in_chunk
+        idx_start += length(chunk_grids[c])
+    end
+    =#
+    #println("# mean flux post-normalize = ", mean(mean_flux))
+    #flush(stdout)
+    #mean_flux /= num_obs
+    #mean_var .*= sqrt(oversample_factor)
+    #dmeanfluxdlnλ ./= num_obs
+    #return flux ( matrix=SpectralTimeSeriesCommonWavelengths(λ_vec,flux_matrix,var_matrix,chunk_map, Generic1D() ), mean_flux=mean_flux, mean_var=mean_var, deriv=dfluxdlnλ, deriv2=d2fluxdlnλ2 )
+end

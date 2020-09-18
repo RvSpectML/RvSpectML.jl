@@ -3,6 +3,10 @@
 Author: Eric Ford
 Created: August 2020
 """
+
+"""
+Module providing types and traits and customized functions for the HARPS-N Spectrograph.
+"""
 module HARPSN
 using RvSpectML
 using DataFrames, FITSIO
@@ -21,5 +25,8 @@ export metadata_symbols_default, metadata_strings_default
 #include("io.jl")
 export make_manifest, read_data, read_solar_data
 # read_header not exported to avoid conflict with FITSIO.read_header
+
+import ..RvSpectML: get_inst_module
+get_inst_module(::AnyHARPSN) = NEID
 
 end

@@ -1,7 +1,7 @@
 """
     Code for LineList types used by CCfs
 Author: Eric Ford
-Created: August 2019
+Created: August 2020
 """
 
 """A struct implementing a line list should be a subtype of AbstractLineList. """

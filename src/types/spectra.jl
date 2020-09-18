@@ -103,3 +103,13 @@ end
 function make_vec_metadata_from_spectral_timeseries(spec_arr::AA) where { AS<:AbstractSpectra, AA<:AbstractArray{AS,1} }
     map(s->s.metadata,spec_arr)
 end
+
+"""   make_spectral_time_series_common_wavelengths_with_selected_times( input, time_idx )
+Returns a SpectralTimeSeriesCommonWavelengths, retaining only those times and spectra specified by time_idx.
+"""
+function make_spectral_time_series_common_wavelengths_with_selected_times(input::STSCWT, time_idx::AbstractVector{T1} ) where { STSCWT<:AbstractSpectralTimeSeriesCommonWavelengths, T1<:Integer }
+    @assert minimum(time_idx) >= 1
+    @assert maximum(time_idx) <= size(input.flux,2)
+    metadata = length(input.metadata) == size(input.flux,2) ? input.metadata[time_idx] : MetadataT()
+    SpectralTimeSeriesCommonWavelengths(input.λ, input.flux[:,time_idx], input.var[:,time_idx], input.chunk_map, input.inst, metadata=metadata )
+end

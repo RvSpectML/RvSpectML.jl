@@ -4,7 +4,7 @@ Author: Michael Palumbo
 Created: December 2019
 Contact: mlp95@psu.edu
 Based on code by Alex Wise (aw@psu.edu)
-Refactors and optimized by Eric Ford
+Refactored and optimized by Eric Ford
 """
 
 """ Module for computing CCFs """
@@ -21,7 +21,7 @@ import ..RvSpectML: num_chunks
 const c_ms = 2.99782458e8    # m/s
 #const c_kms = 2.99782458e5   # km/s
 
-include("mask_shapes.jl")
+include("mask_shapes/mask_shapes.jl")
 export AbstractCCFMaskShape, TopHatCCFMask
 
 include("line_list.jl")

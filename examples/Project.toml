@@ -2,6 +2,7 @@
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Query = "1a8c2f83-1ff3-5112-b086-8aa67b057ba1"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 RvSpectML = "1f61ac2c-3a1c-440a-925a-2707197041c8"

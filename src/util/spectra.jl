@@ -6,6 +6,8 @@ Created: August 2020
 Contact: https://github.com/eford/
 """
 
+import NaNMath
+
 """
     apply_doppler_boost!(spectrum, doppler_factor) -> typeof(spectrum)
     apply_doppler_boost!(spectra, df) -> typeof(spectra)
@@ -49,19 +51,11 @@ end
 """  Calculate total SNR in (region of) spectra. """
 function calc_snr(flux::AbstractArray{T1},var::AbstractArray{T2}) where {T1<:Real, T2<:Real}
     @assert size(flux) == size(var)
-    sqrt(sum(flux.^2 ./ var))
+    sqrt(NaNMath.sum( flux.^2 ./ var))
 end
 
 function calc_snr(flux::Real,var::Real)
     flux / sqrt(var)
-end
-
-""" Calc normalization of spectra based on average flux in a ChunkList. """
-function calc_normalization(chunk_list::ACL) where { ACL<:AbstractChunkList}
-    total_flux = sum(sum(Float64.(chunk_list.data[c].flux))
-                        for c in 1:length(chunk_list) )
-    num_pixels = sum( length(chunk_list.data[c].flux) for c in 1:length(chunk_list) )
-    scale_fac = num_pixels / total_flux
 end
 
 """ Normalize spectrum, multiplying fluxes by scale_fac. """
@@ -85,7 +79,6 @@ function normalize_spectra!(chunk_timeseries::ACLT, spectra::AS) where { ACLT<:A
     return chunk_timeseries
 end
 
-
 """ Return the largest minimum wavelength and smallest maximum wavelength across an array of spectra.
 Calls get_λ_range(AbstractSpectra2D) that should be specialized for each instrument. """
 function get_λ_range(data::ACLT) where { CLT<:AbstractSpectra, ACLT<:AbstractArray{CLT} }
@@ -96,11 +89,23 @@ function get_λ_range(data::ACLT) where { CLT<:AbstractSpectra, ACLT<:AbstractAr
 end
 
 function discard_large_metadata(data::Union{T1,T2}) where { T1<:AbstractChunkListTimeseries, AS<:AbstractSpectra, T2<:AbstractArray{AS} }
-    discard_blaze(data)
-    discard_continuum(data)
-    discard_tellurics(data)
-    discard_pixel_mask(data)
-    discard_excalibur_mask(data)
+    if typeof(data.inst) <: AnyEXPRES
+        discard_blaze(data)
+        discard_continuum(data)
+        discard_tellurics(data)
+        discard_pixel_mask(data)
+        discard_excalibur_mask(data)
+    end
+    if typeof(data.inst) <: AnyNEID
+        #discard_blaze(data)
+        #discard_continuum(data)
+        #discard_tellurics(data)
+        #discard_pixel_mask(data)
+        #discard_excalibur_mask(data)
+    end
+    if typeof(data.inst) <: AnyTheoreticalInstrument
+        # Nothing to do
+    end
 end
 
 function discard_blaze(metadata::Dict{Symbol,Any} )

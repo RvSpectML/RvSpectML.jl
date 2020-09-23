@@ -67,7 +67,7 @@ function make_manifest(target_subdir::String, Inst::Module; paths_to_search::Uni
    return df_files
 end
 
-"""   code_toread_param_jl( path_to_search )
+"""   code_to_include_param_jl( path_to_search )
 
 Returns a Code object.  After `res = code_toread_param_jl( path_to_search )`,
 execute `eval(res)` to actually include the param.jl file.

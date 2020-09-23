@@ -164,7 +164,7 @@ Convenience function to find lines in one chunk of spectrum.
 - line_fit_list
 """
 function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPlan = LineFinderPlan(),
-                              chunk_id::Integer = 0, keep_bad_fits::Bool = false, verbose::Bool = false) where {T <:Real}
+                              chunk_id::Integer = 0, obs_id::Integer = 0, keep_bad_fits::Bool = false, verbose::Bool = false) where {T <:Real}
 
   function fit_line(idx::UnitRange)
     #RvSpectML.LineFinder.fit_line(view(chunk.λ,idx), view(flux,idx), view(chunk.var, idx) )   # some bug in this version of function causes non-convergence
@@ -181,6 +181,7 @@ function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPla
   line_candidates = find_line_candidates_in_chunk(chunk, deriv2_smooth, plan=plan)
   if verbose    println("# Found ", size(line_candidates,1), " line candidates.")   end
   if chunk_id != 0    line_candidates[!,:chunk_id] .= chunk_id  end
+  if obs_id != 0      line_candidates[!,:obs_id] .= obs_id      end
   #line_candidates[!,:pixels] = line_candidates[!,:pixels]
   line_candidates[!,:fit_min_λ] = chunk.λ[first.(line_candidates[!,:pixels])]
   line_candidates[!,:fit_max_λ] = chunk.λ[ last.(line_candidates[!,:pixels])]
@@ -208,6 +209,7 @@ function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPla
   line_candidates[!,:λ_min_flux] = line_candidates[!,:λ_near_center].-line_candidates[!,:dfdlnλ_near_center]./(line_candidates[!,:df2dlnλ2_near_center])
   line_candidates[!,:dfdlnλ_min_flux] = line_candidates[!,:dfdlnλ_near_center].+log.(line_candidates[!,:λ_min_flux]./line_candidates[!,:λ_near_center]).*line_candidates[!,:df2dlnλ2_near_center]
 
+
   if ! keep_bad_fits
     # Avoid "lines" at edge of chunk, either due to contamination or GP fit using zero mean
     line_candidates = line_candidates |> @filter(minimum(_.pixels)>1) |> @filter(maximum(_.pixels)<length(flux)) |> #DataFrame
@@ -229,8 +231,8 @@ Convenience function to find lines in each chunk of a spectrum.
 # Return:
 - line_list
 """
-function find_lines_in_chunklist(chunk_list::AbstractChunkList ; plan::LineFinderPlan = LineFinderPlan() )
-  mapreduce(i->find_lines_in_chunk(chunk_list[i], plan=plan, chunk_id=i), append!, 1:length(chunk_list) )
+function find_lines_in_chunklist(chunk_list::AbstractChunkList ; obs_id::Integer = 0, plan::LineFinderPlan = LineFinderPlan() )
+  mapreduce(i->find_lines_in_chunk(chunk_list[i], plan=plan, chunk_id=i, obs_id=obs_id), append!, 1:length(chunk_list) )
 end
 
 """  find_lines_in_chunklist_timeseries( chunklist_timeseries, line_list )
@@ -244,7 +246,7 @@ Convenience function to find lines in each chunk of each spectrum in a timeserie
 """
 function find_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries ; plan::LineFinderPlan = LineFinderPlan() )
     #@threaded
-    map(cl->find_lines_in_chunklist(cl, plan=plan),clt.chunk_list)
+    map(cl->find_lines_in_chunklist(clt.chunk_list[cl], obsid=cl, plan=plan),1:num_obs(clt))
 end
 
 
@@ -308,7 +310,7 @@ end
 
 function fit_all_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, lines::DataFrame ; plan::LineFinderPlan = LineFinderPlan(), show_trace::Bool = false )
   @assert size(lines,1) >= 2
-  line_idx = 1
+  line_idx::Int64 = 1
   λmin = lines[line_idx,:fit_min_λ]
   λmax = lines[line_idx,:fit_max_λ]
   chid = lines[line_idx,:chunk_id]

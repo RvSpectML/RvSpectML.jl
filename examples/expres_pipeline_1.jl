@@ -162,7 +162,7 @@ if make_plot(pipeline_plan, :ccf_orders) && make_plot(pipeline_plan, :movie)
       ylabel!("Observation ID")
       title!("CCF-<CCF> for order=" * string(order_labels[ord]))
    end
-   gif(anim, joinpath(output_dir,target_subdir * "_ccf_order_movie=.gif")), fps = 5)
+   gif(anim, joinpath(output_dir,target_subdir * "_ccf_order_movie=.gif"), fps = 5)
 end
 
 if need_to(pipeline_plan,:scalpels)

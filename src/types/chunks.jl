@@ -57,6 +57,10 @@ function ChuckOfSpectrum(spectra::AS, pixels::AUR) where { AS<:AbstractSpectra1D
 end
 
 
+get_order_index(chunk<:AbstractChuckOfSpectrum) = chunk.flux.indices[2]
+get_pixels_range(chunk<:AbstractChuckOfSpectrum) = chunk.flux.indices[1]
+
+
 
 #AbstractSpectra2D
 
@@ -74,7 +78,8 @@ struct ChunkList{CT<:AbstractChuckOfSpectrum, AT<:AbstractArray{CT,1} } <: Abstr
     =#
 end
 
-import Base.getindex, Base.setindex!
+import Base.getindex, Base.setindex!, Base.append!
+
 """ Allow direct access to data, an AbstractArray of ChunkOfSpectrum's via [] operator """
 function getindex(x::CLT,idx) where {CLT<:AbstractChunkList}
     x.data[idx]
@@ -84,6 +89,11 @@ end
 function setindex!(x::CLT, idx, y::CLT) where {CLT<:AbstractChunkList}
     x.data[idx] .= y.data[idx]
 end
+
+function append!(x::CLT, y::CLT) where {CLT<:AbstractChunkList}
+    append!(x.data,y.data)
+end
+
 
 abstract type AbstractChunkListTimeseries end
 
@@ -111,8 +121,10 @@ import Base.length
 """ Return number of chunks in ChunkList """
 length(cl::CLT) where {CLT<:AbstractChunkList} = length(cl.data)
 
-""" Return number of ChunkLists in a ChunkListTimeseries """
+""" Return number of times/ChunkLists in a ChunkListTimeseries """
 length(clts::ACLT) where {ACLT<:AbstractChunkListTimeseries} = length(clts.chunk_list)
+""" Return number of times/ChunkLists in a ChunkListTimeseries """
+num_times(clts::ACLT) where {ACLT<:AbstractChunkListTimeseries} = length(clts.chunk_list)
 
 """ Number of chunks in first chunk_list in chunk_list_timeseries. """
 num_chunks(chunk_list_timeseries::ACLT) where {ACLT<:AbstractChunkListTimeseries} = length(first(chunk_list_timeseries.chunk_list))

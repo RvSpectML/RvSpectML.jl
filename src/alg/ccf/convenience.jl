@@ -133,9 +133,9 @@ function calc_ccf_chunklist_timeseries(clt::AbstractChunkListTimeseries,
           var_list[chid] = mapreduce(obsid->clt.chunk_list[obsid].data[chid].var,+, 1:length(clt) )
           var_list[chid] ./= length(clt)
           #var_list[chid] = vec(median(mapreduce(obsid->clt.chunk_list[obsid].data[chid].var,hcat, 1:length(clt) ),dims=2))
+            #return var_list
       end
   end
-
   if use_pixel_vars
       return @threaded mapreduce(obsid->calc_ccf_chunklist(clt.chunk_list[obsid], var_list, plan_for_chunk,assume_sorted=true, use_pixel_vars=true),hcat, 1:length(clt) )
   else

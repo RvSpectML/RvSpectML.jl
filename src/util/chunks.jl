@@ -99,9 +99,10 @@ function make_chunk_list(spectra::AS, line_list::DataFrame; rv_shift::Real = 0, 
     @assert hasproperty(line_list,:lambda_hi)
     boost_factor = calc_doppler_factor(rv_shift)
     if rv_shift != 0
-        @warn("I haven't tested this yet, especially the sign.")  # TODO 
+        @warn("I haven't tested this yet, especially the sign.")  # TODO
     end
-    ChunkList(map(row->ChuckOfSpectrum(spectra,find_line_best(row.lambda_lo*boost_factor,row.lambda_hi*boost_factor,spectra,Δ=Δ)), eachrow(line_list) ))
+    cl = ChunkList(map(row->ChuckOfSpectrum(spectra,find_line_best(row.lambda_lo*boost_factor,row.lambda_hi*boost_factor,spectra,Δ=Δ)), eachrow(line_list) ))
+
 end
 
 function make_chunk_list_timeseries(spectra::AS,chunk_list_df::DataFrame; rv_shift::Real = 0) where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} }
@@ -129,12 +130,81 @@ function extract_chunk_list_timeseries_for_order(clt::AbstractChunkListTimeserie
     return output
 end
 
+#=
 function make_order_list_timeseries(spectra::AS) #= , order_list::AOL ) =# where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} #=, CLT<:AbstractChunkList, AOL::AbstractArray{CLT,1} =# }
     times = map(s->s.metadata[:bjd],spectra)
     inst = first(spectra).inst
     metadata = make_vec_metadata_from_spectral_timeseries(spectra)
     order_list = map( spec->RvSpectML.make_orders_into_chunks(spec,inst), spectra)
     chunk_list_timeseries = ChunkListTimeseries(times, order_list, inst=first(spectra).inst, metadata=metadata )
+end
+=#
+
+function make_order_list_timeseries(spectra::AS; orders_to_use = orders_to_use_default(spectra.inst) ) #= , order_list::AOL ) =# where {ST<:AbstractSpectra, AS<:AbstractArray{ST,1} #=, CLT<:AbstractChunkList, AOL::AbstractArray{CLT,1} =# }
+    times = map(s->s.metadata[:bjd],spectra)
+    inst = first(spectra).inst
+    metadata = make_vec_metadata_from_spectral_timeseries(spectra)
+    order_list = map( spec->RvSpectML.make_orders_into_chunks(spec,inst, orders_to_use=orders_to_use), spectra)
+    chunk_list_timeseries = ChunkListTimeseries(times, order_list, inst=first(spectra).inst, metadata=metadata )
+end
+
+
+function make_chunk_list_expr(spectra::AS, range_list::DataFrame ) where { AS<:AbstractSpectra }
+    @assert hasproperty(range_list,:lambda_lo)
+    @assert hasproperty(range_list,:lambda_hi)
+    cl = typeof(ChuckOfSpectrum(spectra,1,1:size(spectra.flux,1)))[]
+    for row in eachrow(range_list)
+        orders = find_orders_in_range(row.lambda_lo,row.lambda_hi, spectra.λ)
+        if length(orders) == 1
+            order = orders[1]
+            pixels = find_cols_to_fit(spectra.λ[:,order],row.lambda_lo,row.lambda_hi)
+            if 1 <= first(pixels) <= size(spectra.λ,1) && 1 <= last(pixels) <= size(spectra.λ,1) &&  # valid location
+                calc_snr(spectra.flux[pixels,order],spectra.var[pixels,order]) > 0     # not just NaN's
+                println("# Found one order (", order, ") for range ", row.lambda_lo, " - ", row.lambda_hi )
+                push!(cl, ChuckOfSpectrum(spectra,order,pixels) )
+            else
+                println("# Found one order (", order, ") for range ", row.lambda_lo, " - ", row.lambda_hi, " but not valid or all NaNs.")
+                continue
+            end
+        elseif length(orders) > 1
+            pixels = map(ord->find_cols_to_fit(spectra.λ[:,ord],row.lambda_lo,row.lambda_hi), orders)
+            scores = map( i->calc_snr(spectra.flux[pixels[i],orders[i]],spectra.var[pixels[i],orders[i]]), 1:length(orders) )
+            idx_best = findmax(scores)[2]
+            println("# Found ", length(orders), " orders for range ", row.lambda_lo, " - ", row.lambda_hi, " picking ", orders[idx_best])
+            push!(cl, ChuckOfSpectrum(spectra,orders[idx_best],pixels[idx_best]) )
+            idx_all = findall(scores)
+
+        else # length(orders) == 0
+            #println("# Found no orders for range ", row.lambda_lo, " - ", row.lambda_hi )
+
+        end
+    end
+    return ChunkList(cl)
+end
+
+""" Return list of all orders that contain a pixel with wavelength lambda """
+function find_orders_with_line(goal::Real,lambda::AbstractArray{T,2}) where T<:Real
+   order_min(i) = lambda[1,i]
+   order_max(i) = lambda[end,i]
+   for i in 1:5
+       println("# i= ",i," order_min= ",order_min(i)," order_max= ",order_max(i), "   goal= ",goal)
+   end
+   flush(stdout)
+   findall(i->order_min(i)<=goal<=order_max(i), 1:size(lambda,2) )
+end
+
+""" Return list of all orders that contain all pixels with wavelengths between goal_lo and goal_hi """
+function find_orders_with_line(goal_lo::Real,goal_hi::Real,lambda::AbstractArray{T,2}) where T<:Real
+   order_min(i) = lambda[1,i]
+   order_max(i) = lambda[end,i]
+   findall(i->order_min(i)<=goal_lo && goal_hi<=order_max(i), 1:size(lambda,2) )
+end
+
+""" Return list of all orders that include any wavelengths between goal_lo and goal_hi """
+function find_orders_in_range(goal_lo::Real,goal_hi::Real,lambda::AbstractArray{T,2}) where T<:Real
+   order_min(i) = lambda[1,i]
+   order_max(i) = lambda[end,i]
+   findall(i-> (goal_lo<=order_min(i)<=goal_hi) || (goal_lo<=order_max(i)<=goal_hi), 1:size(lambda,2) )
 end
 
 
@@ -145,13 +215,19 @@ const Δλoλ_edge_pad_default = 0*(1.8*1000/speed_of_light_mps)
 """ Return a range of columns indices with wavelengths within Δ of line_center """
 function find_cols_to_fit(wavelengths::AbstractArray{T,1}, line_center::Real; Δ::Real = Δλoλ_fit_line_default) where T<:Real
     @assert Δ >= zero(Δ)
-    findfirst(x->x>=line_center*(1-Δ),wavelengths):findlast(x->x<=line_center*(1+Δ),wavelengths)
+    first = findfirst(x->x>=line_center*(1-Δ),wavelengths)
+    last = findlast(x->x<=line_center*(1+Δ),wavelengths)
+    if isnothing(first) || isnothing(last)   return 0:0   end
+    return first:last
 end
 
 """ Return a range of columns indices with wavelengths between line_lo and line_hi """
 function find_cols_to_fit(wavelengths::AbstractArray{T,1}, line_lo::Real, line_hi::Real; Δ::Real = Δλoλ_edge_pad_default) where T<:Real
     @assert line_lo < line_hi
-    findfirst(x->x>=line_lo*(1-Δ),wavelengths):findlast(x->x<=line_hi*(1+Δ),wavelengths)
+    first = findfirst(x->x>=line_lo*(1-Δ),wavelengths)
+    last = findlast(x->x<=line_hi*(1+Δ),wavelengths)
+    if isnothing(first) || isnothing(last)   return 0:0   end
+    return first:last
 end
 
 """ Return list of all orders that contain a pixel with wavelength lambda """
@@ -185,6 +261,7 @@ function findall_line(goal::Real,lambda::AbstractArray{T1,2},var::AbstractArray{
     @assert length(orders) >= 1
     locs = map(o->(pixels=find_cols_to_fit(lambda[:,o],goal,Δ=Δ),order=o), orders)
     locs_good_idx = findall(t->!any(isnan.(var[t[1],t[2]])),locs)
+    #locs_good_idx = findall(t-> !(first(t.pixels)==0 || last(t.pixels)==0 || t.order==0) && (!any(isnan.(var[t.pixels,t.order]))) ,locs)
     if length(locs) != length(locs_good_idx)
         locs = locs[locs_good_idx]
     end
@@ -203,7 +280,8 @@ function findall_line(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,2},v
     flush(stdout)
     @assert length(orders) >= 1
     locs = map(o->(pixels=find_cols_to_fit(lambda[:,o],goal_lo, goal_hi,Δ=Δ),order=o), orders)
-    locs_good_idx = findall(t->!any(isnan.(var[t[1],t[2]])),locs)
+    #locs_good_idx = findall(t->!any(isnan.(var[t[1],t[2]])),locs)
+    locs_good_idx = findall(t-> !(first(t.pixels)==0 || last(t.pixels)==0 || t.order==0) && (!any(isnan.(var[t.pixels,t.order]))) ,locs)
     if length(locs) != length(locs_good_idx)
         locs = locs[locs_good_idx]
     end
@@ -216,6 +294,7 @@ function findall_line(goal::Real,lambda::AbstractArray{T1,1},var::AbstractArray{
     @assert Δ >= zero(Δ)
     locs = find_cols_to_fit(lambda,goal,Δ=Δ)
     locs_good_idx = findall(t->!any(isnan.(var[t])),locs)
+    #locs_good_idx = findall(t-> !(first(t.pixels)==0 || last(t.pixels)==0 || t.order==0) && (!any(isnan.(var[t.pixels,t.order]))) ,locs)
     if length(locs) != length(locs_good_idx)
         locs = locs[locs_good_idx]
     end
@@ -232,7 +311,8 @@ function findall_line(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,1},v
     flush(stdout)
     =#
     locs = find_cols_to_fit(lambda,goal_lo, goal_hi,Δ=Δ)
-    locs_good_idx = findall(t->!any(isnan.(var[t])),locs)
+    locs_good_idx = findall(t-> !any(isnan.(var[t])) ,locs)
+    #locs_good_idx = findall(t-> !(first(t.pixels)==0 || last(t.pixels)==0 || t.order==0) && (!any(isnan.(var[t.pixels,t.order]))) ,locs)
     if length(locs) != length(locs_good_idx)
         locs = locs[locs_good_idx]
     end
@@ -273,7 +353,7 @@ end
 
 function find_line_best(goal::Real,lambda::AbstractArray{T1,1},flux::AbstractArray{T2,1},var::AbstractArray{T3,1}; Δ::Real = Δλoλ_fit_line_default) where {T1<:Real, T2<:Real, T3<:Real}
     cols = find_cols_to_fit(lambda,goal, Δ=Δ)
-    @assert(!any(isnan.(var[cols])))
+    @assert( ( first(cols)==0 && last(cols)==0)  || !any(isnan.(var[cols])) )
     return cols
     #=
     locs = findall_line(goal,lambda,var,Δ=Δ)
@@ -288,8 +368,7 @@ end
 
 function find_line_best(goal_lo::Real,goal_hi::Real, lambda::AbstractArray{T1,1},flux::AbstractArray{T2,1},var::AbstractArray{T3,1}; Δ::Real = Δλoλ_edge_pad_default) where {T1<:Real, T2<:Real, T3<:Real}
     cols = find_cols_to_fit(lambda,goal_lo, goal_hi, Δ=Δ)
-    @assert(!any(isnan.(var[cols])))
-
+    @assert( ( first(cols)==0 && last(cols)==0)  || !any(isnan.(var[cols])) )
     return cols
     #=
     locs = findall_line(goal_lo,goal_hi,lambda,var,Δ=Δ)
@@ -434,4 +513,36 @@ end
 
 function find_pixels_for_line_in_chunklist( chunk_list::AbstractChunkList, λ_min::Real, λ_max::Real, chunk_id::Integer)
   return (chunk_idx=chunk_id, pixels=find_pixels_for_line_in_chunk(chunk_list.data[chunk_id], λ_min, λ_max) )
+end
+
+
+
+""" Calc normalization of chunk based on average flux in a ChunkOfSpectrum. """
+function calc_normalization(chunk::AC) where { AC<:AbstractChuckOfSpectrum}
+    total_flux = NaNMath.sum(Float64.(chunk.flux))
+    num_pixels = length(flux)
+    scale_fac = num_pixels / total_flux
+end
+
+""" Calc normalization of chunk based on average flux in a ChunkOfSpectrum using inverse variance weighting. """
+function calc_normalization_var_weighted(chunk::AC) where { AC<:AbstractChuckOfSpectrum}
+    sum_weighted_flux = NaNMath.sum(Float64.(chunk.flux) ./ chunk.var )
+    sum_weights = NaNMath.sum(1.0 ./ chunk.var)
+    scale_fac = sum_weights / sum_weighted_flux
+end
+
+""" Calc normalization of spectra based on average flux in a ChunkList. """
+function calc_normalization(chunk_list::ACL) where { ACL<:AbstractChunkList}
+    total_flux = NaNMath.sum(NaNMath.sum(Float64.(chunk_list.data[c].flux))
+                        for c in 1:length(chunk_list) )
+    num_pixels = sum( length(chunk_list.data[c].flux) for c in 1:length(chunk_list) )
+    scale_fac = num_pixels / total_flux
+end
+
+""" Calc normalization of spectra based on average flux in a ChunkList using inverse variance weighting. """
+function calc_normalization_var_weighted(chunk_list::ACL) where { ACL<:AbstractChunkList}
+    total_flux = NaNMath.sum(NaNMath.sum(Float64.(chunk_list.data[c].flux))
+                        for c in 1:length(chunk_list) )
+    num_pixels = sum( length(chunk_list.data[c].flux) for c in 1:length(chunk_list) )
+    scale_fac = num_pixels / total_flux
 end

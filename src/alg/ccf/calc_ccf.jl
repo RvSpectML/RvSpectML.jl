@@ -342,13 +342,13 @@ function project_mask!(projection::A2, λs::A1, plan::PlanT ; shift_factor::Real
                     p_left_edge_of_current_line = p                 # Mark the starting pixel of the line in case the lines overlap
                     p+=1                   # Move to next pixel
                     λsle_cur = λsre_cur   # Current pixel's left edge
-                    λsre_cur = p<length(projection) ? 0.5*(λs[p]+λs[p+1]) : λs[p]+0.5*(λs[p]-λs[p-1])    # Current pixel's left edge
+                    λsre_cur = p<length(projection) ? 0.5*(λs[p]+λs[p+1]) : λs[p]+0.5*(λs[p]-λs[p-1])    # Current pixel's right edge
 
                 end
             else   # ALl of pixel is still to left of beginning of mask for this line.
                 p+=1
                 λsle_cur = λsre_cur   # Current pixel's left edge
-                λsre_cur = p<length(projection) ? 0.5*(λs[p]+λs[p+1]) : λs[p]+0.5*(λs[p]-λs[p-1])    # Current pixel's left edge
+                λsre_cur = p<length(projection) ? 0.5*(λs[p]+λs[p+1]) : λs[p]+0.5*(λs[p]-λs[p-1])    # Current pixel's right edge
             end
         else
             if λsre_cur > mask_hi               # Right edge of this pixel moved past the edge of the current line's mask
@@ -365,6 +365,8 @@ function project_mask!(projection::A2, λs::A1, plan::PlanT ; shift_factor::Real
                     mask_weight = plan.line_list.weight[m]
                     if mask_lo < λsle_cur       # If the lines overlap, we may have moved past the left edge of the new line. In that case go back to the left edge of the previous line.
                         p = p_left_edge_of_current_line
+                        λsle_cur = p>1 ? 0.5*(λs[p]+λs[p-1]) : λs[p]-0.5*(λs[p+1]-λs[p])   # Current pixel's left edge
+                        λsre_cur = 0.5*(λs[p]+λs[p+1])   # Current pixel's right edge
                     end
 
                 else                            # We're done with all lines, can return early
@@ -378,7 +380,7 @@ function project_mask!(projection::A2, λs::A1, plan::PlanT ; shift_factor::Real
                 projection[p] += frac_of_psf_in_v_pixel * one_over_delta_z_pixel * mask_weight
                 p += 1                          # move to next pixel
                 λsle_cur = λsre_cur   # Current pixel's left edge
-                λsre_cur = p<length(projection) ? 0.5*(λs[p]+λs[p+1]) : λs[p]+0.5*(λs[p]-λs[p-1])    # Current pixel's left edge
+                λsre_cur = p<length(projection) ? 0.5*(λs[p]+λs[p+1]) : λs[p]+0.5*(λs[p]-λs[p-1])    # Current pixel's right edge
             end
         end
         if p>length(projection) break end       # We're done with all pixels in this chunk.

@@ -41,7 +41,7 @@ function make_orders_into_chunks(spectra::AS;
     #@assert minimum(pixels_to_use) >= min_pixel_in_order(inst)
     #@assert maximum(pixels_to_use) <= max_pixel_in_order(inst)
     ChunkList( map(order_idx->
-                    ChuckOfSpectrum(spectra,(pixels=pixels_to_use[order_idx],order=orders_to_use[order_idx])),
+                    ChunkOfSpectrum(spectra,(pixels=pixels_to_use[order_idx],order=orders_to_use[order_idx])),
                     1:length(orders_to_use) ))
 end
 
@@ -101,7 +101,7 @@ function make_chunk_list(spectra::AS, line_list::DataFrame; rv_shift::Real = 0, 
     if rv_shift != 0
         @warn("I haven't tested this yet, especially the sign.")  # TODO
     end
-    cl = ChunkList(map(row->ChuckOfSpectrum(spectra,find_line_best(row.lambda_lo*boost_factor,row.lambda_hi*boost_factor,spectra,Δ=Δ)), eachrow(line_list) ))
+    cl = ChunkList(map(row->ChunkOfSpectrum(spectra,find_line_best(row.lambda_lo*boost_factor,row.lambda_hi*boost_factor,spectra,Δ=Δ)), eachrow(line_list) ))
 
 end
 
@@ -152,7 +152,7 @@ end
 function make_chunk_list_expr(spectra::AS, range_list::DataFrame ) where { AS<:AbstractSpectra }
     @assert hasproperty(range_list,:lambda_lo)
     @assert hasproperty(range_list,:lambda_hi)
-    cl = typeof(ChuckOfSpectrum(spectra,1,1:size(spectra.flux,1)))[]
+    cl = typeof(ChunkOfSpectrum(spectra,1,1:size(spectra.flux,1)))[]
     for row in eachrow(range_list)
         orders = find_orders_in_range(row.lambda_lo,row.lambda_hi, spectra.λ)
         if length(orders) == 1
@@ -161,7 +161,7 @@ function make_chunk_list_expr(spectra::AS, range_list::DataFrame ) where { AS<:A
             if 1 <= first(pixels) <= size(spectra.λ,1) && 1 <= last(pixels) <= size(spectra.λ,1) &&  # valid location
                 calc_snr(spectra.flux[pixels,order],spectra.var[pixels,order]) > 0     # not just NaN's
                 println("# Found one order (", order, ") for range ", row.lambda_lo, " - ", row.lambda_hi )
-                push!(cl, ChuckOfSpectrum(spectra,order,pixels) )
+                push!(cl, ChunkOfSpectrum(spectra,order,pixels) )
             else
                 println("# Found one order (", order, ") for range ", row.lambda_lo, " - ", row.lambda_hi, " but not valid or all NaNs.")
                 continue
@@ -171,7 +171,7 @@ function make_chunk_list_expr(spectra::AS, range_list::DataFrame ) where { AS<:A
             scores = map( i->calc_snr(spectra.flux[pixels[i],orders[i]],spectra.var[pixels[i],orders[i]]), 1:length(orders) )
             idx_best = findmax(scores)[2]
             println("# Found ", length(orders), " orders for range ", row.lambda_lo, " - ", row.lambda_hi, " picking ", orders[idx_best])
-            push!(cl, ChuckOfSpectrum(spectra,orders[idx_best],pixels[idx_best]) )
+            push!(cl, ChunkOfSpectrum(spectra,orders[idx_best],pixels[idx_best]) )
             idx_all = findall(scores)
 
         else # length(orders) == 0
@@ -474,7 +474,7 @@ function filter_bad_chunks(chunk_list_timeseries::ACLT; verbose::Bool = false) w
 end
 
 """ Find pixels included in a range of wavelengths """
-function find_pixels_for_line_in_chunk( chunk::AbstractChuckOfSpectrum, λ_min::Real, λ_max::Real )# ; plan::LineFinderPlan = LineFinderPlan() )
+function find_pixels_for_line_in_chunk( chunk::AbstractChunkOfSpectrum, λ_min::Real, λ_max::Real )# ; plan::LineFinderPlan = LineFinderPlan() )
   idx_lo = searchsortedfirst(chunk.λ, λ_min, by=x->x>=λ_min)
   idx_tmp = searchsortedlast(chunk.λ[idx_lo:end], λ_max, by=x->x<=λ_max, rev=true)
   idx_hi = idx_lo + idx_tmp - 1
@@ -518,14 +518,14 @@ end
 
 
 """ Calc normalization of chunk based on average flux in a ChunkOfSpectrum. """
-function calc_normalization(chunk::AC) where { AC<:AbstractChuckOfSpectrum}
+function calc_normalization(chunk::AC) where { AC<:AbstractChunkOfSpectrum}
     total_flux = NaNMath.sum(Float64.(chunk.flux))
     num_pixels = length(flux)
     scale_fac = num_pixels / total_flux
 end
 
 """ Calc normalization of chunk based on average flux in a ChunkOfSpectrum using inverse variance weighting. """
-function calc_normalization_var_weighted(chunk::AC) where { AC<:AbstractChuckOfSpectrum}
+function calc_normalization_var_weighted(chunk::AC) where { AC<:AbstractChunkOfSpectrum}
     sum_weighted_flux = NaNMath.sum(Float64.(chunk.flux) ./ chunk.var )
     sum_weights = NaNMath.sum(1.0 ./ chunk.var)
     scale_fac = sum_weights / sum_weighted_flux

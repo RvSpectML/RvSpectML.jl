@@ -1,64 +1,64 @@
 """
-Code declaring ChuckOfSpectrum, ChunkList, ChunkListTimeseries, and their abstract versions.
+Code declaring ChunkOfSpectrum, ChunkList, ChunkListTimeseries, and their abstract versions.
 
 Author: Eric Ford
 Created: August 2020
 """
 
 """ Abstract type for any ChunkOfSpectrum """
-abstract type AbstractChuckOfSpectrum end
+abstract type AbstractChunkOfSpectrum end
 
-""" ChuckOfSpectrum for views into Spectra1DBasic or Spectra2DBasic """
-struct ChuckOfSpectrum{T1<:Real,T2<:Real,T3<:Real,AA1<:AbstractArray{T1,1},AA2<:AbstractArray{T2,1},AA3<:AbstractArray{T3,1}} <: AbstractChuckOfSpectrum
+""" ChunkOfSpectrum for views into Spectra1DBasic or Spectra2DBasic """
+struct ChunkOfSpectrum{T1<:Real,T2<:Real,T3<:Real,AA1<:AbstractArray{T1,1},AA2<:AbstractArray{T2,1},AA3<:AbstractArray{T3,1}} <: AbstractChunkOfSpectrum
     λ::AA1
     flux::AA2
     var::AA3
 end
 
-function ChuckOfSpectrum{T1,T2,T3}(λ::A1, flux::A2, var::A3) where {  T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,1}, A2<:AbstractArray{T2,1}, A3<:AbstractArray{T3,1} }
+function ChunkOfSpectrum{T1,T2,T3}(λ::A1, flux::A2, var::A3) where {  T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,1}, A2<:AbstractArray{T2,1}, A3<:AbstractArray{T3,1} }
     @assert size(λ) == size(flux)
     @assert size(λ) == size(var)
     min_pixels_in_chunk = 3
     max_pixels_in_chunk = 10000
     @assert min_pixels_in_chunk <= length(λ) <= max_pixels_in_chunk
-    ChuckOfSpectrum{eltype(λ),eltype(flux),eltype(var),typeof(λ),typeof(flux),typeof(var)}(λ,flux,var)
+    ChunkOfSpectrum{eltype(λ),eltype(flux),eltype(var),typeof(λ),typeof(flux),typeof(var)}(λ,flux,var)
 end
 
-function ChuckOfSpectrum(λ::A1, flux::A2, var::A3, order::Integer, pixels::AUR) where {  T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2}, AUR<:AbstractUnitRange }
+function ChunkOfSpectrum(λ::A1, flux::A2, var::A3, order::Integer, pixels::AUR) where {  T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2}, AUR<:AbstractUnitRange }
     @assert size(λ) == size(flux)
     @assert size(λ) == size(var)
     @assert 1 <= order <= size(λ,2)
     @assert 1 <= first(pixels) < last(pixels) <= size(λ,1)
-    ChuckOfSpectrum{T1,T2,T3}(view(λ,pixels,order),view(flux,pixels,order),view(var,pixels,order))
+    ChunkOfSpectrum{T1,T2,T3}(view(λ,pixels,order),view(flux,pixels,order),view(var,pixels,order))
 end
 
-function ChuckOfSpectrum(λ::A1, flux::A2, var::A3, pixels::AUR) where {  T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,1}, A2<:AbstractArray{T2,1}, A3<:AbstractArray{T3,1}, AUR<:AbstractUnitRange }
+function ChunkOfSpectrum(λ::A1, flux::A2, var::A3, pixels::AUR) where {  T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,1}, A2<:AbstractArray{T2,1}, A3<:AbstractArray{T3,1}, AUR<:AbstractUnitRange }
     @assert size(λ) == size(flux)
     @assert size(λ) == size(var)
     @assert 1 <= first(pixels) < last(pixels) <= size(λ,1)
-    ChuckOfSpectrum{T1,T2,T3}(view(λ,pixels),view(flux,pixels),view(var,pixels))
+    ChunkOfSpectrum{T1,T2,T3}(view(λ,pixels),view(flux,pixels),view(var,pixels))
 end
 
 
-function ChuckOfSpectrum(λ::A1, flux::A2, var::A3, loc::NamedTuple{(:pixels, :order),Tuple{AUR,I1}}) where {  T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2}, AUR<:AbstractUnitRange, I1<:Integer }
-    ChuckOfSpectrum(λ,flux,var,loc.order,loc.pixels)
+function ChunkOfSpectrum(λ::A1, flux::A2, var::A3, loc::NamedTuple{(:pixels, :order),Tuple{AUR,I1}}) where {  T1<:Real, T2<:Real, T3<:Real, A1<:AbstractArray{T1,2}, A2<:AbstractArray{T2,2}, A3<:AbstractArray{T3,2}, AUR<:AbstractUnitRange, I1<:Integer }
+    ChunkOfSpectrum(λ,flux,var,loc.order,loc.pixels)
 end
 
-function ChuckOfSpectrum(spectra::AS, order::Integer, pixels::AUR) where { AS<:AbstractSpectra2D, AUR<:AbstractUnitRange }
-    ChuckOfSpectrum(spectra.λ,spectra.flux,spectra.var,order,pixels)
+function ChunkOfSpectrum(spectra::AS, order::Integer, pixels::AUR) where { AS<:AbstractSpectra2D, AUR<:AbstractUnitRange }
+    ChunkOfSpectrum(spectra.λ,spectra.flux,spectra.var,order,pixels)
 end
 
-function ChuckOfSpectrum(spectra::AS, loc::NamedTuple{(:pixels, :order),Tuple{AUR,I1}}) where {  AS<:AbstractSpectra2D, AUR<:AbstractUnitRange, I1<:Integer }
-    ChuckOfSpectrum(spectra.λ,spectra.flux,spectra.var,loc.order,loc.pixels)
+function ChunkOfSpectrum(spectra::AS, loc::NamedTuple{(:pixels, :order),Tuple{AUR,I1}}) where {  AS<:AbstractSpectra2D, AUR<:AbstractUnitRange, I1<:Integer }
+    ChunkOfSpectrum(spectra.λ,spectra.flux,spectra.var,loc.order,loc.pixels)
 end
 
-function ChuckOfSpectrum(spectra::AS, pixels::AUR) where { AS<:AbstractSpectra1D, AUR<:AbstractUnitRange }
-    ChuckOfSpectrum(spectra.λ,spectra.flux,spectra.var,pixels)
+function ChunkOfSpectrum(spectra::AS, pixels::AUR) where { AS<:AbstractSpectra1D, AUR<:AbstractUnitRange }
+    ChunkOfSpectrum(spectra.λ,spectra.flux,spectra.var,pixels)
 end
 
 
-get_order_index(chunk<:AbstractChuckOfSpectrum) = chunk.flux.indices[2]
-get_pixels_range(chunk<:AbstractChuckOfSpectrum) = chunk.flux.indices[1]
+get_order_index(chunk<:AbstractChunkOfSpectrum) = chunk.flux.indices[2]
+get_pixels_range(chunk<:AbstractChunkOfSpectrum) = chunk.flux.indices[1]
 
 
 
@@ -66,12 +66,12 @@ get_pixels_range(chunk<:AbstractChuckOfSpectrum) = chunk.flux.indices[1]
 
 abstract type AbstractChunkList end
 
-""" Struct containing an array of ChuckOfSpectrum """
-struct ChunkList{CT<:AbstractChuckOfSpectrum, AT<:AbstractArray{CT,1} } <: AbstractChunkList
+""" Struct containing an array of ChunkOfSpectrum """
+struct ChunkList{CT<:AbstractChunkOfSpectrum, AT<:AbstractArray{CT,1} } <: AbstractChunkList
       data::AT
 
       #=
-      function ChunkList{CT,AT}(in::AT) where {CT<:AbstractChuckOfSpectrum, AT<:AbstractArray{CT,1} }
+      function ChunkList{CT,AT}(in::AT) where {CT<:AbstractChunkOfSpectrum, AT<:AbstractArray{CT,1} }
         @assert length(data)>=1
         ChunkList{CT,AT}(in)
     end

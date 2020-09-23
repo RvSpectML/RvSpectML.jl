@@ -38,7 +38,7 @@ Convenience function to find links in one chunk of spectrum.
 # Return:
 - array of ranges of pixels wihtin chunk
 """
-function find_line_candidates_in_chunk(chunk::AbstractChuckOfSpectrum, deriv2::AbstractVector{T}; plan::LineFinderPlan = LineFinderPlan() ) where { T<:Real }
+function find_line_candidates_in_chunk(chunk::AbstractChunkOfSpectrum, deriv2::AbstractVector{T}; plan::LineFinderPlan = LineFinderPlan() ) where { T<:Real }
   idx_d2_gt_0 = findall(d2->isless(zero(d2),d2), deriv2)
   line_candidates = UnitRange[]
   first_idx_in_line = last_idx_in_line = first(idx_d2_gt_0)
@@ -163,7 +163,7 @@ Convenience function to find lines in one chunk of spectrum.
 # Return:
 - line_fit_list
 """
-function find_lines_in_chunk(chunk::AbstractChuckOfSpectrum; plan::LineFinderPlan = LineFinderPlan(),
+function find_lines_in_chunk(chunk::AbstractChunkOfSpectrum; plan::LineFinderPlan = LineFinderPlan(),
                               chunk_id::Integer = 0, obs_id::Integer = 0, keep_bad_fits::Bool = false, verbose::Bool = false) where {T <:Real}
 
   function fit_line(idx::UnitRange)

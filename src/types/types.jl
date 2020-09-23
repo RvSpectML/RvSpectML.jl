@@ -13,7 +13,7 @@ export SpectralTimeSeriesCommonWavelengths
 export make_spectral_time_series_common_wavelengths_with_selected_times
 
 include("chunks.jl")
-export AbstractChuckOfSpectrum, ChuckOfSpectrum
+export AbstractChunkOfSpectrum, ChunkOfSpectrum
 export AbstractChunkList, ChunkList
 export AbstractChunkListTimeseries, ChunkListTimeseries
 export length, num_chunks

@@ -18,11 +18,11 @@ end
 default_min_chunk_length = 75
 default_min_telluric_model = 1.0
 
-function make_chunk_from_existing_chunk(parent::RvSpectML.AbstractChuckOfSpectrum, loc::NamedTuple{(:pixels,:order),Tuple{UnitRange{Int64},Int64}}) # pixels::UnitRange, order::Integer
+function make_chunk_from_existing_chunk(parent::RvSpectML.AbstractChunkOfSpectrum, loc::NamedTuple{(:pixels,:order),Tuple{UnitRange{Int64},Int64}}) # pixels::UnitRange, order::Integer
    λ = parent.λ.parent
    flux = parent.flux.parent
    var = parent.var.parent
-   return RvSpectML.ChuckOfSpectrum(λ,flux,var,loc)
+   return RvSpectML.ChunkOfSpectrum(λ,flux,var,loc)
 end
 
 function find_chunks_avoiding_tellurics(order_list_timeseries::AbstractChunkListTimeseries, chid::Integer; min_chunk_length::Integer = default_min_chunk_length, min_telluric_model::Real = default_min_telluric_model )

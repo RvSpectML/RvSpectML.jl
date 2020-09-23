@@ -16,7 +16,7 @@ Uses old version of project_mask_old! that is hardwired for a tophat mask.
 # Return:
 CCF for one chunk of spectrum, evaluated using mask_shape and line list from ccf plan
 """
-function calc_ccf_chunk_old(chunk::AbstractChuckOfSpectrum, plan::PlanT = BasicCCFPlan()
+function calc_ccf_chunk_old(chunk::AbstractChunkOfSpectrum, plan::PlanT = BasicCCFPlan()
              ; assume_sorted::Bool = false ) where { PlanT<:AbstractCCFPlan, T1<:Real, T2<:Real }
   @assert assume_sorted || issorted( plan.line_list.λ )
   v_grid = calc_ccf_v_grid(plan)

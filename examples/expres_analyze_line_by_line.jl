@@ -10,14 +10,14 @@ verbose = true
 
 include("read_expres_data_101501.jl")
 
-order_list_timeseries = extract_orders(all_spectra,pipeline_plan)
+order_list_timeseries = extract_orders(all_spectra,pipeline_plan,recalc=true)
 
 line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan, v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = 30e3, recalc=true)
  (ccfs, v_grid) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan,  mask_scale_factor=10.0, ccf_mid_velocity=ccf_mid_velocity, recalc=true)
  line_width = RvSpectML.calc_line_width(v_grid,view(ccfs,:,1),frac_depth=0.05)
 line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = line_width)
 
-(ccfs, v_grid) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan,  mask_scale_factor=1.0, range_no_mask_change=line_width, ccf_mid_velocity=ccf_mid_velocity, v_step=100, recalc=true)
+(ccfs, v_grid) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan,  mask_scale_factor=2.0, range_no_mask_change=line_width, ccf_mid_velocity=ccf_mid_velocity, v_step=100, recalc=true)
 alg_fit_rv = RVFromCCF.MeasureRvFromCCFGaussian(frac_of_width_to_fit=3)
 rvs_ccf = calc_rvs_from_ccf_total(ccfs, pipeline_plan, v_grid=v_grid, times = order_list_timeseries.times, recalc=true, bin_nightly=true, alg_fit_rv=alg_fit_rv)
 
@@ -35,7 +35,7 @@ rvs_ccf = calc_rvs_from_ccf_total(ccfs, pipeline_plan, v_grid=v_grid, times = or
 end
 
 
-#need_to!(pipeline_plan, :template)
+need_to!(pipeline_plan, :template)
 if need_to(pipeline_plan, :template)  # Compute order CCF's & measure RVs
    if verbose println("# Making template spectra.")  end
    @assert !need_to(pipeline_plan,:extract_orders)
@@ -61,10 +61,10 @@ if make_plot(pipeline_plan,:template)
    title!("Template spectrum for chunk " * string(chunkid) )
 end
 
-#need_to!(pipeline_plan,:fit_lines)
+need_to!(pipeline_plan,:fit_lines)
 if need_to(pipeline_plan,:fit_lines)
    if verbose println("# Performing fresh search for lines in template spectra.")  end
-   cl = ChunkList(map(grid->ChuckOfSpectrum(spectral_orders_matrix.λ,f_mean, var_mean, grid), spectral_orders_matrix.chunk_map))
+   cl = ChunkList(map(grid->ChunkOfSpectrum(spectral_orders_matrix.λ,f_mean, var_mean, grid), spectral_orders_matrix.chunk_map))
    # We're done with the spectral_orders_matrix, so we can release the memory now
    spectral_orders_matrix = nothing
    GC.gc()
@@ -83,6 +83,7 @@ if need_to(pipeline_plan,:fit_lines)
    dont_need_to!(pipeline_plan,:fit_lines);
 end
 
+using Printf
 function select_line_fits_with_good_std_v(line_fits_df::DataFrame, quantile_threshold::Real; verbose::Bool = false, write_csv::Bool = false)
    fit_distrib = line_fits_df |> @groupby(_.line_id) |>
             @map( { median_a=median(_.fit_a), median_b=median(_.fit_b), median_depth=median(_.fit_depth), median_σ²=median(_.fit_σ²), median_λc=median(_.fit_λc),
@@ -135,15 +136,57 @@ function select_line_fits_with_good_depth_width_slope(line_fits_df::DataFrame, q
    return good_lines_alt
 end
 
-lines_in_template_vs_threshold = map(thresh->LineFinder.find_lines_in_chunklist(cl, plan=RvSpectML.LineFinder.LineFinderPlan(min_deriv2=thresh)),[0.05, 0.1, 0.2, 0.4] ) #, 0.6, 0.8, 1.0, 1.25, 1.5, 2.0])
+lines_in_template_vs_threshold = map(thresh->LineFinder.find_lines_in_chunklist(cl, plan=RvSpectML.LineFinder.LineFinderPlan(min_deriv2=thresh)),[0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0, 1.25, 1.5, 2.0])
   map(x->size(x,1),lines_in_template_vs_threshold)
-lines_in_template = lines_in_template_vs_threshold[1]
+lines_in_template = lines_in_template_vs_threshold[4]
   @time fits_to_lines = LineFinder.fit_all_lines_in_chunklist_timeseries(order_list_timeseries, lines_in_template )
 
 
-good_lines_stdv = select_line_fits_with_good_std_v(fits_to_lines,0.75,write_csv=false)
- good_lines_alt = select_line_fits_with_good_depth_width_slope(fits_to_lines,0.95)
- if make_plot(pipeline_plan,:template)
+function calc_rvs_from_line_by_line_fits_stdv(fits_to_lines::DataFrame, threshold_stdv::Real)
+   good_lines_stdv = select_line_fits_with_good_std_v(fits_to_lines,threshold_stdv,write_csv=false)
+   df = fits_to_lines |> @join(good_lines_stdv, _.line_id, _.line_id, {obs_id=_.obs_idx, line_id=_.line_id, Δv=(_.fit_λc.-__.median_λc).*3e8./__.median_λc, weight=(__.median_λc/(3e8*__.std_λc))^2 }) |>
+         @groupby(_.obs_id) |> @map({obs_id=first(_.obs_id), Δv= sum(_.Δv.*_.weight)./sum(_.weight) }) |> DataFrame
+   rms_stdv = std(df.Δv)
+end
+function calc_rvs_from_line_by_line_fits_alt(fits_to_lines::DataFrame, threshold_alt::Real)
+   good_lines_alt = select_line_fits_with_good_depth_width_slope(fits_to_lines,threshold_alt)
+   df2 = fits_to_lines |> @join(good_lines_alt, _.line_id, _.line_id, {obs_id=_.obs_idx, line_id=_.line_id, Δv=(_.fit_λc.-__.median_λc).*3e8./__.median_λc, weight=(__.median_λc/(3e8*__.std_λc))^2 }) |>
+            @groupby(_.obs_id) |> @map({obs_id=first(_.obs_id), Δv= sum(_.Δv.*_.weight)./sum(_.weight) }) |> DataFrame
+   rms_alt = std(df2.Δv)
+end
+
+thresholds = 0.05:0.05:1 #[0.05, 0.1, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+ plt = plot()
+ scatter!(plt,thresholds,map(t->calc_rvs_from_line_by_line_fits_stdv(fits_to_lines,t),thresholds),color=1,label="σ_λ")
+ plot!(plt,thresholds,map(t->calc_rvs_from_line_by_line_fits_stdv(fits_to_lines,t),thresholds),color=1,label=:none)
+ scatter!(plt,thresholds,map(t->calc_rvs_from_line_by_line_fits_alt(fits_to_lines,t),thresholds),color=2,label="σ_other")
+ plot!(plt,thresholds,map(t->calc_rvs_from_line_by_line_fits_alt(fits_to_lines,t),thresholds),color=2,label=:none)
+ xlabel!("Threshold for accepting lines")
+ ylabel!("RMS v (m/s)")
+ savefig("rms_rv_vs_line_accept_threshold.png")
+
+map(c->(typeof(c)),fits_to_lines[1,:])
+map(c->(typeof(c)),good_lines_stdv[1,:])
+good_lines_stdv
+
+println(names(df))
+for row in eachrow(df)
+   obs_id = row.obs_id
+   good_lines_stdv.line_id .== row.
+   mean_λc = row.mean_λ
+   #line_weights = 1.0 ./ row.std_λ.^2
+   Δvs = map(λ->(λ.-mean_λc).*3e8./mean_λc,row.all_λ)
+   ave_Δv = sum(Δvs.*lines_weights) / sum(line_weights)
+   println(obs_id,ave_Δv)
+end
+
+@map( { obs_id=first(_.obs_id), 
+        median_a=median(_.fit_a), median_b=median(_.fit_b), median_depth=median(_.fit_depth), median_σ²=median(_.fit_σ²), median_λc=median(_.fit_λc),
+               std_a=std(_.fit_a), std_b=std(_.fit_b), std_depth=std(_.fit_depth), std_σ²=std(_.fit_σ²), std_λc=std(_.fit_λc),
+               line_id=first(_.line_id),  frac_converged=mean(_.fit_converged)  } ) |>
+        @filter(_.frac_converged == 1.0 ) |> DataFrame
+
+if make_plot(pipeline_plan,:template)
    using Plots
    chunkid = 31
    idx = spectral_orders_matrix.chunk_map[chunkid]
@@ -193,6 +236,9 @@ lines_to_try = good_lines_alt[4] |> @map({ lambda=_.median_λc, weight=_.median_
   (ccfs2, v_grid2) = ccf_total(order_list_timeseries, lines_to_try, pipeline_plan,  mask_scale_factor=1.0, range_no_mask_change=line_width, ccf_mid_velocity=ccf_mid_velocity, v_step=100, recalc=true)
   alg_fit_rv = RVFromCCF.MeasureRvFromCCFGaussian(frac_of_width_to_fit=3)
   rvs_ccf2 = calc_rvs_from_ccf_total(ccfs2, pipeline_plan, v_grid=v_grid2, times = order_list_timeseries.times, recalc=true, bin_nightly=true, alg_fit_rv=alg_fit_rv)
+
+
+names(good_lines_stdv)
 
 if make_plot(pipeline_plan, :ccf_total)
    using Plots
@@ -263,3 +309,11 @@ scatter(good_lines.std_b,good_lines.std_λc,markersize=2,label=:none)
 
 
 scatter(good_lines.std_b,good_lines.std_λc,markersize=2,label=:none)
+
+
+
+
+names(lines_in_template)
+
+
+println(names(lines_in_template_vs_threshold[1]))

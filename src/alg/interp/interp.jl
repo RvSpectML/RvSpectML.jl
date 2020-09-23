@@ -43,7 +43,7 @@ Return spectra interpolated onto a grid of points using linear interpolation.
 - flux_out
 """
 function interp_chunk_to_shifted_grid_linear!( flux_out::AbstractArray{T1,1}, var_out::AbstractArray{T2,1}, chunk::AC, grid::AR, boost_factor::Real ) where {
-    T1<:Real, T2<:Real, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+    T1<:Real, T2<:Real, AC<:AbstractChunkOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
     lin_interp_flux = #LinearInterpolation.extrapolate(
@@ -55,7 +55,7 @@ function interp_chunk_to_shifted_grid_linear!( flux_out::AbstractArray{T1,1}, va
     return flux_out
 end
 
-function interp_chunk_to_shifted_grid_linear( chunk::AC, grid::AR, boost_factor::Real ) where {  AC<:AbstractChuckOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_shifted_grid_linear( chunk::AC, grid::AR, boost_factor::Real ) where {  AC<:AbstractChunkOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     flux_out = Array{Float64,1}(undef,length(grid))
     var_out = Array{Float64,1}(undef,length(grid))
     interp_chunk_to_shifted_grid_linear!(flux_out, var_out, chunk, grid, boost_factor)
@@ -63,7 +63,7 @@ function interp_chunk_to_shifted_grid_linear( chunk::AC, grid::AR, boost_factor:
 end
 
 function interp_chunk_to_grid_linear!( flux_out::AbstractArray{T1,1}, var_out::AbstractArray{T2,1}, chunk::AC, grid::AR ) where {
-    T1<:Real, T2<:Real, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+    T1<:Real, T2<:Real, AC<:AbstractChunkOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
     lin_interp_flux = LinearInterpolation.make_interpolator_linear_flux(chunk)
@@ -73,7 +73,7 @@ function interp_chunk_to_grid_linear!( flux_out::AbstractArray{T1,1}, var_out::A
     return flux_out
 end
 
-function interp_chunk_to_grid_linear( chunk::AC, grid::AR ) where {  AC<:AbstractChuckOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_grid_linear( chunk::AC, grid::AR ) where {  AC<:AbstractChunkOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     flux_out = Array{Float64,1}(undef,length(grid))
     var_out = Array{Float64,1}(undef,length(grid))
     interp_chunk_to_grid_linear!(flux_out, var_out, chunk, grid)
@@ -95,7 +95,7 @@ Return spectra interpolated onto a grid of points using sinc interpolation.
 - flux_out
 """
 function interp_chunk_to_shifted_grid_sinc!( flux_out::AbstractArray{T1,1}, var_out::AbstractArray{T2,1}, chunk::AC, grid::AR, boost_factor::Real; Filter::AbstractVector = zeros(0) ) where {
-    T1<:Real, T2<:Real, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+    T1<:Real, T2<:Real, AC<:AbstractChunkOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
     if length(Filter) >= 1
@@ -108,7 +108,7 @@ function interp_chunk_to_shifted_grid_sinc!( flux_out::AbstractArray{T1,1}, var_
     return flux_out
 end
 
-function interp_chunk_to_shifted_grid_sinc( chunk::AC, grid::AR, boost_factor::Real; Filter::AbstractVector = zeros(0) ) where {  AC<:AbstractChuckOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_shifted_grid_sinc( chunk::AC, grid::AR, boost_factor::Real; Filter::AbstractVector = zeros(0) ) where {  AC<:AbstractChunkOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     flux_out = Array{Float64,1}(undef,length(grid))
     var_out = Array{Float64,1}(undef,length(grid))
     if length(Filter) >= 1
@@ -120,7 +120,7 @@ function interp_chunk_to_shifted_grid_sinc( chunk::AC, grid::AR, boost_factor::R
 end
 
 function interp_chunk_to_grid_sinc!( flux_out::AbstractArray{T1,1}, var_out::AbstractArray{T2,1}, chunk::AC, grid::AR; Filter::AbstractVector = zeros(0) ) where {
-    T1<:Real, T2<:Real, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+    T1<:Real, T2<:Real, AC<:AbstractChunkOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
     if length(Filter) >= 1
@@ -133,7 +133,7 @@ function interp_chunk_to_grid_sinc!( flux_out::AbstractArray{T1,1}, var_out::Abs
     return flux_out
 end
 
-function interp_chunk_to_grid_sinc( chunk::AC, grid::AR ) where {  AC<:AbstractChuckOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_grid_sinc( chunk::AC, grid::AR ) where {  AC<:AbstractChunkOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     flux_out = Array{Float64,1}(undef,length(grid))
     var_out = Array{Float64,1}(undef,length(grid))
     interp_chunk_to_grid_sinc!(flux_out, var_out, chunk, grid)
@@ -158,7 +158,7 @@ NOTE:  Using own GP code for now, since include predicting derivatives and can m
 revisit this if we want improved speed
 """
 
-function interp_chunk_to_shifted_grid_gp!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR, boost_factor::Real ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_shifted_grid_gp!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR, boost_factor::Real ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChunkOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
     rho = 2*5000/speed_of_light_mps * mean(chunk.λ)
@@ -170,14 +170,14 @@ function interp_chunk_to_shifted_grid_gp!( flux_out::AA1, var_out::AA2, chunk::A
     return flux_out
 end
 
-function interp_chunk_to_shifted_grid_gp( chunk::AC, grid::AR, boost_factor::Real ) where {  AC<:AbstractChuckOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_shifted_grid_gp( chunk::AC, grid::AR, boost_factor::Real ) where {  AC<:AbstractChunkOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     flux_out = Array{Float64,1}(undef,length(grid))
     var_out = Array{Float64,1}(undef,length(grid))
     interp_chunk_to_grid_gp!(flux_out, var_out, chunk, grid, boost_factor=boost_factor)
     return (flux=flux_out, var=var_out)
 end
 
-function interp_chunk_to_grid_gp!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_grid_gp!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChunkOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
     rho = 2*5000/speed_of_light_mps * mean(chunk.λ)
@@ -189,7 +189,7 @@ function interp_chunk_to_grid_gp!( flux_out::AA1, var_out::AA2, chunk::AC, grid:
     return flux_out
 end
 
-function interp_chunk_to_grid_gp( chunk::AC, grid::AR ) where {  AC<:AbstractChuckOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_grid_gp( chunk::AC, grid::AR ) where {  AC<:AbstractChunkOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     flux_out = Array{Float64,1}(undef,length(grid))
     var_out = Array{Float64,1}(undef,length(grid))
     interp_chunk_to_grid_gp!(flux_out, var_out, chunk, grid, )
@@ -199,7 +199,7 @@ end
 
 
 
-function interp_chunk_to_shifted_grid_gp_temporal!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR, boost_factor::Real; use_logx::Bool = true,  use_logy::Bool = false, smooth_factor::Real=1 ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_shifted_grid_gp_temporal!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR, boost_factor::Real; use_logx::Bool = true,  use_logy::Bool = false, smooth_factor::Real=1 ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChunkOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
     y = eltype(chunk.flux) == Float64  ? chunk.flux : convert.(Float64,chunk.flux)
@@ -219,7 +219,7 @@ function interp_chunk_to_shifted_grid_gp_temporal!( flux_out::AA1, var_out::AA2,
     return flux_out
 end
 
-function interp_chunk_to_shifted_grid_gp_temporal( chunk::AC, grid::AR, boost_factor::Real; use_logx::Bool = true,  use_logy::Bool = false,smooth_factor::Real=1 ) where {  AC<:AbstractChuckOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_shifted_grid_gp_temporal( chunk::AC, grid::AR, boost_factor::Real; use_logx::Bool = true,  use_logy::Bool = false,smooth_factor::Real=1 ) where {  AC<:AbstractChunkOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     flux_out = Array{Float64,1}(undef,length(grid))
     var_out = Array{Float64,1}(undef,length(grid))
     interp_chunk_to_grid_gp!(flux_out, var_out, chunk, grid, boost_factor=boost_factor, smooth_factor=smooth_factor)
@@ -227,7 +227,7 @@ function interp_chunk_to_shifted_grid_gp_temporal( chunk::AC, grid::AR, boost_fa
 end
 
 
-function interp_chunk_to_grid_gp_temporal!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR ; use_logx::Bool = true,  use_logy::Bool = false, smooth_factor::Real=1 ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChuckOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_grid_gp_temporal!( flux_out::AA1, var_out::AA2, chunk::AC, grid::AR ; use_logx::Bool = true,  use_logy::Bool = false, smooth_factor::Real=1 ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, AC<:AbstractChunkOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
     y = eltype(chunk.flux) == Float64  ? chunk.flux : convert.(Float64,chunk.flux)
@@ -247,7 +247,7 @@ function interp_chunk_to_grid_gp_temporal!( flux_out::AA1, var_out::AA2, chunk::
     return flux_out
 end
 
-function interp_chunk_to_grid_gp_temporal( chunk::AC, grid::AR ; use_logx::Bool = true,  use_logy::Bool = false, smooth_factor::Real=1 ) where {  AC<:AbstractChuckOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
+function interp_chunk_to_grid_gp_temporal( chunk::AC, grid::AR ; use_logx::Bool = true,  use_logy::Bool = false, smooth_factor::Real=1 ) where {  AC<:AbstractChunkOfSpectrum, T2<:Real, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     flux_out = Array{Float64,1}(undef,length(grid))
     var_out = Array{Float64,1}(undef,length(grid))
     interp_chunk_to_grid_gp!(flux_out, var_out, chunk, grid, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor)
@@ -474,7 +474,7 @@ function repack_flux_vector_to_chunk_matrix(λ::AA1, flux::AA2, var::AA3, chunk_
        idx_out = idx_out_begin:idx_out_end
        Δλ_in_chunk = λ[idx_out].-λc[c]
        mean_flux_in_chunk = mean(flux[idx_out])
-       chunk_of_spectrum = ChuckOfSpectrum{eltype(λ),eltype(flux),eltype(var)}(view(λ,idx_out), view(flux,idx_out), view(var,idx_out))
+       chunk_of_spectrum = ChunkOfSpectrum{eltype(λ),eltype(flux),eltype(var)}(view(λ,idx_out), view(flux,idx_out), view(var,idx_out))
        Δv = 400  # TODO: Figure out good choice for Δv
        Δλ = Δv /RvSpectML.speed_of_light_mps*λc[c]
        if mean_flux_in_chunk > 0

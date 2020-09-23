@@ -16,7 +16,7 @@ Convenience function to compute CCF for one chunk of spectrum.
 # Return:
 CCF for one chunk of spectrum, evaluated using mask_shape and line list from ccf plan
 """
-function calc_ccf_chunk(chunk::AbstractChuckOfSpectrum, plan::PlanT = BasicCCFPlan()
+function calc_ccf_chunk(chunk::AbstractChunkOfSpectrum, plan::PlanT = BasicCCFPlan()
                  ; var::AbstractVector{T} = chunk.var,
                  assume_sorted::Bool = false, use_pixel_vars::Bool = false ) where { T<:Real, PlanT<:AbstractCCFPlan }
   @assert assume_sorted || issorted( plan.line_list.λ )

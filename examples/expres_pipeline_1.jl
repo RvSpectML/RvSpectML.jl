@@ -259,7 +259,7 @@ end
 #need_to!(pipeline_plan,:fit_lines)
 if need_to(pipeline_plan,:fit_lines)
    if verbose println("# Performing fresh search for lines in template spectra.")  end
-   cl = ChunkList(map(grid->ChuckOfSpectrum(spectral_orders_matrix.λ,f_mean, var_mean, grid), spectral_orders_matrix.chunk_map))
+   cl = ChunkList(map(grid->ChunkOfSpectrum(spectral_orders_matrix.λ,f_mean, var_mean, grid), spectral_orders_matrix.chunk_map))
    #= # We're done with the spectral_orders_matrix, so we can release the memory now
    spectral_orders_matrix = nothing
    GC.gc()

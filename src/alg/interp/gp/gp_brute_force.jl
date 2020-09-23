@@ -114,19 +114,19 @@ end
 #=
 function calc_gp_marginal_on_segments(lambda::AA, flux::AA;
                                 sigmasq_obs::AA = 1e-16*ones(length(lambda)),	sigmasq_cor::Real=1.0, rho::Real=1.0,
-                                half_chunck_size::Integer = 100)  where { T<:Real, AA<:AbstractArray{T,1} }
+                                half_chunk_size::Integer = 100)  where { T<:Real, AA<:AbstractArray{T,1} }
   @assert length(lambda) == length(flux) == length(sigmasq_obs)
   println("# sigmasq_obs[1,1] = ", sigmasq_obs[1,1], " sigmasq_cor= ", sigmasq_cor, " rho= ", rho)
   output = 0.0
-  num_seg = convert(Int64,ceil(length(lambda)/half_chunck_size)-1)
+  num_seg = convert(Int64,ceil(length(lambda)/half_chunk_size)-1)
   for i in 1:num_seg
-    idx_begin = 1+half_chunck_size*(i-1)
-    idx_end = min(half_chunck_size*(i+1), length(lambda))
-    write_idx_begin = idx_begin + div(half_chunck_size,2)
-    write_idx_end = idx_end - div(half_chunck_size,2)
+    idx_begin = 1+half_chunk_size*(i-1)
+    idx_end = min(half_chunk_size*(i+1), length(lambda))
+    write_idx_begin = idx_begin + div(half_chunk_size,2)
+    write_idx_end = idx_end - div(half_chunk_size,2)
     if i==1 write_idx_begin=1 end
     if i==num_seg
-      idx_begin = max(1,idx_end-2*half_chunck_size)
+      idx_begin = max(1,idx_end-2*half_chunk_size)
       write_idx_end=length(lambda)
     end
     #println("# i= ",i,": ", idx_begin, " - ", idx_end, " -> ", write_idx_begin, " - ", write_idx_end)
@@ -151,24 +151,24 @@ end
 
 function calc_doppler_component_gp(lambda::AA, flux::AA;
                                 sigmasq_obs::AA = 1e-16*ones(length(lambda)),	sigmasq_cor::Real=1.0, rho::Real=1.0,
-                                half_chunck_size::Integer = 100)  where { T<:Real, AA<:AbstractArray{T,1} }
-   lambda.*calc_gp_on_segments(predict_deriv,lambda, flux, sigmasq_obs=sigmasq_obs,	sigmasq_cor=sigmasq_cor, rho=rho, half_chunck_size=half_chunck_size)
+                                half_chunk_size::Integer = 100)  where { T<:Real, AA<:AbstractArray{T,1} }
+   lambda.*calc_gp_on_segments(predict_deriv,lambda, flux, sigmasq_obs=sigmasq_obs,	sigmasq_cor=sigmasq_cor, rho=rho, half_chunk_size=half_chunk_size)
 end
 
 function calc_gp_on_segments(predict_gp::Function, lambda::AA, flux::AA;
                                 sigmasq_obs::AA = 1e-16*ones(length(lambda)),	sigmasq_cor::Real=1.0, rho::Real=1.0,
-                                half_chunck_size::Integer = 100)  where { T<:Real, AA<:AbstractArray{T,1} }
+                                half_chunk_size::Integer = 100)  where { T<:Real, AA<:AbstractArray{T,1} }
   @assert length(lambda) == length(flux) == length(sigmasq_obs)
   output = Array{eltype(flux)}(undef,length(lambda))
-  num_seg = convert(Int64,ceil(length(lambda)/half_chunck_size)-1)
+  num_seg = convert(Int64,ceil(length(lambda)/half_chunk_size)-1)
   for i in 1:num_seg
-    idx_begin = 1+half_chunck_size*(i-1)
-    idx_end = min(half_chunck_size*(i+1), length(lambda))
-    write_idx_begin = idx_begin + div(half_chunck_size,2)
-    write_idx_end = idx_end - div(half_chunck_size,2)
+    idx_begin = 1+half_chunk_size*(i-1)
+    idx_end = min(half_chunk_size*(i+1), length(lambda))
+    write_idx_begin = idx_begin + div(half_chunk_size,2)
+    write_idx_end = idx_end - div(half_chunk_size,2)
     if i==1 write_idx_begin=1 end
     if i==num_seg
-      idx_begin = max(1,idx_end-2*half_chunck_size)
+      idx_begin = max(1,idx_end-2*half_chunk_size)
       write_idx_end=length(lambda)
     end
     #println("# i= ",i,": ", idx_begin, " - ", idx_end, " -> ", write_idx_begin, " - ", write_idx_end)
@@ -188,8 +188,8 @@ end
 
 function calc_doppler_quadratic_term_gp(lambda::AA, flux::AA;
                                 sigmasq_obs::AA = 1e-16*ones(length(lambda)),	sigmasq_cor::Real=1.0, rho::Real=1.0,
-                                half_chunck_size::Integer = 100)  where { T<:Real, AA<:AbstractArray{T,1} }
-   0.5*lambda.^2.*calc_gp_on_segments(predict_deriv2,lambda, flux, sigmasq_obs=sigmasq_obs,	sigmasq_cor=sigmasq_cor, rho=rho, half_chunck_size=half_chunck_size)
+                                half_chunk_size::Integer = 100)  where { T<:Real, AA<:AbstractArray{T,1} }
+   0.5*lambda.^2.*calc_gp_on_segments(predict_deriv2,lambda, flux, sigmasq_obs=sigmasq_obs,	sigmasq_cor=sigmasq_cor, rho=rho, half_chunk_size=half_chunk_size)
 end
 
 function calc_doppler_quadratic_term_gp(lambda::AA, flux::AbstractArray{T,2};

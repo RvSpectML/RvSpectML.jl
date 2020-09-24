@@ -230,24 +230,6 @@ function find_cols_to_fit(wavelengths::AbstractArray{T,1}, line_lo::Real, line_h
     return first:last
 end
 
-""" Return list of all orders that contain a pixel with wavelength lambda """
-function find_orders_with_line(goal::Real,lambda::AbstractArray{T,2}) where T<:Real
-   order_min(i) = lambda[1,i]
-   order_max(i) = lambda[end,i]
-   for i in 1:5
-       println("# i= ",i," order_min= ",order_min(i)," order_max= ",order_max(i), "   goal= ",goal)
-   end
-   flush(stdout)
-   findall(i->order_min(i)<=goal<=order_max(i), 1:size(lambda,2) )
-end
-
-""" Return list of all orders that contain all pixels with wavelengths between goal_lo and goal_hi """
-function find_orders_with_line(goal_lo::Real,goal_hi::Real,lambda::AbstractArray{T,2}) where T<:Real
-   order_min(i) = lambda[1,i]
-   order_max(i) = lambda[end,i]
-   findall(i->order_min(i)<=goal_lo && goal_hi<=order_max(i), 1:size(lambda,2) )
-end
-
 """ Return list of (pixels, order) pairs that contain pixels with desireed wavelengths.
     Excludes locations that contain any pixels with var == NaN.
 """

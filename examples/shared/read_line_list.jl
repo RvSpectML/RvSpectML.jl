@@ -13,7 +13,7 @@ function prepare_line_list_pass1( linelist_fn::String, all_spectra::AbstractVect
       espresso_df = RvSpectML.read_linelist_espresso(espresso_filename)
       #inst_module = RvSpectML.get_inst_module(typeof(first(all_spectra).inst))
       #line_list_df = EXPRES.filter_line_list(espresso_df,first(all_spectra).inst)
-      line_list_df = filter_line_list(espresso_df,first(all_spectra).inst)
+      line_list_df = EXPRES.filter_line_list(espresso_df,first(all_spectra).inst)
       if eltype(all_spectra) <: AnyEXPRES
          RvSpectML.discard_pixel_mask(all_spectra)
          RvSpectML.discard_excalibur_mask(all_spectra)

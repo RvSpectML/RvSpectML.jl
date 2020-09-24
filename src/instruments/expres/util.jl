@@ -153,25 +153,7 @@ function find_ranges_with_tellurics(spectrum::ST; min_order::Integer = 1, max_or
     return non_overlapping_ranges
 end
 
-function find_ranges_with_tellurics(spectrum::ST; min_order::Integer = 1, max_order::Integer = size(spectrum.λ,2), min_Δv_clean::Real = default_min_Δv_clean, telluric_threshold::Real = 1 ) where { ST<:AbstractSpectra }
-    @assert haskey(spectrum.metadata,:tellurics)
-    min_Δv_clean = 10000.0
-    c_mps = 3e8
-
-    list_of_ranges = DataFrame(:lambda_lo=>Float64[], :lambda_hi=>Float64[] ) # Vector{Tuple{eltype(spectrum.λ),eltype(spectrum.λ)}}(undef,0)
-    for ord in min_order:max_order
-        ranges_for_order = find_ranges_with_tellurics_in_order(spectrum,ord, min_Δv_clean=min_Δv_clean, telluric_threshold=telluric_threshold)
-        append!(list_of_ranges,ranges_for_order)
-    end
-
-    if size(list_of_ranges,1)<=1   return list_of_ranges   end
-    sort!(list_of_ranges, :lambda_lo )
-    non_overlapping_ranges = merge_sorted_wavelength_ranges(list_of_ranges,min_Δv_clean=min_Δv_clean)
-    return non_overlapping_ranges
-end
-
-
-
+#=
 function find_ranges_with_tellurics(spectra::AS; min_order::Integer = 1, max_order::Integer = size(first(spectra).λ,2), min_Δv_clean::Real = default_min_Δv_clean, telluric_threshold::Real = 1 ) where { ST<:AbstractSpectra, AS<:AbstractArray{ST} }
     list_of_ranges = mapreduce(s->find_ranges_with_tellurics(s, min_order=min_order, max_order=max_order, min_Δv_clean=min_Δv_clean, telluric_threshold=telluric_threshold), append!, spectra)
     #return list_of_ranges
@@ -181,6 +163,7 @@ function find_ranges_with_tellurics(spectra::AS; min_order::Integer = 1, max_ord
     non_overlapping_ranges = merge_sorted_wavelength_ranges(list_of_ranges, min_Δv_clean=min_Δv_clean)
     return non_overlapping_ranges
 end
+=#
 
 function is_in_wavelength_range_list(list::AVT, λ::Real ) where { T<:Real, AVT<:AbstractVector{Tuple{T,T}} }
     idx =  searchsortedfirst(list, λ, lt=(x,y)->x[2]<y)
@@ -206,6 +189,7 @@ function make_ranges_without_tellurics(telluric_list::AVT) where { T<:Real, AVT<
     return chunk_list
 end
 
+#=
 function make_ranges_without_tellurics(telluric_list::AVT; λ_start::Real, λ_stop::Real ) where { T<:Real, AVT<:AbstractVector{Tuple{T,T}} }
     chunk_list = vcat( (λ_start , telluric_list[1] ),
             map(i->( last(telluric_list[i]), first(telluric_list[i+1]) ), 1:(length(telluric_list)-1) ),
@@ -221,11 +205,13 @@ function make_ranges_without_tellurics(telluric_list::AVT; λ_stop::Real ) where
     chunk_list = vcat( map(i->( last(telluric_list[i]), first(telluric_list[i+1]) ), 1:(length(telluric_list)-1) ),
             ( telluric_list[end] , λ_stop) )
 end
+=#
 
 function make_ranges_without_tellurics(df::DataFrame)
     DataFrame(:lambda_lo => df[1:(size(df,1)-1), :lambda_hi],  :lambda_hi => df[2:size(df,1), :lambda_lo] )
 end
 
+#=
 function make_ranges_without_tellurics(df::DataFrame; λ_start::Real, λ_stop::Real )
     output = DataFrame(:lambda_lo=>[λ_start],:lambda_hi=>df[1, :lambda_lo])
     append!(output, DataFrame(:lambda_lo => df[1:(size(df,1)-1), :lambda_hi],  :lambda_hi => df[2:size(df,1), :lambda_lo] ) )
@@ -244,6 +230,7 @@ function make_ranges_without_tellurics(df::DataFrame; λ_stop::Real )
     append!(output, Dict(:lambda_lo => df[end, :lambda_hi],  :lambda_hi => λ_stop ) )
     return output
 end
+=#
 
 function break_chunk_into_chunks_without_tellurics(chunk::AbstractChunkOfSpectrum, tellurics::DataFrame)
     telluric_mask = is_in_wavelength_range_list.(chunk.λ, list=tellurics)

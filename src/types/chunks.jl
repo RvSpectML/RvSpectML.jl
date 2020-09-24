@@ -57,8 +57,8 @@ function ChunkOfSpectrum(spectra::AS, pixels::AUR) where { AS<:AbstractSpectra1D
 end
 
 
-get_order_index(chunk<:AbstractChunkOfSpectrum) = chunk.flux.indices[2]
-get_pixels_range(chunk<:AbstractChunkOfSpectrum) = chunk.flux.indices[1]
+get_order_index(chunk::AC) where { AC<:AbstractChunkOfSpectrum }  = chunk.flux.indices[2]
+get_pixels_range(chunk::AC) where { AC<:AbstractChunkOfSpectrum } = chunk.flux.indices[1]
 
 
 

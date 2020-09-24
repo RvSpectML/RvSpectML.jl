@@ -4,13 +4,14 @@ using Pkg
 verbose = true
  if verbose && !isdefined(Main,:RvSpectML)  println("# Loading RvSpecML")    end
  using RvSpectML
- include("shared/scripts.jl")
+include("shared/scripts.jl")
  if verbose   println("# Loading other packages")    end
  using DataFrames, Query, Statistics, Dates
 
 include("read_expres_data_101501.jl")
 
-order_list_timeseries = extract_orders(all_spectra,pipeline_plan)
+#order_list_timeseries = extract_orders(all_spectra,pipeline_plan, orders_to_use = [EXPRES.orders_to_use_default(all_spectra[1].inst)[2]], recalc=true )
+order_list_timeseries = extract_orders(all_spectra,pipeline_plan, recalc=true )
 
 line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = 30e3)
 
@@ -20,13 +21,27 @@ line_width = RvSpectML.calc_line_width(v_grid,view(ccfs,:,1),frac_depth=0.05)
 
 line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = line_width)
 
+#chunk_list_timeseries = make_chunk_list_timeseries(all_spectra,line_list_df)
+EXPRES.continuum_normalize_spectra!(all_spectra)
+
+
+(ccfs, v_grid) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan,  mask_type=:gaussian, mask_scale_factor=10.0, ccf_mid_velocity=ccf_mid_velocity, recalc=true)
+ rvs_ccf = calc_rvs_from_ccf_total(ccfs, pipeline_plan, v_grid=v_grid, times = order_list_timeseries.times, recalc=true)
+
+(ccfs_expr, v_grid_expr) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan, mask_type=:gaussian, mask_scale_factor=10.0, ccf_mid_velocity=ccf_mid_velocity, recalc=true, use_pixel_vars=true)
+ rvs_ccf_expr = calc_rvs_from_ccf_total(ccfs_expr, pipeline_plan, v_grid=v_grid_expr, times = order_list_timeseries.times, recalc=true)
+ println(" mean Δχ²= ",mean(minimum(length(order_list_timeseries.chunk_list[1][1].flux).*log.(1 .- ccfs_expr[:,t_idx].^2 ),dims=1)))
+
 if make_plot(pipeline_plan, :ccf_total)
    using Plots
-   t_idx = 20
-   plt = plot(v_grid,ccfs[:,t_idx]./maximum(ccfs[:,t_idx],dims=1),label=:none)
-   if isdefined(Main,:ccfs_expr)   scatter!(plt,v_grid,ccfs_expr[:,t_idx]./maximum(ccfs_expr[:,t_idx],dims=1),markersize=1.2,label=:none)  end
-   #plt = plot(v_grid,ccfs[:,t_idx],label=:none)
-   #if isdefined(Main,:ccfs_expr)   scatter!(plt,v_grid_expr,ccfs_expr[:,t_idx],markersize=1.2,label=:none)   end
+   t_idx = 1:40
+   plt = plot()
+   #plot!(plt,v_grid,ccfs[:,t_idx]./maximum(ccfs[:,t_idx],dims=1),label=:none)
+   #if isdefined(Main,:ccfs_expr)   scatter!(plt,v_grid_expr,-ccfs_expr[:,t_idx]./maximum(ccfs_expr[:,t_idx],dims=1),markersize=1.2,label=:none)  end
+   #lot!(plt,v_grid,ccfs[:,t_idx],label=:none)
+   #if isdefined(Main,:ccfs_expr)   plot!(plt,v_grid_expr,ccfs_expr[:,t_idx],markersize=1.2,label=:none)   end
+   if isdefined(Main,:ccfs_expr)   plot!(plt,v_grid_expr,length(order_list_timeseries.chunk_list[1][1].flux).*log.(1 .- ccfs_expr[:,t_idx].^2 ) ,markersize=1.2,label=:none)   end
+   #if isdefined(Main,:ccfs_expr)   scatter!(plt,v_grid_expr,ccfs_expr[:,t_idx] .-maximum(ccfs_expr[:,t_idx],dims=1),markersize=1.2,label=:none)   end
    xlabel!("v (m/s)")
    ylabel!("CCF")
    if save_plot(pipeline_plan,:ccf_total)   savefig(plt,joinpath(output_dir,target_subdir * "_ccf_sum.png"))   end
@@ -51,7 +66,7 @@ end
 rvs_ccf = calc_rvs_from_ccf_total(ccfs, pipeline_plan, v_grid=v_grid, times = order_list_timeseries.times, recalc=true)
 # Store estimated RVs in metadata for use when making template
 map(i->order_list_timeseries.metadata[i][:rv_est] = rvs_ccf[i]-mean(rvs_ccf), 1:length(rvs_ccf) )
-#rvs_ccf_expr = calc_rvs_from_ccf_total(ccfs_expr, pipeline_plan, v_grid=v_grid_expr, times = order_list_timeseries.times, recalc=true)
+rvs_ccf_expr = calc_rvs_from_ccf_total(ccfs_expr, pipeline_plan, v_grid=v_grid_expr, times = order_list_timeseries.times, recalc=true)
 
 
 if need_to(pipeline_plan,:scalpels)

@@ -25,5 +25,5 @@ reset_all_needs!(pipeline_plan)
    RvSpectML.discard_blaze(all_spectra)
    RvSpectML.discard_continuum(all_spectra)
    dont_need_to!(pipeline_plan,:read_spectra)
-   all_spectra
+   #all_spectra
  end

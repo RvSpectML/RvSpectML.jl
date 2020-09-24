@@ -8,8 +8,8 @@ function prepare_line_list_pass1( linelist_fn::String, all_spectra::AbstractVect
    @assert length(all_spectra) >= 1
    if need_to(pipeline,:read_line_list) || recalc
       lambda_range_with_good_data = get_λ_range(all_spectra)
-      if verbose println("# Reading line list for CCF: ", linelist_for_ccf_filename, ".")  end
-      espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks",linelist_for_ccf_filename)
+      if verbose println("# Reading line list for CCF: ", linelist_fn, ".")  end
+      espresso_filename = joinpath(pkgdir(RvSpectML),"data","masks",linelist_fn)
       espresso_df = RvSpectML.read_linelist_espresso(espresso_filename)
       #inst_module = RvSpectML.get_inst_module(typeof(first(all_spectra).inst))
       #line_list_df = EXPRES.filter_line_list(espresso_df,first(all_spectra).inst)

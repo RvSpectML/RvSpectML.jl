@@ -7,6 +7,7 @@ CurrentModule = RvSpectML
 Pages = ["types.md"]
 Depth = 3
 ```
+
 ## General purpose
 ```@autodocs
 Modules = [RvSpectML ]
@@ -15,7 +16,7 @@ Order = [:type]
 ```
 ## RV-Related Algorithms
 ```@autodocs
-Modules = [RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA, RvSpectML.Scalpels, RvSpectML.LineFinder ] #, RvSpectML.PPCA ]
+Modules = [RvSpectML.DCPCA, RvSpectML.LineFinder ] #, RvSpectML.PPCA ]
 Private = false
 Order = [:type]
 ```
@@ -23,13 +24,6 @@ Order = [:type]
 ## Interpolation Algorithms
 ```@autodocs
 Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.TemporalGPInterpolation ]  # RvSpectML.GPInterpolation,
-Private = false
-Order = [:type]
-```
-
-## Instrument specific
-```@autodocs
-Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID, RvSpectML.TheoreticalInstrument  ]
 Private = false
 Order = [:type]
 ```

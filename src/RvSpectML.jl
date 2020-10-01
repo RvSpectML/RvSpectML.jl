@@ -10,56 +10,75 @@ Contact: https://github.com/eford/RvSpectML.jl
 """
 module RvSpectML
 
-# Packages we know we'll use in many places
-using LinearAlgebra, Statistics
-using DataFrames, Query
-# Packages that are being used and likely can be shared
-using Distributions, Interpolations, MultivariateStats, PDMats
-# Packages we might use soon
-#using Optim, Stheno
-# Let's try to keep Plots out the main package to reduce compilation times when not plotting.
-#using  Plots
-
-# types.jl is responsible for exporting its own types and functions
-include("types/types.jl")
-
-include("util/util.jl")
-export calc_doppler_factor, apply_doppler_boost!
-export absorption_line
+# Packages from RvSpectML ecosystem
+using RvSpectMLBase
 export speed_of_light_mps
-#export searchsortednearest
-
-include("util/spectra.jl")
 export calc_normalization, normalize_spectrum!, get_λ_range
-include("util/chunks.jl")
 export make_chunk_list, make_orders_into_chunks
 export make_chunk_list_timeseries, make_order_list_timeseries
 export make_grid_for_chunk, filter_bad_chunks
-#export find_cols..., find_orders..., findall_line,...
 
-# alg.jl  is responsible for exporting its own types, modules & functions
-include("alg/alg.jl")
+using EchelleInstruments
+export EchelleInstruments
 
-# instruments.jl & the instruments it contains are responsible for exporting their own functions & modules
-include("instruments/instruments.jl")
+using EchelleCCFs
+export EchelleCCFs
+CCFs = EchelleCCFs
 
-# util/files.jl
-include("util/files.jl")
-export make_manifest, code_to_include_param_jl
+using Scalpels
+export Scalpels
 
-include("util/pipeline.jl")
+#using Experimental
+#using RvSpectMLPlots
+
+# Packages we know we'll use in many places
+using LinearAlgebra, Statistics
+using DataFrames, Query
+using Dates
+# Packages that are being used and likely can be shared
+# using Distributions, Interpolations, MultivariateStats, PDMats
+# Packages we might use soon
+#using Optim
+#using Stheno, TemporalGPs
+# Let's try to keep Plots out the main package to reduce compilation times when not plotting.
+#using  Plots
+
+include("pipeline/pipeline.jl")
 using .Pipeline
+export Pipeline
+export extract_orders, prepare_line_list, ccf_total, ccf_orders, calc_rvs_from_ccf_total
+
+#=
 export PipelinePlan
 export make_plot,  save_plot, save_data, need_to, has_cache, read_cache, set_cache!  # Query pipeline
 export need_to!, dont_need_to!, reset_all_needs!             # Write to pipeline
 export make_plot!, dont_make_plot!, make_all_plots!,  make_no_plots!
+=#
 
-# Followering have been moved to scripts/plots
-# util/plots.jl  is responsible for exporting its own functions
-#include("util/plots/spectra.jl")
-#export plot_spectrum_chunks
-#export add_time_gap_lines
-#include("util/plots/dcpca.jl")
-#export plot_basis_vectors, plot_basis_scores, plot_basis_scores_cor
+include("interp/interp.jl")
+#=
+export TemporalGPInterpolation
+export construct_gp_posterior, gp_marginal, predict_gp
+export predict_mean, predict_deriv, predict_deriv2, predict_mean_and_deriv, predict_mean_and_derivs
+=#
+
+
+include("line_finder/line_finder.jl")
+export LineFinderPlan
+
+# alg.jl  will be responsible for exporting its own types, modules & functions
+#include("alg/alg.jl")
+# For now treating parts individually
+include("alg/project_flux_common_wavelengths.jl")
+include("alg/make_template_spectrum.jl")
+include("alg/combine_obs.jl")
+export bin_times_consecutive, bin_rvs_consecutive, bin_spectra_consecutive
+export bin_times_nightly, bin_rvs_nightly, bin_times_and_rvs_nightly, bin_spectra_nightly, rms_rvs_within_night
+export bin_times_max_Δt, bin_rvs_max_Δt,  bin_times_and_rvs_max_Δt, bin_spectra_max_Δt
+
+#include("alg/dcpca.jl")
+#include("alg/ppcca.jl")
+#include("alg/rvs_from_gp_pairs.jl")
+
 
 end

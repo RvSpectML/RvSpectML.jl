@@ -20,7 +20,7 @@ Order = [ :function ]
 
 ### Radial Velocity Related
 ```@autodocs
-Modules = [RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA, RvSpectML.Scalpels, RvSpectML.LineFinder ] #, RvSpectML.PPCA ]
+Modules = [RvSpectML.DCPCA, RvSpectML.LineFinder ] #, RvSpectML.PPCA ]
 Public = false
 Order = [ :function ]
 ```
@@ -28,13 +28,6 @@ Order = [ :function ]
 ### Interpolation
 ```@autodocs
 Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.TemporalGPInterpolation ]  # RvSpectML.GPInterpolation,
-Public = false
-Order = [ :function]
-```
-
-### Instrument specific
-```@autodocs
-Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID, RvSpectML.TheoreticalInstrument  ]
 Public = false
 Order = [ :function]
 ```
@@ -57,7 +50,7 @@ Order = [:type ]
 
 ### Radial Velocity Related
 ```@autodocs
-Modules = [RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA, RvSpectML.Scalpels, RvSpectML.LineFinder ] #, RvSpectML.PPCA ]
+Modules = [ RvSpectML.DCPCA, RvSpectML.LineFinder ] #, RvSpectML.PPCA ]
 Public = false
 Order = [:type ]
 ```
@@ -69,12 +62,6 @@ Public = false
 Order = [:type ]
 ```
 
-### Instrument specific
-```@autodocs
-Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID, RvSpectML.TheoreticalInstrument  ]
-Public = false
-Order = [:type ]
-```
 ## Other
 ```@autodocs
 Modules = [Pipeline  ]

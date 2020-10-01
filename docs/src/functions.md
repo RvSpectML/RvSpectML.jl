@@ -17,7 +17,7 @@ Order = [:function ]
 
 ## RV-Related Algorithms
 ```@autodocs
-Modules = [RvSpectML.CCF, RvSpectML.RVFromCCF, RvSpectML.DCPCA, RvSpectML.Scalpels, RvSpectML.LineFinder ] #, RvSpectML.PPCA ]
+Modules = [ RvSpectML.DCPCA, RvSpectML.LineFinder] #, RvSpectML.PPCA ]
 Private = false
 Order = [:function ]
 ```
@@ -27,13 +27,6 @@ Order = [:function ]
 Modules = [RvSpectML.LinearInterpolation, RvSpectML.SincInterpolation, RvSpectML.TemporalGPInterpolation ]  # RvSpectML.GPInterpolation,
 Private = false
 Order = [:function ]
-```
-
-## Instrument-specific
-```@autodocs
-Modules = [RvSpectML.EXPRES, RvSpectML.HARPSN, RvSpectML.NEID, RvSpectML.TheoreticalInstrument  ]
-Private = false
-Order = [:function]
 ```
 
 ## Other

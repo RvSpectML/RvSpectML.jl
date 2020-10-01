@@ -1,6 +1,6 @@
 global tophap_ccf_mask_scale_factor=1.6
 
-global max_spectra_to_use = 10
+global max_spectra_to_use = 200
 global fits_target_str
 if fits_target_str == "Solar"
    global linelist_for_ccf_filename = "G2.espresso.mas"

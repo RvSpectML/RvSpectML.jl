@@ -6,8 +6,6 @@ verbose = true
   if verbose   println("# Loading other packages")    end
   using Statistics
 
-
-
 all_spectra = include(joinpath(pkgdir(EchelleInstruments),"examples/read_expres_data_101501.jl"))
 #all_spectra = include(joinpath(pkgdir(EchelleInstruments),"examples/read_neid_solar_data_20190918.jl"))
 
@@ -52,8 +50,6 @@ if make_plot(pipeline_plan, :ccf_total)
 end
 
 (order_ccfs, v_grid_order_ccfs) = ccf_orders(order_list_timeseries, line_list_df, pipeline_plan)
-
-rvs_ccf = calc_rvs_from_ccf_total(ccfs, pipeline_plan, v_grid=v_grid, times = order_list_timeseries.times, recalc=true)
 
 if need_to(pipeline_plan,:scalpels)
    rvs_scalpels = map(n->Scalpels.clean_rvs_scalpels(rvs_ccf, ccfs, num_basis=n), 1:5)

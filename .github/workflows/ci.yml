@@ -48,7 +48,7 @@ jobs:
         with:
           version: '1'
       - run: |
-          julia --color=yes --project -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/RvSpectML/RvSpectMLPlots.jl")); Pkg.instantiate()'          
+          julia --color=yes --project -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/RvSpectML/RvSpectMLPlots.jl")); Pkg.instantiate()'          
       - run: |
           julia --project=docs -e '
             using Pkg

@@ -22,7 +22,7 @@ export ccf_total
 include("ccf_orders.jl")
 export ccf_orders
 
-using EchelleCCFs.RVFromCCF
+using ..EchelleCCFs.RVFromCCF
 using Statistics
 include("calc_rvs_from_ccf_total.jl")
 export calc_rvs_from_ccf_total

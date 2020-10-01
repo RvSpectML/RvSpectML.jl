@@ -17,7 +17,7 @@ data_paths.jl
 
 # Temporary files
 tmp.jl
-/examples/output
+/examples*/output
 /plots
 /test/testdir
 

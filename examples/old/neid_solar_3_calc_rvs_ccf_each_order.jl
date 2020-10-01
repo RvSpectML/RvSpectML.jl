@@ -79,5 +79,4 @@ if make_plots
    xlabel!("Time (hours)")
    ylabel!("v (m/s)")
    display(plt)
-   end
 end

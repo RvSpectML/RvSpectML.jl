@@ -1,8 +1,10 @@
 # RvSpectML 
+[![GitHub tag](https://img.shields.io/github/tag/eford/RvSpectML.jl.svg)](https://GitHub.com/eford/RvSpectML.jl/tags/)
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://eford.github.io/RvSpectML.doc/) [![Build Status](https://github.com/eford/RvSpectML.jl/workflows/CI/badge.svg)](https://github.com/eford/RvSpectML.jl/actions) 
 <!--- [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://eford.github.io/RvSpectML.jl/stable)  --->
 <!--- [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://eford.github.io/RvSpectML.jl/dev) --->  
-<!--- [![Coverage](https://codecov.io/gh/eford/RvSpectML.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/eford/RvSpectML.jl) --->
+[![Coverage](https://codecov.io/gh/eford/RvSpectML.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/eford/RvSpectML.jl)
+
 
 [RvSpectML.jl](https://github.com/eford/RvSpectML.jl) is a package to facilitate the analysis of stellar spectroscopic times series.
 The primary goal is to measure extremely precise radial velocities (EPRVs).  

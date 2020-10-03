@@ -2,11 +2,17 @@
 function ccf_orders(order_list_timeseries::AbstractChunkListTimeseries,  line_list_df::DataFrame, pipeline::PipelinePlan; verbose::Bool = false, recalc::Bool = false,
    range_no_mask_change::Real=30e3, ccf_mid_velocity::Real=0.0, mask_scale_factor::Real=1, mask_type::Symbol = :tophat )
 
-   if need_to(pipeline, :ccf_orders)  # Compute order CCF's & measure RVs
+   if need_to(pipeline, :ccf_orders)  || recalc # Compute order CCF's & measure RVs
       if mask_type == :tophat
-        mask_shape = TopHatCCFMask(order_list_timeseries.inst, scale_factor=mask_scale_factor)
+         mask_shape = CCFs.TopHatCCFMask(order_list_timeseries.inst, scale_factor=mask_scale_factor)
+      elseif mask_type == :gaussian
+         mask_shape = CCFs.GaussianCCFMask(order_list_timeseries.inst, σ_scale_factor=mask_scale_factor)
+      elseif mask_type == :supergaussian
+         mask_shape = CCFs.SuperGaussianCCFMask(order_list_timeseries.inst, σ_scale_factor=mask_scale_factor)
+      elseif mask_type == :halfcos
+         mask_shape = CCFs.CosCCFMask(order_list_timeseries.inst, scale_factor=mask_scale_factor)
       else
-        @error("Requested mask shape (" * string(mask_type) * " not avaliable.")
+         @error("Requested mask shape (" * string(mask_type) * " not avaliable.")
       end
 
       line_list = BasicLineList(line_list_df.lambda, line_list_df.weight)

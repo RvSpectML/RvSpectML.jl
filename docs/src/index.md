@@ -6,10 +6,10 @@ CurrentModule = RvSpectML
 ## Getting Started
 
 - [Install Julia 1.5](https://julialang.org/downloads/).  On Penn State's ICS-ACI, it is avaliable at  `/gpfs/group/ebf11/default/julia/bin/julia`.
-- Install the [RvSpectML package](https://github.com/eford/RvSpectML.jl) and it's dependencies.  From julia
+- Install the [RvSpectML package](https://github.com/RvSpectML/RvSpectML.jl) and it's dependencies.  From julia
 ```julia
 import Pkg
-Pkg.add("https://github.com/eford/RvSpectML.jl")
+Pkg.add("RvSpectML")
 Pkg.instantiate()
 ```
 - Create a file `examples/data_paths.jl` specifying what directories on your system contain the relevant input data files.  For some of the first example scripts, you'd set  `expres_data_path` or `solar_data_path` or `ancilary_solar_data_path` like:
@@ -35,7 +35,7 @@ include("examples/calc_rvs_ccf_std.jl")
 
 ## Other packages in the [RvSpectML ecosystem](https://github.com/RvSpectML):
 - [RvSpectMLBase](https://rvspectml.github.io/RvSpectMLBase.jl/stable/)
-- [RvSpectML](https://github.com/eford/RvSpectML.jl)
+- [RvSpectML](https://github.com/RvSpectML/RvSpectML.jl)
 - [EchelleInstruments](https://rvspectml.github.io/EchelleInstruments.jl/stable/)
 - [EchelleCCFs](https://rvspectml.github.io/EchelleCCFs.jl/stable)
 - [Scalpels](https://rvspectml.github.io/Scalpels.jl/stable/)

@@ -4,12 +4,12 @@ using Documenter
 makedocs(;
     modules=[RvSpectML],
     authors="Eric Ford and contributors",
-    repo="https://github.com/eford/RvSpectML.jl/blob/{commit}{path}#L{line}",
+    repo="https://github.com/RvSpectML/RvSpectML.jl/blob/{commit}{path}#L{line}",
     sitename="RvSpectML.jl",
 #    latest="main",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://eford.github.io/RvSpectML.jl",
+        canonical="https://RvSpectML.github.io/RvSpectML.jl",
         assets=String[],
     ),
     pages=[
@@ -26,5 +26,5 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/eford/RvSpectML.jl"
+    repo="github.com/RvSpectML/RvSpectML.jl",
 )

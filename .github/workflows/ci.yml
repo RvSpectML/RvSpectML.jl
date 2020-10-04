@@ -31,8 +31,6 @@ jobs:
             ${{ runner.os }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-test-
             ${{ runner.os }}-
-      - run: |
-          julia --color=yes --project -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/RvSpectML/RvSpectMLPlots.jl")); Pkg.instantiate()'
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
       - uses: julia-actions/julia-processcoverage@v1
@@ -47,8 +45,6 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1'
-      - run: |
-          julia --color=yes --project -e 'using Pkg; Pkg.develop(PackageSpec(url="https://github.com/RvSpectML/RvSpectMLPlots.jl")); Pkg.instantiate()'          
       - run: |
           julia --project=docs -e '
             using Pkg

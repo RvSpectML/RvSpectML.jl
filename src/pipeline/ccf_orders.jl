@@ -1,6 +1,6 @@
 
 function ccf_orders(order_list_timeseries::AbstractChunkListTimeseries,  line_list_df::DataFrame, pipeline::PipelinePlan; verbose::Bool = false, recalc::Bool = false,
-   range_no_mask_change::Real=30e3, ccf_mid_velocity::Real=0.0, mask_scale_factor::Real=1, mask_type::Symbol = :tophat )
+   range_no_mask_change::Real=RvSpectMLBase.max_bc, ccf_mid_velocity::Real=0.0, mask_scale_factor::Real=1, mask_type::Symbol = :tophat )
 
    if need_to(pipeline, :ccf_orders)  || recalc # Compute order CCF's & measure RVs
       if mask_type == :tophat

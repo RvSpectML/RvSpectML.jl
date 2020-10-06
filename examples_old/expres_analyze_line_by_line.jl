@@ -12,7 +12,7 @@ include("read_expres_data_101501.jl")
 
 order_list_timeseries = extract_orders(all_spectra,pipeline_plan,recalc=true)
 
-line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan, v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = 30e3, recalc=true)
+line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan, v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = RvSpectMLBase.max_bc, recalc=true)
  (ccfs, v_grid) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan,  mask_scale_factor=10.0, ccf_mid_velocity=ccf_mid_velocity, recalc=true)
  line_width = RvSpectML.calc_line_width(v_grid,view(ccfs,:,1),frac_depth=0.05)
 line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = line_width)
@@ -180,7 +180,7 @@ for row in eachrow(df)
    println(obs_id,ave_Δv)
 end
 
-@map( { obs_id=first(_.obs_id), 
+@map( { obs_id=first(_.obs_id),
         median_a=median(_.fit_a), median_b=median(_.fit_b), median_depth=median(_.fit_depth), median_σ²=median(_.fit_σ²), median_λc=median(_.fit_λc),
                std_a=std(_.fit_a), std_b=std(_.fit_b), std_depth=std(_.fit_depth), std_σ²=std(_.fit_σ²), std_λc=std(_.fit_λc),
                line_id=first(_.line_id),  frac_converged=mean(_.fit_converged)  } ) |>

@@ -13,7 +13,7 @@ include("read_expres_data_101501.jl")
 #order_list_timeseries = extract_orders(all_spectra,pipeline_plan, orders_to_use = [EXPRES.orders_to_use_default(all_spectra[1].inst)[2]], recalc=true )
 order_list_timeseries = extract_orders(all_spectra,pipeline_plan, recalc=true )
 
-line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = 30e3)
+line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = RvSpectMLBase.max_bc)
 
 (ccfs, v_grid) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan,  mask_scale_factor=10.0, ccf_mid_velocity=ccf_mid_velocity, recalc=true)
 

@@ -3,7 +3,7 @@ using RvSpectML
 """ prepare_line_list_pass1( linelist_fn, spectra, pipeline; Δv_to_avoid_tellurics, v_center_to_avoid_tellurics )
 """
 function prepare_line_list_pass1( linelist_fn::String, all_spectra::AbstractVector{SpecT}, pipeline::PipelinePlan; recalc::Bool = false,
-         Δv_to_avoid_tellurics::Real = 30e3, v_center_to_avoid_tellurics::Real = 0.0 ) where { SpecT <: AbstractSpectra }
+         Δv_to_avoid_tellurics::Real =RvSpectMLBase.max_bc , v_center_to_avoid_tellurics::Real = 0.0 ) where { SpecT <: AbstractSpectra }
    @assert length(linelist_fn) >= 1
    @assert length(all_spectra) >= 1
    if need_to(pipeline,:read_line_list) || recalc

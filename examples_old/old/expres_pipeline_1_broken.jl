@@ -68,7 +68,7 @@ if verbose println("# Removing lines with telluric contamination.")  end    # Cu
  line_list_to_search_for_tellurics.min_telluric_model_all_obs = RvSpectML.find_worst_telluric_in_each_chunk( chunk_list_timeseries, expres_data)
  line_list_no_tellurics_df = line_list_to_search_for_tellurics |> @filter(_.min_telluric_model_all_obs == 1.0) |> DataFrame
  #=
- Δv_to_avoid_tellurics = 30000.0 #RvSpectML.default_Δv_to_avoid_tellurics
+ Δv_to_avoid_tellurics = RvSpectMLBase.max_bc # default_Δv_to_avoid_tellurics
  line_list_no_tellurics_df.lambda_lo = line_list_no_tellurics_df.lambda./calc_doppler_factor(Δv_to_avoid_tellurics)
  line_list_no_tellurics_df.lambda_hi = line_list_no_tellurics_df.lambda.*calc_doppler_factor(Δv_to_avoid_tellurics)
  #find_overlapping_chunks(line_list_no_tellurics_df)

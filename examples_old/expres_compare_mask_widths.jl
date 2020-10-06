@@ -12,7 +12,7 @@ include("read_expres_data_101501.jl")
 
 order_list_timeseries = extract_orders(all_spectra,pipeline_plan)
 
-line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = 30e3)
+line_list_df = prepare_line_list_pass1(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = RvSpectMLBase.max_bc)
 
 #mask_scale_factors = [  1, 2, 4.0, 8.0, 10, 12, 16, 18  ]
 mask_scale_factors = [  1, 2, 4.0,8 , 12 ]

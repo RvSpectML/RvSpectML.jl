@@ -1,17 +1,19 @@
 verbose = true
+  make_plots = false
   if verbose && !isdefined(Main,:RvSpectML)  println("# Loading RvSpecML")    end
   using RvSpectML
-  if verbose && !isdefined(Main,:RvSpectMLPlots)  println("# Loading RvSpecMLPlots")    end
-  using RvSpectMLPlots
+  if verbose && make_plots && !isdefined(Main,:RvSpectMLPlots)  println("# Loading RvSpecMLPlots")    end
+  if make_plots    using RvSpectMLPlots    end
   if verbose   println("# Loading other packages")    end
   using Statistics
+
 
 all_spectra = include(joinpath(pkgdir(EchelleInstruments),"examples/read_expres_data_101501.jl"))
 #all_spectra = include(joinpath(pkgdir(EchelleInstruments),"examples/read_neid_solar_data_20190918.jl"))
 
-order_list_timeseries = extract_orders(all_spectra,pipeline_plan, recalc=true )
+line_list_df = prepare_line_list(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = RvSpectMLBase.max_bc, recalc=true)
 
-line_list_df = prepare_line_list(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = 30e3, recalc=true)
+order_list_timeseries = extract_orders(all_spectra,pipeline_plan, recalc=true )
 
 (ccfs, v_grid) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan,  mask_type=:tophat, mask_scale_factor=2.0,
   ccf_mid_velocity=ccf_mid_velocity, recalc=true, calc_ccf_var=false)

@@ -4,7 +4,7 @@ function calc_rvs_from_ccf_total(ccfs::AbstractArray{T1,2}, pipeline_plan::Pipel
                                  bin_nightly::Bool = true, bin_consecutive::Integer = 0 , recalc::Bool = false, verbose::Bool = true) where {T1<:Real, T2<:Real, T3<:Real }
    @assert length(v_grid) == size(ccfs,1)
    need_to!(pipeline_plan, :rvs_ccf_total)
-   if need_to(pipeline_plan, :rvs_ccf_total)
+   if need_to(pipeline_plan, :rvs_ccf_total)  || recalc
       if verbose println("# Measuring RVs from CCF.")  end
       @assert !need_to(pipeline_plan,:ccf_total)
       #fit_gaussian_to_ccf = RVFromCCF.MeasureRvFromCCFGaussian()

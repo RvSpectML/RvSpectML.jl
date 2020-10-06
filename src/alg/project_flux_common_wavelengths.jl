@@ -11,6 +11,10 @@ function calc_mean_spectrum(flux::AbstractArray{T1,2}, var::AbstractArray{T2,2} 
     flux_mean = vec(sum(flux./var,dims=2)./sum(1.0./var,dims=2))
 end
 
+function calc_mean_spectrum(spectra::STS) where { STS<:AbstractSpectralTimeSeriesCommonWavelengths}
+    calc_mean_spectrum(spectra.flux, spectra.var )
+end
+
 """ Return mean numerical derivative (dflux/dlnλ) based on a common set of wavelengths.
 Inputs:
 - flux (2d)
@@ -32,6 +36,10 @@ function calc_mean_dfluxdlnlambda(flux::AbstractArray{T1,2}, var::AbstractArray{
     return deriv
 end
 
+function calc_mean_dfluxdlnlambda(spectra::STS) where { STS<:AbstractSpectralTimeSeriesCommonWavelengths}
+    calc_mean_dfluxdlnlambda(spectra.flux, spectra.var, spectra.λ, spectra.chunk_map )
+end
+
 """ Return mean numerical derivative (d²flux/dlnλ²) based on a common set of wavelengths.
 Inputs:
 - flux (2d)
@@ -51,6 +59,10 @@ Output:
          calc_d2fluxdlnlambda2!(deriv2[c],flux_mean[c],λ[c])
     end
     return deriv2
+end
+
+function calc_mean_d2fluxdlnlambda2(spectra::STS) where { STS<:AbstractSpectralTimeSeriesCommonWavelengths}
+    calc_mean_d2fluxdlnlambda2(spectra.flux, spectra.var, spectra.λ, spectra.chunk_map )
 end
 
 """ `calc_rvs_from_taylor_expansion( spectra )`
@@ -96,7 +108,7 @@ Experimental version of [calc_rvs_from_taylor_expansion](@ref).
 """
 function calc_rvs_from_taylor_expansion_alt(spectra::STS; mean::MT = calc_mean_spectrum(spectra),
                 deriv::DT = calc_mean_dfluxdlnlambda(spectra),
-                deriv2::DT = calc_d2fluxdlnlambda2(spectra), idx::RT = 1:length(mean),
+                deriv2::DT = calc_mean_d2fluxdlnlambda2(spectra), idx::RT = 1:length(mean),
                 equal_weight::Bool = true ) where {
                     STS<:AbstractSpectralTimeSeriesCommonWavelengths, T1<:Real, MT<:AbstractVector{T1},
                     T2<:Real, DT<:AbstractVector{T2}, RT<:AbstractUnitRange }
@@ -110,7 +122,7 @@ function calc_rvs_from_taylor_expansion_alt(spectra::STS; mean::MT = calc_mean_s
       norm = sum(deriv[idx].^2 .- (spectra.flux[idx,:].-mean[idx]).*deriv2[idx],dims=1)
       rv = sum(((spectra.flux[idx,:].-mean[idx]).*deriv[idx]),dims=1)./norm
       rv *= speed_of_light_mps
-      # TODO: WARN: Uncertinaties ignores correlations between pixels, particularly problematic when oversample pixels
+      # TODO: WARN: Uncertinaties ignores correlations between pixels, particularly problematic when over sample pixels
       σ_rv = sqrt.(sum(spectra.var[idx,:].*abs2.(deriv[idx]),dims=1)./norm)
       σ_rv *= speed_of_light_mps
   else # Pixels inverse variance weighted

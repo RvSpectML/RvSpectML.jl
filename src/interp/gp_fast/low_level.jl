@@ -187,12 +187,12 @@ end
 
 # NEED TO TEST
 function predict_deriv(xobs::AA1, yobs::AA2, xpred::AA3; sigmasq_obs::AA4 = 1e-16*ones(length(xobs))
-						, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1  )    where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, T3<:Real, AA3<:AbstractArray{T3,1}, T4<:Real, AA4<:AbstractArray{T4,1}  }
+						, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1, verbose::Bool = false  )    where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, T3<:Real, AA3<:AbstractArray{T3,1}, T4<:Real, AA4<:AbstractArray{T4,1}  }
   #kobs = make_kernel_data(xobs, kernel=kernel, sigmasq_obs=sigmasq_obs, sigmasq_cor=sigmasq_cor, rho=rho)
   #kobs_pred_deriv = make_kernel_obs_pred(xobs,xpred, kernel=dkerneldx, sigmasq_cor=sigmasq_cor, rho=rho)
   #alpha = kobs \ yobs
   #pred_deriv = kobs_pred_deriv' * alpha
-  println("# predict_deriv (TemporalGPs): size(xobs) = ",size(xobs), "  size(xpred) = ", size(xpred))
+  if verbose   println("# predict_deriv (TemporalGPs): size(xobs) = ",size(xobs), "  size(xpred) = ", size(xpred))   end
   pred_mean = predict_mean(xobs,yobs,xpred, sigmasq_obs=sigmasq_obs, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor)
   pred_deriv = calc_dfluxdlnlambda(pred_mean,xpred)
   return pred_deriv
@@ -212,7 +212,7 @@ println("# predict_deriv2 (TemporalGPs) runtime: ", now()-tstart)
 end
 
 function predict_mean_and_deriv(xobs::AA1, yobs::AA2, xpred::AA3;sigmasq_obs::AA4 = 1e-16*ones(length(xobs))
-	 							, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1 ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, T3<:Real, AA3<:AbstractArray{T3,1}, T4<:Real, AA4<:AbstractArray{T4,1}  }
+	 							, use_logx::Bool = true, use_logy::Bool = true, smooth_factor::Real = 1, verbose::Bool = false ) where { T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, T3<:Real, AA3<:AbstractArray{T3,1}, T4<:Real, AA4<:AbstractArray{T4,1}  }
 	#		kernel::Function = matern52_sparse_kernel, dkerneldx::Function = dkerneldx_matern52_sparse,
 	#		sigmasq_cor::Real=1.0, rho::Real=1.0)
   #kobs = make_kernel_data(xobs, kernel=kernel, sigmasq_obs=sigmasq_obs, sigmasq_cor=sigmasq_cor, rho=rho)
@@ -221,7 +221,7 @@ function predict_mean_and_deriv(xobs::AA1, yobs::AA2, xpred::AA3;sigmasq_obs::AA
   #pred_mean = kobs_pred' * alpha
   #kobs_pred_deriv = make_kernel_obs_pred(xobs,xpred, kernel=dkerneldx, sigmasq_cor=sigmasq_cor, rho=rho)
   #pred_deriv = kobs_pred_deriv' * alpha
-  println("# predict_mean_and_deriv (TemporalGPs): size(xobs) = ",size(xobs), "  size(xpred) = ", size(xpred))
+  if verbose   println("# predict_mean_and_deriv (TemporalGPs): size(xobs) = ",size(xobs), "  size(xpred) = ", size(xpred))   end
   xpred_trans = use_logx ? log.(xpred) : xpred
   pred_mean = predict_mean(xobs,yobs,xpred, sigmasq_obs=sigmasq_obs, use_logx=use_logx, use_logy=use_logy, smooth_factor=smooth_factor)
   pred_deriv = numerical_deriv(xpred_trans,pred_mean)

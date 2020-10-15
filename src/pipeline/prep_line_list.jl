@@ -1,5 +1,6 @@
 
 """ prepare_line_list( linelist_fn, spectra, pipeline; Δv_to_avoid_tellurics, v_center_to_avoid_tellurics )
+linelist_fn is the full path to the line list file
 """
 function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{SpecT}, pipeline::PipelinePlan; recalc::Bool = false,
          Δv_to_avoid_tellurics::Real = EchelleInstruments.default_Δv_to_avoid_tellurics, v_center_to_avoid_tellurics::Real = 0.0, verbose::Bool = false ) where { SpecT <: AbstractSpectra }
@@ -8,8 +9,8 @@ function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{Spe
    if need_to(pipeline,:read_line_list) || recalc
       lambda_range_with_good_data = get_λ_range(all_spectra)
       if verbose println("# Reading line list for CCF: ", linelist_fn, ".")  end
-      espresso_filename = joinpath(pkgdir(EchelleCCFs),"data","masks",linelist_fn)
-      espresso_df = EchelleCCFs.read_linelist_espresso(espresso_filename)
+      #espresso_filename = joinpath(pkgdir(EchelleCCFs),"data","masks",linelist_fn)
+      espresso_df = EchelleCCFs.read_linelist_espresso(linelist_fn)
       inst_module = get_inst_module(first(all_spectra).inst)
       line_list_df = inst_module.filter_line_list(espresso_df,first(all_spectra).inst)
       #println(line_list_df)

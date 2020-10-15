@@ -79,7 +79,7 @@ make_plot!(pipeline_plan,:scalpels)
 if make_plot(pipeline_plan, :scalpels)
    @assert !need_to(pipeline_plan, :rvs_ccf_total)
    @assert !need_to(pipeline_plan, :ccf_total)
-   include("../scripts/plots/scalpels.jl")
+   include("../scripts/plots/scalpels_code.jl")
    plt = Scalpels.make_plots_scalpels(rvs_ccf, ccfs, max_num_basis=2, v_grid=v_grid, times=order_list_timeseries.times, output_path="examples/output/figures")
    display(plt)
 end

@@ -194,7 +194,6 @@ function rms_rvs_within_night(;times::AbstractVector{T1}, rvs::AbstractVector{T2
 end
 
 
-#=
 
 """ make_template_spectra( chunk_list_timeseries, [ options ] )
 Combine portions of spectra in a ChunkListTimeseries into a template stored as a SpectralTimeSeriesCommonWavelengths.
@@ -236,5 +235,3 @@ function make_template_spectra( chunk_list_timeseries::ACLT; remove_rv_est::Bool
     end
     return ( matrix, f_mean, var_mean, deriv, deriv2, chunk_λ_grids )
 end
-
-=#

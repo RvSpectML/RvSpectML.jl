@@ -11,7 +11,7 @@ Created: August 2020
 # provide at least one function with a common interface (currently named) interp_chunk_to_grid_ALGNAME!.
 
 include("common.jl")
-export numerical_deriv
+export numerical_deriv, calc_dfluxdlnlambda, calc_dfluxdlnlambda!, calc_d2fluxdlnlambda2, calc_d2fluxdlnlambda2!
 
 include("linear/linear.jl")
 import .LinearInterpolation
@@ -31,6 +31,6 @@ export interp_chunk_to_grid_gp_brute_force, interp_chunk_to_grid_gp_brute_force!
 =#
 
 include("gp_fast/temporalgps.jl")    # Dependenacies on Stheno, Temporal GPs and Static Arrays
-import .TemporalGPInterpolation
+using .TemporalGPInterpolation
 export interp_chunk_to_shifted_grid_gp_temporal, interp_chunk_to_shifted_grid_gp_temporal!
 export interp_chunk_to_grid_gp_temporal, interp_chunk_to_grid_gp_temporal!

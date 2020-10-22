@@ -404,7 +404,7 @@ function fit_all_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries,
   return df
 end
 
-
+#=
 """ `find_worst_telluric_in_each_line_fit!( df, clt, data)`
 Patterned after find_worst_telluric_in_each_chunk in src/instruments/tellurics.jl
 TODO: Move into EXPRES namespace?
@@ -429,5 +429,6 @@ function find_worst_telluric_in_each_line_fit!( df::DataFrame, clt::AbstractChun
   df.min_telluric_model_all_obs = df_tmp[telluric_info[!,:line_id],:min_telluric_model_all_obs]
   return df
 end
+=#
 
 end # module LineFinder

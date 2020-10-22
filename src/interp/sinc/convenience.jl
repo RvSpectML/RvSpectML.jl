@@ -16,12 +16,32 @@ function interp_chunk_to_shifted_grid_sinc!( flux_out::AbstractArray{T1,1}, var_
     T1<:Real, T2<:Real, AC<:AbstractChunkOfSpectrum, AR<:Union{AbstractRange,AbstractArray{T2,1}} }
     @assert size(flux_out) == size(var_out)
     @assert size(flux_out) == size(grid)
+    if issorted(chunk.λ)
+        use_λ = chunk.λ
+        use_flux = chunk.flux
+        use_var = chunk.var
+    else  # Deal with ocassion issue near boundary of pixels with LFC and non-LFC calibration, where pixel wavelengths may not be monotonic.
+        mask = trues(length(chunk.λ))
+        λ_last = first(chunk.λ)
+        for i in 2:length(mask)
+            if chunk.λ[i]<=λ_last
+                mask[i] = false
+            else
+                λ_last = chunk.λ[i]
+            end
+        end
+        use_λ = chunk.λ[mask]
+        use_flux = chunk.flux[mask]
+        use_var = chunk.var[mask]
+        @assert issorted(use_λ)
+    end
+
     if length(Filter) >= 1
-        flux_out .= SincInterpolation.spectra_interpolate(grid./ boost_factor,chunk.λ,chunk.flux, Filter=Filter)
-        var_out .= SincInterpolation.spectra_interpolate(grid./ boost_factor,chunk.λ ,chunk.var, Filter=Filter)
+        flux_out .= SincInterpolation.spectra_interpolate(grid./ boost_factor, use_λ,use_flux, Filter=Filter)
+        var_out .= SincInterpolation.spectra_interpolate(grid./ boost_factor, use_λ ,use_var, Filter=Filter)
     else
-        flux_out .= SincInterpolation.spectra_interpolate(grid./ boost_factor,chunk.λ ,chunk.flux)
-        var_out .= SincInterpolation.spectra_interpolate(grid ./ boost_factor,chunk.λ,chunk.var)
+        flux_out .= SincInterpolation.spectra_interpolate(grid./ boost_factor, use_λ ,use_flux)
+        var_out .= SincInterpolation.spectra_interpolate(grid ./ boost_factor, use_λ,use_var)
     end
     return flux_out
 end

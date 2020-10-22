@@ -1,6 +1,6 @@
 function ccf_total(order_list_timeseries::AbstractChunkListTimeseries, line_list_df::DataFrame, pipeline::PipelinePlan; recalc::Bool = false,
                   output_fn_suffix::String = "", range_no_mask_change::Real=RvSpectMLBase.max_bc, ccf_mid_velocity::Real=0.0, v_step::Real=250.0,
-                  mask_scale_factor::Real=1, mask_type::Symbol = :tophat,
+                  v_max=RvSpectMLBase.max_bc, mask_scale_factor::Real=1, mask_type::Symbol = :tophat,
                   calc_ccf_var::Bool = false, verbose::Bool = false )
     if need_to(pipeline,:ccf_total) || recalc
       if verbose println("# Computing CCF.")  end
@@ -20,7 +20,7 @@ function ccf_total(order_list_timeseries::AbstractChunkListTimeseries, line_list
 
       line_list = hasproperty(line_list_df, :order) ? CCFs.BasicLineList2D(line_list_df.lambda, line_list_df.weight, line_list_df.order) :
                   CCFs.BasicLineList(line_list_df.lambda, line_list_df.weight )
-      ccf_plan = CCFs.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity, range_no_mask_change=range_no_mask_change, step=v_step, max=RvSpectMLBase.max_bc)
+      ccf_plan = CCFs.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity, range_no_mask_change=range_no_mask_change, step=v_step, max=v_max)
       v_grid = calc_ccf_v_grid(ccf_plan)
       @time ccfs = calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan, calc_ccf_var=calc_ccf_var, verbose=verbose)
       if save_data(pipeline, :ccf_total)

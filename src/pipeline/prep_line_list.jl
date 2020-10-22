@@ -1,5 +1,6 @@
 
 """ prepare_line_list( linelist_fn, spectra, pipeline; Δv_to_avoid_tellurics, v_center_to_avoid_tellurics )
+linelist_fn is the full path to the line list file
 """
 function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{SpecT}, pipeline::PipelinePlan; recalc::Bool = false,
          orders_to_use = RvSpectML.orders_to_use_default(first(all_spectra).inst),
@@ -10,8 +11,8 @@ function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{Spe
    if need_to(pipeline,:read_line_list) || recalc
       lambda_range_with_good_data = get_λ_range(all_spectra)
       if verbose println("# Reading line list for CCF: ", linelist_fn, ".")  end
-      espresso_filename = joinpath(pkgdir(EchelleCCFs),"data","masks",linelist_fn)
-      espresso_df = EchelleCCFs.read_linelist_espresso(espresso_filename)
+      #espresso_filename = joinpath(pkgdir(EchelleCCFs),"data","masks",linelist_fn)
+      espresso_df = EchelleCCFs.read_linelist_espresso(linelist_fn)
       inst_module = get_inst_module(first(all_spectra).inst)
       #if verbose   println("# extrema(λ) = ", extrema(espresso_df.lambda), "   pre-filter" )   end
       λmin_data = maximum(map(obsid->all_spectra[obsid].λ[1,first(orders_to_use)],1:length(all_spectra)))

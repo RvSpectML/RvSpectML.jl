@@ -149,13 +149,16 @@ function predict_deriv2(gp::AGP, xpred::AA3; use_logx::Bool = true )   where { A
 end
 
 function predict_mean(xobs::AA1, yobs::AA2, xpred::AA3;	sigmasq_obs::AA4 = 1e-16*ones(length(xobs)),
-			use_logx::Bool = true, use_logy::Bool = false, smooth_factor::Real = 1, boost_factor::Real = 1  )   where {
+			use_logx::Bool = true, use_logy::Bool = false, smooth_factor::Real = 1, boost_factor::Real = 1, verbose::Bool = false  )   where {
 				T1<:Real, AA1<:AbstractArray{T1,1}, T2<:Real, AA2<:AbstractArray{T2,1}, T3<:Real, AA3<:AbstractArray{T3,1}, T4<:Real, AA4<:AbstractArray{T4,1} }
 	# global ncalls += 1
 	@assert size(xobs) == size(yobs) == size(sigmasq_obs)
   	#println("# predict_mean (TemporalGPs): size(xobs) = ",size(xobs), "  size(xpred) = ", size(xpred))
+	if verbose    println("# Entering predict_mean for TemporalGPs")    end
 	tstart = now()
+	if verbose    println("# extrema(yobs) = ", extrema(yobs) )   end
 	mean_y = mean(yobs)
+	if verbose    println("# mean_y = ", mean_y )    end
 	y_trans = yobs
 	sigmasq_obs_trans = sigmasq_obs
 	if use_logy
@@ -166,11 +169,16 @@ function predict_mean(xobs::AA1, yobs::AA2, xpred::AA3;	sigmasq_obs::AA4 = 1e-16
 		y_trans = yobs./mean_y .- 1
 		sigmasq_obs_trans = sigmasq_obs./mean_y.^2
 	end
+	if verbose    println("# extrema(xobs) = ", extrema(xobs) )    end
+	if verbose    println("# extrema(y_trans) = ", extrema(y_trans) )    end
+	if verbose    println("# extrema(sigmasq_obs_trans) = ", extrema(sigmasq_obs_trans) )   end
+	if verbose    println("# smooth_factor = ", smooth_factor, " boost_factor = ",boost_factor )    end
 	f_posterior = construct_gp_posterior(xobs,y_trans,sigmasq_obs=sigmasq_obs_trans, use_logx=use_logx, smooth_factor=smooth_factor, boost_factor=boost_factor )
 	#println("typeof(f_posterior) = ",typeof(f_posterior))
 	#println("f_posterior <: AbstractGP = ",typeof(f_posterior) <: AbstractGP )
 	#println("f_posterior <: AbstractMvNormal = ",typeof(f_posterior) <: AbstractMvNormal )
 	xpred_trans = use_logx ? log.(xpred) : xpred
+	if verbose    println("# extrema(xpred_trans) = ", extrema(xpred_trans) )    end
 	fx_posterior = f_posterior(xpred_trans)
 	#println("typeof(fx_posterior) = ",typeof(fx_posterior))
 	#println("f_posterior <: AbstractGP = ",typeof(fx_posterior) <: AbstractGP )
@@ -178,11 +186,13 @@ function predict_mean(xobs::AA1, yobs::AA2, xpred::AA3;	sigmasq_obs::AA4 = 1e-16
 	#println("f_posterior <: Fx_PosteriorType = ",typeof(fx_posterior) <: Fx_PosteriorType )
 	#output = predict_mean(f_posterior(xpred_trans), xpred_trans ) #, use_logx=use_logx,use_logy=use_logy)
 	pred_mean = predict_mean(fx_posterior)
+	if verbose    println("# extrema(pred_mean) = ", extrema(pred_mean) )    end
 	if use_logy
 		pred_mean .= exp.(pred_mean).*mean_y
 	else
 		pred_mean .= (pred_mean.+1).*mean_y
 	end
+	if verbose    println("# extrema(pred_mean) = ", extrema(pred_mean) )    end
 	#println("# predict_mean (TemporalGPs) runtime: ", now()-tstart)
 	return pred_mean
 end

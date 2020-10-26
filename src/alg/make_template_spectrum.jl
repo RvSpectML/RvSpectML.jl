@@ -94,7 +94,7 @@ end
 
 
 # Wrapper code to deal with weird data structures
-function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Union{AR,AAV}; alg::Symbol = :Linear,
+function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Union{AR,AAV}; alg::Symbol = :TemporalGP,
     oversample_factor::Real = 1, smooth_factor::Real=1, remove_rv_est::Bool = true, verbose::Bool = false ) where {
         ACLT<:AbstractChunkListTimeseries, RT<:AbstractRange, AR<:AbstractArray{RT,1}, T<:Real, AV<:AbstractVector{T}, AAV<:AbstractArray{AV,1} }
     @assert alg == :Linear || alg == :GP  || alg == :Sinc || alg == :TemporalGP # TODO: Eventually move to traits-based system?

@@ -11,7 +11,6 @@ function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{Spe
    if need_to(pipeline,:read_line_list) || recalc
       lambda_range_with_good_data = get_λ_range(all_spectra)
       if verbose println("# Reading line list for CCF: ", linelist_fn, ".")  end
-      #espresso_filename = joinpath(pkgdir(EchelleCCFs),"data","masks",linelist_fn)
       espresso_df = EchelleCCFs.read_linelist_espresso(linelist_fn)
       inst_module = get_inst_module(first(all_spectra).inst)
       #if verbose   println("# extrema(λ) = ", extrema(espresso_df.lambda), "   pre-filter" )   end

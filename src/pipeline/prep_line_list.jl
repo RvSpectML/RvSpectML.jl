@@ -11,13 +11,19 @@ function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{Spe
    if need_to(pipeline,:read_line_list) || recalc
       lambda_range_with_good_data = get_λ_range(all_spectra)
       if verbose println("# Reading line list for CCF: ", linelist_fn, ".")  end
-      espresso_df = EchelleCCFs.read_linelist_espresso(linelist_fn)
+      if occursin(r"espresso\.mas$", linelist_fn)
+         line_list_df = EchelleCCFs.read_linelist_espresso(linelist_fn)
+      elseif occursin(r"^VALD", linelist_fn)
+         line_list_df = EchelleCCFs.read_linelist_valid(linelist_fn)
+      else
+         line_list_df = EchelleCCFs.read_linelist_rvspectml(linelist_fn)
+      end
       inst_module = get_inst_module(first(all_spectra).inst)
       #if verbose   println("# extrema(λ) = ", extrema(espresso_df.lambda), "   pre-filter" )   end
       λmin_data = maximum(map(obsid->all_spectra[obsid].λ[1,first(orders_to_use)],1:length(all_spectra)))
       λmax_data = minimum(map(obsid->all_spectra[obsid].λ[end,last(orders_to_use)],1:length(all_spectra)))
       #if verbose   println("# λmin_data = ",λmin_data, "  λmax_data = ",λmax_data)   end
-      line_list_df = inst_module.filter_line_list(espresso_df,first(all_spectra).inst, λmin=λmin_data, λmax=λmax_data)
+      line_list_df = inst_module.filter_line_list(line_list_df,first(all_spectra).inst, λmin=λmin_data, λmax=λmax_data)
       #if verbose   println("# extrema(λ) = ", extrema(line_list_df.lambda), "   post-filter" )   end
       if eltype(all_spectra) <: EchelleInstruments.AnyEXPRES
          RvSpectMLBase.discard_pixel_mask(all_spectra)
@@ -51,7 +57,7 @@ function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{Spe
       #println("# order_info contains: ", names(order_info))
       #println("# line_list_df contains: ", names(line_list_df))
       line_list_df = RvSpectML.assign_lines_to_orders(line_list_df, order_info)
-      if verbose   println("# extrema(λ) = ", extrema(line_list_df.lambda)) end #, "   post-assign-to-orders" )   end
+      if verbose   println("# line_list extrema(λ) = ", extrema(line_list_df.lambda)) end #, "   post-assign-to-orders" )   end
       RvSpectML.calc_snr_weights_for_lines!(line_list_df, all_spectra)
       set_cache!(pipeline,:calc_line_list_snr_weights,line_list_df)
       dont_need_to!(pipeline,:calc_line_list_snr_weights);

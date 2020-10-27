@@ -1,3 +1,6 @@
+using Pkg
+ if pwd() == pkgdir(RvSpectML) Pkg.activate("examples") end
+
 verbose = true
  if verbose   println("# Loading RvSpecML")    end
  using RvSpectML
@@ -9,7 +12,8 @@ continuum_normalize_spectra!(all_spectra)
 
 order_list_timeseries = extract_orders(all_spectra,pipeline_plan)
 
-line_list_df = prepare_line_list(linelist_for_ccf_filename, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = RvSpectMLBase.max_bc, recalc=true)
+linelist_for_ccf_fn_w_path = joinpath(pkgdir(EchelleCCFs),"data","masks",linelist_for_ccf_filename)
+line_list_df = prepare_line_list(linelist_for_ccf_fn_w_path, all_spectra, pipeline_plan,  v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics = RvSpectMLBase.max_bc, recalc=true)
 
 mask_scale_factors = [  1.0, 2, 4.0, 6.0, 8, 10, 12 ]
  rms_rvs = zeros(length(mask_scale_factors))

@@ -31,7 +31,7 @@ function get_line_shapes(line_list::A1, clt::AbstractChunkListTimeseries;
     valid_lines = ones(Bool,n_lines)
     #find center of each chunk so that we can assign each line in line list to a chunk
     chunk_centers = zeros(length(clt.chunk_list[1])) #note: this assumes all spectra have the same number of chunks
-    calc_chunk_centers(chunk_centers, clt.chunk_list[1]) # TODO: change chunk centers to average over all chunks in timeseries
+    calc_chunk_centers!(chunk_centers, clt.chunk_list[1]) # TODO: change chunk centers to average over all chunks in timeseries
     #measure the bisectors and widths
     for k in 1:n_spectra
         line_shapes = get_line_shapes(line_list, clt.chunk_list[k], chunk_centers=chunk_centers,
@@ -39,7 +39,7 @@ function get_line_shapes(line_list::A1, clt::AbstractChunkListTimeseries;
         bisectors[:,k,:] = line_shapes[:bisectors]
         widths[:,k,:] = line_shapes[:widths]
         depths[k,:] = line_shapes[:depths]
-        valid_lines = valid_lines .& line_shapes[:valid_lines]
+        valid_lines .= valid_lines .& line_shapes[:valid_lines]
     end
     #return bisectors, widths, depths, and valid indices
     (bisectors = bisectors, widths=widths, depths=depths, valid_lines=valid_lines)
@@ -57,7 +57,7 @@ RV_estimate (in m/s) is a rough estimate of the star's RV.
 Note: RV_estimate shifts the line centers in line_list to the RV of star, so use RV_estimate=0 if line_list is already aligned to star.
 """
 function get_line_shapes(line_list::A1, chunk_list::AbstractChunkList;
-        chunk_centers::A2 = calc_chunk_centers(zeros(length(chunk_list)),chunk_list),
+        chunk_centers::A2 = calc_chunk_centers!(zeros(length(chunk_list)),chunk_list),
         frac_depths::A3 = 0.99:-0.01:0.05, v_width::Real=15e3,
           RV_estimate::Real=-5000.0, verbose::Bool = true) where { T1<:Real, A1<:AbstractArray{T1,1},
           T2<:Real, A2<:AbstractArray{T2,1}, T3<:Real, A3<:AbstractArray{T3,1}}
@@ -79,6 +79,7 @@ function get_line_shapes(line_list::A1, chunk_list::AbstractChunkList;
         line_chunk_index[i] = findmin(abs.((chunk_centers .- ll[i]) ./ chunk_centers))[2] # TODO: change line_chunk_index to pick higher SNR of valid chunks
     end
     #measure the bisectors and widths
+    #TOTO optional: might want to make this into a mutating function that operates on a single line, and is called here.
     for i in 1:n_lines
         #find pixels within v_width of ll[i]
         line_high = ll[i] * calc_doppler_factor(v_width)
@@ -120,7 +121,7 @@ function get_line_shapes(line_list::A1, chunk_list::AbstractChunkList;
 end
 
 
-function calc_chunk_centers(chunk_centers::A1, chunk_list::AbstractChunkList) where { T1<:Real, A1<:AbstractArray{T1,1}}
+function calc_chunk_centers!(chunk_centers::A1, chunk_list::AbstractChunkList) where { T1<:Real, A1<:AbstractArray{T1,1}}
     for i in 1:length(chunk_centers)
         chunk_centers[i] = (first(chunk_list.data[i].λ) + last(chunk_list.data[i].λ)) / 2.0
     end

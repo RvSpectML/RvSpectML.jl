@@ -71,6 +71,7 @@ export LineFinderPlan
 # For now treating parts individually
 include("alg/project_flux_common_wavelengths.jl")
 include("alg/make_template_spectrum.jl")
+#export interp_chunk_to_shifted_grid_gp_temporal
 include("alg/combine_obs.jl")
 export bin_times_consecutive, bin_rvs_consecutive, bin_spectra_consecutive
 export bin_times_nightly, bin_rvs_nightly, bin_times_and_rvs_nightly, bin_spectra_nightly, rms_rvs_within_night

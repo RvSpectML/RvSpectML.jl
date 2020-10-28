@@ -10,14 +10,16 @@ using LsqFit
 using ..TemporalGPInterpolation
 
 
+default_line_width = 5000 # m/s
 default_min_deriv2 = 3 # 1.5e5
 default_smooth_factor= 4.0
-default_min_pixels_in_line = 5
+default_min_pixels_in_line = 7
 default_use_logλ = true
 default_use_logflux = false
 
 " Struct containing parameters for running LineFinder "
 struct LineFinderPlan
+  line_width::Float64
   min_deriv2::Float64
   smooth_factor::Float64
   min_pixels_in_line::Int
@@ -27,16 +29,17 @@ end
 
 """ Create a [LineFinderPlan](@ref)
 Optional Inputs:
+- line_width (default 5,000 m/s)
 - min_deriv2 (default_min_deriv2)
 - smooth_factor (default_smooth_factor)
 - min_pixels_in_line (default_min_pixels_in_line)
 - use_logλ (default_use_logλ),
 - use_logflux (default_use_logflux)
 """
-function LineFinderPlan(; min_deriv2::Real = default_min_deriv2, smooth_factor::Real = default_smooth_factor,
+function LineFinderPlan(; line_width::Real = default_line_width, min_deriv2::Real = default_min_deriv2, smooth_factor::Real = default_smooth_factor,
                           min_pixels_in_line::Int = default_min_pixels_in_line,
                           use_logλ::Bool = default_use_logλ, use_logflux::Bool = default_use_logflux )
-  LineFinderPlan(min_deriv2, smooth_factor, min_pixels_in_line, use_logλ, use_logflux)
+  LineFinderPlan(line_width, min_deriv2, smooth_factor, min_pixels_in_line, use_logλ, use_logflux)
 end
 
 """  `find_lines_candidates_in_chunk( chunk, plan )`
@@ -104,16 +107,19 @@ function line_model(λ::Union{T1,AbstractVector{T1} }, θ::AbstractVector{T2}) w
 end
 
 
-function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::AbstractArray{T3,1}, idx::UnitRange; show_trace::Bool = false) where { T1<:Real, T2<:Real, T3<:Real }
+function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::AbstractArray{T3,1}, idx::UnitRange; line_width_guess::Real = 5000, show_trace::Bool = false) where { T1<:Real, T2<:Real, T3<:Real }
   @assert length(λ) == length(flux) == length(var)
     λc0 = λ[idx[argmin(flux[idx])]]
   continuum0 = maximum(flux[idx])
   depth0 = 1-minimum(flux[idx])/continuum0
-  width0 = 0.05^2   # might need to make more general to deal with different v sin i's
+  #width0 = 0.05^2   # might need to make more general to deal with different v sin i's
+  width0 = (λc0 * (0.5*line_width_guess / RvSpectMLBase.speed_of_light_mps))^2   # might need to make more general to deal with different v sin i's
+  λ_fit_min = λc0 * (1 - line_width_guess / RvSpectMLBase.speed_of_light_mps)
+  λ_fit_max = λc0 * (1 + line_width_guess / RvSpectMLBase.speed_of_light_mps)
   slope0 = 0.0
-  θ0 = pack(a=continuum0,b=slope0,λc=λc0,depth=depth0,σ²=width0)
-  lower_bound = pack(a=0.0, b=-1.0, λc=minimum(λ[idx]), depth=0.0, σ²=0.01^2)
-  upper_bound = pack(a=2.0, b= 1.0, λc=maximum(λ[idx]), depth=1.0, σ²=0.15^2)
+  θ0 = pack(a=continuum0,b=slope0,λc=λc0,depth=depth0,σ²=width0*2)
+  lower_bound = pack(a=0.0, b=-1.0, λc=λ_fit_min, depth=0.0, σ²=width0/16)
+  upper_bound = pack(a=2.0, b= 1.0, λc=λ_fit_max, depth=0.999, σ²=width0*4)
   #upper_bound = pack(a=2.0, b= 1.0, λc=maximum(λ[idx]), depth=1.0, σ²=0.1)
   try
     res = curve_fit(line_model, λ[idx], flux[idx], 1.0 ./(var[idx]), θ0, lower=lower_bound, upper=upper_bound, show_trace=show_trace, autodiff=:forwarddiff)
@@ -145,17 +151,20 @@ Fits a basic Gaussian absorption line times a line (variable slope) to data.
 Returns a tuple of (param, χ²_per_dof, is_converged)
 Warning:  Has some hardcoded parameters that likely need to be generalized for different instruments.
 """
-function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::AbstractArray{T3,1} ) where { T1<:Real, T2<:Real, T3<:Real }
+function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::AbstractArray{T3,1}; line_width_guess::Real = 5000 ) where { T1<:Real, T2<:Real, T3<:Real }
   @assert length(λ) == length(flux) == length(var)
   @warn "Need to check why this results in fits not converging!"
   λc0 = λ[argmin(flux)]
   continuum0 = maximum(flux)
   depth0 = 1-minimum(flux)/continuum0
-  width0 = 0.05^2   # might need to make more general to deal with different v sin i's
+  #width0 = 0.05^2   # might need to make more general to deal with different v sin i's
+  width0 = (λc0 * (0.5*line_width_guess / RvSpectMLBase.speed_of_light_mps))^2   # might need to make more general to deal with different v sin i's
+  λ_fit_min = λc0 * (1 - line_width_guess / RvSpectMLBase.speed_of_light_mps)
+  λ_fit_max = λc0 * (1 + line_width_guess / RvSpectMLBase.speed_of_light_mps)
   slope0 = 0.0
-  θ0 = pack(a=continuum0,b=slope0,λc=λc0,depth=depth0,σ²=width0)
-  lower_bound = pack(a=0.0, b=-1.0, λc=minimum(λ), depth=0.0, σ²=0.01^2)
-  upper_bound = pack(a=2.0, b= 1.0, λc=maximum(λ), depth=1.0, σ²=0.15^2)
+  θ0 = pack(a=continuum0,b=slope0,λc=λc0,depth=depth0,σ²=width0*2)
+  lower_bound = pack(a=0.0, b=-1.0, λc=λ_fit_min, depth=0.01, σ²=width0/16)
+  upper_bound = pack(a=2.0, b= 1.0, λc=λ_fit_max, depth=0.999, σ²=width0*4)
   try
     #res = curve_fit(line_model, λ, flux, 1.0 ./(var), θ0, lower=lower_bound, upper=upper_bound, show_trace=false, autodiff=:forwarddiff)
     λtmp = copy(λ)
@@ -192,7 +201,7 @@ function find_lines_in_chunk(chunk::AbstractChunkOfSpectrum; plan::LineFinderPla
 
   function fit_line(idx::UnitRange)
     #RvSpectML.LineFinder.fit_line(view(chunk.λ,idx), view(flux,idx), view(chunk.var, idx) )   # some bug in this version of function causes non-convergence
-    LineFinder.fit_line( chunk.λ, flux, chunk.var, idx)
+    LineFinder.fit_line( chunk.λ, flux, chunk.var, idx, line_width_guess = plan.line_width)
   end
   norm_in_chunk = mean(chunk.flux)
   @assert 0.9<=norm_in_chunk<=1.1  # Just making sure we're passing roughly normalized chunks
@@ -239,6 +248,7 @@ function find_lines_in_chunk(chunk::AbstractChunkOfSpectrum; plan::LineFinderPla
     line_candidates = line_candidates |> @filter(minimum(_.pixels)>1) |> @filter(maximum(_.pixels)<length(flux)) |> #DataFrame
     #line_candidates = line_candidates |>
         @filter(_.fit_converged) |>
+        #@filter( 0.5* plan.line_width <= sqrt.(_.fit_σ²) ./ _.fit_λc .* RvSpectMLBase.speed_of_light_mps <= 2* plan.line_width ) |>
         #@filter(_.fit_σ²<0.018) |>
         @filter(-0.5 <_.fit_b <0.5) |> @filter(_.fit_a < 1.8) |>
         DataFrame
@@ -315,7 +325,7 @@ Outputs a DataFrame with keys:
 - chunk_id: index of chunk in chunk_list_timeseries
 - pixels: range of pixels that was fit
 """
-function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmin::Real, λmax::Real, chid::Integer; show_trace::Bool = false)
+function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmin::Real, λmax::Real, chid::Integer; line_width_guess::Real = 5000, show_trace::Bool = false)
   df = DataFrame()
   nobs = length(clt.chunk_list)
   ParamT = NamedTuple{(:a, :λc, :depth, :σ², :b),NTuple{5,Float64}}  # maybe generalize by making part of plan?
@@ -335,7 +345,7 @@ function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmi
     mean_flux = mean(clt.chunk_list[t][chid].flux[pixels[t]])
     flux = clt.chunk_list[t][chid].flux ./ mean_flux
     var = clt.chunk_list[t][chid].var ./ mean_flux^2
-    (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, flux, var, pixels[t], show_trace=show_trace )
+    (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, flux, var, pixels[t]; line_width_guess=line_width_guess, show_trace=show_trace )
     #=
     if fit_line_in_chunklist_timeseries_count_msgs<5
       (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, flux, var, pixels[t], show_trace=true )
@@ -391,42 +401,16 @@ function fit_all_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries,
   λmin = lines[line_idx,:fit_min_λ]
   λmax = lines[line_idx,:fit_max_λ]
   chid = lines[line_idx,:chunk_id]
-  df = fit_line_in_chunklist_timeseries(clt, λmin, λmax, chid, show_trace=show_trace)
+  df = fit_line_in_chunklist_timeseries(clt, λmin, λmax, chid; line_width_guess=plan.line_width, show_trace=show_trace)
   df[!,:line_id] .= line_idx
   for line_idx in 2:size(lines,1)
     λmin = lines[line_idx,:fit_min_λ]
     λmax = lines[line_idx,:fit_max_λ]
     chid = lines[line_idx,:chunk_id]
-    df_tmp = fit_line_in_chunklist_timeseries(clt, λmin, λmax, chid)
+    df_tmp = fit_line_in_chunklist_timeseries(clt, λmin, λmax, chid; line_width_guess=plan.line_width)
     df_tmp[!,:line_id] .= line_idx
     append!(df,df_tmp)
   end
-  return df
-end
-
-
-""" `find_worst_telluric_in_each_line_fit!( df, clt, data)`
-Patterned after find_worst_telluric_in_each_chunk in src/instruments/tellurics.jl
-TODO: Move into EXPRES namespace?
-"""
-function find_worst_telluric_in_each_line_fit!( df::DataFrame, clt::AbstractChunkListTimeseries, data::AbstractArray{AS,1} )  where {AS<:AbstractSpectra}
-  @assert hasproperty(df,:line_id)
-  @warn "find_worst_telluric_in_each_line_fit! will likely be moved soon"
-  min_telluric_model_this_obs = ones(size(df,1))
-  min_telluric_model_all_obs  = ones(size(df,1))
-  for (i, row) in enumerate(eachrow(df))
-    t_idx = row.obs_idx
-    ch_idx = row.chunk_id
-    pixels = row.pixels
-    view_indices = clt.chunk_list[t_idx].data[ch_idx].λ.indices
-    cols = view_indices[1][pixels]
-    order = view_indices[2]
-    min_telluric_model_this_obs[i] = minimum(view(data[t_idx].metadata[:tellurics], cols, order))
-  end
-  df.min_telluric_model_this_obs = min_telluric_model_this_obs
-  return df
-  df_tmp = df |> @groupby(_.line_id) |> @map( { min_telluric_model_all_obs=minimum(_.min_telluric_model_this_obs), line_id=first(_.line_id) } ) |> DataFrame
-  df.min_telluric_model_all_obs = df_tmp[telluric_info[!,:line_id],:min_telluric_model_all_obs]
   return df
 end
 

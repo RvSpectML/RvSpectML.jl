@@ -1,6 +1,8 @@
 
 function ccf_orders(order_list_timeseries::AbstractChunkListTimeseries,  line_list_df::DataFrame, pipeline::PipelinePlan; verbose::Bool = false, calc_ccf_var::Bool = false, recalc::Bool = false,
-   range_no_mask_change::Real=RvSpectMLBase.max_bc, ccf_mid_velocity::Real=0.0, mask_scale_factor::Real=1, mask_type::Symbol = :tophat )
+   orders_to_use = RvSpectMLBase.orders_to_use_default(order_list_timeseries.inst),
+   range_no_mask_change::Real=RvSpectMLBase.max_bc, ccf_mid_velocity::Real=0.0, 
+    v_step::Real=250.0, v_max=RvSpectMLBase.max_bc, mask_scale_factor::Real=1, mask_type::Symbol = :tophat )
 
    if need_to(pipeline, :ccf_orders)  || recalc # Compute order CCF's & measure RVs
       if mask_type == :tophat
@@ -17,7 +19,7 @@ function ccf_orders(order_list_timeseries::AbstractChunkListTimeseries,  line_li
 
       line_list = hasproperty(line_list_df, :order) ? CCFs.BasicLineList2D(line_list_df.lambda, line_list_df.weight, line_list_df.order) :
                   CCFs.BasicLineList(line_list_df.lambda, line_list_df.weight )
-      ccf_plan = BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity, range_no_mask_change=range_no_mask_change)
+      ccf_plan = BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity, range_no_mask_change=range_no_mask_change, step=v_step, max=RvSpectMLBase.max_bc)
       v_grid = calc_ccf_v_grid(ccf_plan)
       tstart = now()    # Compute CCFs for each order
 

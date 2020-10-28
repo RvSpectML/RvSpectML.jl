@@ -61,3 +61,45 @@ function calc_d2fluxdlnlambda2!(d2fdlogλ2::AbstractArray{T1,1}, flux::AbstractA
     d2fdlogλ2[1] = d2fdlogλ2[2]
     return d2fdlogλ2
 end
+
+function calc_weights_for_running_mean(n::Integer; decay_factor::Float64 = 2.0)
+	@assert 1<=n<=100
+	@assert 1 <= decay_factor < Inf
+	w = zeros(n)
+	if isodd(n)
+		center = convert(Int,1 + (n-1)//2)
+		w[center] = 1
+		for i in 1:(center-1)
+			w[center+i] = w[center-i] = decay_factor^(-i)
+		end
+	else
+		center = convert(Int,n//2)
+		for i in 1:center
+			w[center+i] = w[center+1-i] = decay_factor^(-(i-0.5))
+		end
+	end
+	w ./= sum(w)
+	return w
+end
+
+""" Smooth array via weighted running mean of n consecutive points """
+function calc_running_mean_weighted(x::AbstractVector{T1}; n::Integer = 5, decay_factor::Float64 = 2.0, 
+				weights::AbstractVector{T2} = calc_weights_for_running_mean(n, decay_factor=decay_factor) ) where { T1<:Real, T2<:Real }
+	@assert 2 <= n < length(x)/2
+	@assert isodd(n)   # Could generalize, but haven't
+	smoothed = Array{T1,1}(undef,length(x))
+	n = length(weights)
+	m = floor(Int,n//2)
+	for i in 1:m
+		start_idx = 2+m-i
+		smoothed[i] = sum(view(x,1:i+m).*view(weights,start_idx:n)) /sum(view(weights,start_idx:n))
+	end
+	for i in (m+1):(length(x)-m-1)
+		smoothed[i] = sum(view(x,i-m:i+m) .* weights)
+	end
+	for i in (length(x)-m):length(x)
+		stop_idx = length(x)-(i-m)+1
+		smoothed[i] = sum(view(x,i-m:length(x)).*view(weights,1:stop_idx)) /sum(view(weights,1:stop_idx))
+	end
+	return smoothed
+end

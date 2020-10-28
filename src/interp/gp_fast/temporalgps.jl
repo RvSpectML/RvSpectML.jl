@@ -26,7 +26,7 @@ import Distributions: AbstractMvNormal
 using Distributions
 const Fx_PosteriorType = Distribution{Multivariate,Continuous}
 
-import ..numerical_deriv
+import ..numerical_deriv, ..calc_dfluxdlnlambda, ..calc_dfluxdlnlambda!, ..calc_d2fluxdlnlambda2, ..calc_d2fluxdlnlambda2!
 include("low_level.jl")
 export  construct_gp_prior, construct_gp_posterior, log_pdf_gp_posterior
 

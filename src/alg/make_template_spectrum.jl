@@ -47,7 +47,7 @@ function pack_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Uni
                elseif alg == :GP
                    GPInterpolation.interp_chunk_to_grid_gp!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c])
                elseif alg == :TemporalGP
-                   TemporalGPInterpolation.interp_chunk_to_grid_gp_temporal!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c] , use_logx=true, use_logy=false, smooth_factor=smooth_factor)
+                   RvSpectML.TemporalGPInterpolation.interp_chunk_to_grid_gp_temporal!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c] , use_logx=true, use_logy=false, smooth_factor=smooth_factor)
                end
                mean_flux[idx] .+= flux_matrix[idx,t]
                mean_var[idx]  .+= var_matrix[idx,t]
@@ -94,7 +94,7 @@ end
 
 
 # Wrapper code to deal with weird data structures
-function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Union{AR,AAV}; alg::Symbol = :Linear,
+function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_grids::Union{AR,AAV}; alg::Symbol = :TemporalGP,
     oversample_factor::Real = 1, smooth_factor::Real=1, remove_rv_est::Bool = true, verbose::Bool = false ) where {
         ACLT<:AbstractChunkListTimeseries, RT<:AbstractRange, AR<:AbstractArray{RT,1}, T<:Real, AV<:AbstractVector{T}, AAV<:AbstractArray{AV,1} }
     @assert alg == :Linear || alg == :GP  || alg == :Sinc || alg == :TemporalGP # TODO: Eventually move to traits-based system?
@@ -136,12 +136,17 @@ function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_gr
                #println(" mean flux in chunk ", c, " at time ", t, " = ", mean_flux_in_chunk)
                if alg == :Linear
                    LinearInterpolation.interp_chunk_to_shifted_grid_linear!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c], boost_factor )
+                   view(flux_matrix,idx,t) .= calc_running_mean_weighted(view(flux_matrix,idx,t))
+                   view(var_matrix,idx,t) .= calc_running_mean_weighted(view(var_matrix,idx,t))
                elseif alg == :Sinc
                    SincInterpolation.interp_chunk_to_shifted_grid_sinc!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c], boost_factor, Filter=sinc_filter )
+                   view(flux_matrix,idx,t) .= calc_running_mean_weighted(view(flux_matrix,idx,t))
+                   view(var_matrix,idx,t) .= calc_running_mean_weighted(view(var_matrix,idx,t))
                elseif alg == :GP
                    GPInterpolation.interp_chunk_to_shifted_grid_gp!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c], boost_factor)
                elseif alg == :TemporalGP
-                   TemporalGPsInterpolation.interp_chunk_to_shifted_grid_gp_temporal!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c], boost_factor, use_logx=true, use_logy=false, smooth_factor=smooth_factor)
+                   #TemporalGPsInterpolation.
+                   interp_chunk_to_shifted_grid_gp_temporal!(view(flux_matrix,idx,t), view(var_matrix,idx,t), timeseries.chunk_list[t].data[c], chunk_grids[c], boost_factor, use_logx=true, use_logy=false, smooth_factor=smooth_factor)
                end
                if t == 1
                   λ_vec[idx] .= chunk_grids[c]
@@ -228,9 +233,13 @@ function repack_flux_vector_to_chunk_matrix(λ::AA1, flux::AA2, var::AA3, chunk_
        if mean_flux_in_chunk > 0
            if alg == :Linear
                LinearInterpolation.interp_chunk_to_grid_linear!(view(flux_matrix,:,c), view(var_matrix,:,c), chunk_of_spectrum, chunk_grid)
+               view(flux_matrix,idx,:,c) .= calc_running_mean_weighted(view(flux_matrix,idx,:,c))
+               view(var_matrix,idx,:,c) .= calc_running_mean_weighted(view(var_matrix,idx,:,c))
            elseif alg == :Sinc
                chunk_grid = range(λc[c]-(num_λ_per_chunk-1)//2*Δλ, stop=λc[c]+(num_λ_per_chunk-1)//2*Δλ, length=num_λ_per_chunk )
                SincInterpolation.interp_chunk_to_grid_sinc!(view(flux_matrix,:,c), view(var_matrix,:,c), chunk_of_spectrum, chunk_grid, Filter=sinc_filter)
+               view(flux_matrix,idx,:,c) .= calc_running_mean_weighted(view(flux_matrix,idx,:,c))
+               view(var_matrix,idx,:,c) .= calc_running_mean_weighted(view(var_matrix,idx,:,c))
            elseif alg == :GP
                GPInterpolation.interp_chunk_to_grid_gp!(view(flux_matrix,:,c), view(var_matrix,:,c), chunk_of_spectrum, chunk_grid)
            elseif alg == :TemporalGP

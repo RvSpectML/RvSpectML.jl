@@ -66,6 +66,8 @@ export predict_mean, predict_deriv, predict_deriv2, predict_mean_and_deriv, pred
 include("line_finder/line_finder.jl")
 export LineFinderPlan
 
+include("line_shapes/get_line_shapes.jl")
+
 # alg.jl  will be responsible for exporting its own types, modules & functions
 #include("alg/alg.jl")
 # For now treating parts individually

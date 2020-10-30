@@ -83,5 +83,7 @@ export bin_times_max_Δt, bin_rvs_max_Δt,  bin_times_and_rvs_max_Δt, bin_spect
 #include("alg/ppcca.jl")
 #include("alg/rvs_from_gp_pairs.jl")
 
+include("util/spectra.jl")
+export calc_depth_and_expected_rv_precission, calc_formal_rv_precission
 
 end

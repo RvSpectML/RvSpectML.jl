@@ -158,8 +158,8 @@ function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_gr
 
            mean_flux[idx] .+= view(flux_matrix,idx,t)
            mean_var[idx]  .+= view(var_matrix,idx,t)
-           dfluxdlnλ[idx] .+= calc_dfluxdlnlambda(view(flux_matrix,idx,t),view(λ_vec,idx))
-           d2fluxdlnλ2[idx] .+= calc_d2fluxdlnlambda2(view(flux_matrix,idx,t),view(λ_vec,idx))
+           #dfluxdlnλ[idx] .+= calc_dfluxdlnlambda(view(flux_matrix,idx,t),view(λ_vec,idx))
+           #d2fluxdlnλ2[idx] .+= calc_d2fluxdlnlambda2(view(flux_matrix,idx,t),view(λ_vec,idx))
 
            flux_matrix[idx,t] ./= mean_flux_in_chunk
            var_matrix[idx,t]  ./= mean_flux_in_chunk^2
@@ -184,8 +184,16 @@ function pack_shifted_chunk_list_timeseries_to_matrix(timeseries::ACLT, chunk_gr
         mean_var[idx] ./= mean_flux_in_chunk^2
         #dfluxdlnλ[idx] ./= mean_flux_in_chunk
         #d2fluxdlnλ2[idx] ./= mean_flux_in_chunk
-        dfluxdlnλ[idx] .= calc_dfluxdlnlambda(mean_flux[idx],view(λ_vec,idx))
-        d2fluxdlnλ2[idx] .= calc_d2fluxdlnlambda2(mean_flux[idx],view(λ_vec,idx))
+        if length(idx) >= 2
+            dfluxdlnλ[idx] .= calc_dfluxdlnlambda(mean_flux[idx],view(λ_vec,idx))
+        else
+            dfluxdlnλ[idx] .= 0.0
+        end
+        if length(idx) >= 3
+            d2fluxdlnλ2[idx] .= calc_d2fluxdlnlambda2(mean_flux[idx],view(λ_vec,idx))
+        else
+            d2fluxdlnλ2[idx] .= 0.0
+        end
         idx_start += length(chunk_grids[c])
     end
 

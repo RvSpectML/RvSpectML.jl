@@ -2,7 +2,7 @@ global tophap_ccf_mask_scale_factor=1.6
 
 global max_spectra_to_use = 100
 if max_spectra_to_use < 100
-   @warn "param.in setting max_spectra_to_use to " * max_spectra_to_use
+   @warn "param.in setting max_spectra_to_use to " * string(max_spectra_to_use)
 end
 global fits_target_str
 if fits_target_str == "Solar"

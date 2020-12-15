@@ -79,9 +79,15 @@ export bin_times_consecutive, bin_rvs_consecutive, bin_spectra_consecutive
 export bin_times_nightly, bin_rvs_nightly, bin_times_and_rvs_nightly, bin_spectra_nightly, rms_rvs_within_night
 export bin_times_max_Δt, bin_rvs_max_Δt,  bin_times_and_rvs_max_Δt, bin_spectra_max_Δt
 
-#include("alg/dcpca.jl")
+include("alg/dcpca.jl")
+#export DCPCA
+using .DCPCA
+export clean_rvs_dcpca, calc_sigma_pca_scores
+
 #include("alg/ppcca.jl")
 #include("alg/rvs_from_gp_pairs.jl")
 
+include("util/spectra.jl")
+export calc_depth_and_expected_rv_precission, calc_formal_rv_precission
 
 end

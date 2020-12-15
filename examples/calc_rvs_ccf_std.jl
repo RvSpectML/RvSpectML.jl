@@ -26,7 +26,7 @@ if abs(ccf_mid_velocity-mean(rvs_ccf)) > 1e3     ccf_mid_velocity=mean(rvs_ccf) 
 # Measure how much space needed to ensure no telluric contamination from from one high-SNR spectra and recompute line list
 ref_obs_idx = RvSpectMLBase.choose_obs_idx_for_init_guess(df_files_use,first(all_spectra).inst)
 line_width_05 = RvSpectMLBase.calc_line_width(v_grid,view(ccfs,:,ref_obs_idx),frac_depth=0.05)
-line_list_df = prepare_line_list(linelist_for_ccf_fn_w_path, all_spectra, pipeline_plan,  orders_to_use=orders_to_use_default(first(all_spectra).inst), v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics=line_width_05, recalc=true)
+line_list_df = prepare_line_list(linelist_for_ccf_fn_w_path, all_spectra, pipeline_plan,  orders_to_use=orders_to_use_default(first(all_spectra).inst), v_center_to_avoid_tellurics=ccf_mid_velocity, Δv_to_avoid_tellurics=RvSpectMLBase.max_bc+2.5*line_width_50, recalc=true)
 
 # Recompute CCF using wider mask (check results from expres_compare_mask_widths for mask suggestions)
 ((ccfs, ccf_vars), v_grid) = ccf_total(order_list_timeseries, line_list_df, pipeline_plan,  mask_type=:halfcos, mask_scale_factor=10.0, ccf_mid_velocity=ccf_mid_velocity, calc_ccf_var=true, recalc=true )

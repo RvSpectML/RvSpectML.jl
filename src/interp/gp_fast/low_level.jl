@@ -269,12 +269,28 @@ function log_pdf_gp_posterior(xobs::AA, yobs::AA #, kernel::Function;
 	mean_y = mean(yobs)
 	xobs_trans = use_logx ? log.(xobs) : xobs
 	if use_logy
-		y_trans = log.(yobs./mean_y)
+		yobs_trans = log.(yobs./mean_y)
 		sigmasq_obs_trans = sigmasq_obs./yobs.^2
 	else
-		y_trans = yobs./mean_y .- 1
+		yobs_trans = yobs./mean_y .- 1
 		sigmasq_obs_trans = sigmasq_obs./mean_y.^2
 	end
 	f_posterior = construct_gp_posterior(xobs_trans,yobs_trans,xobs_trans,sigmasq_obs=sigmasq_obs_trans, use_logx=false, smooth_factor=smooth_factor )
 	return -logpdf(f_posterior(xobs_trans, sigmasq_obs_trans, use_logx=false), yobs_trans)
+end
+
+
+function fit_blaze_order(blaze::AbstractArray{T1,1}, order::Integer; mask::AbstractArray{Bool,1} = trues(length(blaze)),
+						smooth_factor_σ²::Real = 1, smooth_factor_l::Real = 1 ) where { T1<:Real }
+   gp_pr = construct_gp_prior(smooth_factor_σ²=smooth_factor_σ², smooth_factor_l=smooth_factor_l)
+   x_obs = (1:length(blaze))[mask]
+   num_pix_in_mask = length(x_obs)
+   sigmasq_obs = var(blaze[mask][floor(Int,num_pix_in_mask//4):ceil(Int,num_pix_in_mask*3//4)])
+   println("σ²_obs = ", sigmasq_obs)
+   fx = gp_pr(x_obs, sigmasq_obs)
+   f_post = posterior(fx, blaze[x_obs])
+   cost = logpdf(f_post, blaze[x_obs])
+   println("cost = ", cost)
+   gp_mean = marginals(f_post)
+   mean.(gp_post)
 end

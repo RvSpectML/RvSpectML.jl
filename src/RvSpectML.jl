@@ -35,6 +35,7 @@ export Scalpels
 using LinearAlgebra, Statistics
 using DataFrames, Query
 using Dates
+using AstroLib  # For solar position
 # Packages that are being used and likely can be shared
 # using Distributions, Interpolations, MultivariateStats, PDMats
 # Packages we might use soon
@@ -89,5 +90,7 @@ export clean_rvs_dcpca, calc_sigma_pca_scores
 
 include("util/spectra.jl")
 export calc_depth_and_expected_rv_precission, calc_formal_rv_precission
+include("util/sun.jl")
+export calc_solar_alt
 
 end

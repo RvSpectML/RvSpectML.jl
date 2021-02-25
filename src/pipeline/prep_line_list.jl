@@ -21,19 +21,22 @@ function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{Spe
       inst = first(all_spectra).inst
       inst_module = get_inst_module(first(all_spectra).inst)
       if verbose   println("# extrema(λ) = ", extrema(line_list_df.lambda), "   pre-filter" )   end
-      λmin_data = maximum(map(obsid->all_spectra[obsid].λ[max_col_default(inst,first(orders_to_use)),first(orders_to_use)],1:length(all_spectra)))
+      λmin_data = maximum(map(obsid->all_spectra[obsid].λ[min_col_default(inst,first(orders_to_use)),first(orders_to_use)],1:length(all_spectra)))
       λmax_data = minimum(map(obsid->all_spectra[obsid].λ[max_col_default(inst,last(orders_to_use)),last(orders_to_use)],1:length(all_spectra)))
       if verbose   println("# λmin_data = ",λmin_data, "  λmax_data = ",λmax_data)   end
       line_list_df = inst_module.filter_line_list(line_list_df,first(all_spectra).inst, λmin=λmin_data, λmax=λmax_data)
       if verbose   println("# extrema(λ) = ", extrema(line_list_df.lambda), "   post-filter" )   end
 
+      #=
+      println("# Adding col-based λ boundaries...")
       line_list_df = add_line_boundaries_to_line_list(line_list_df,  Δv_to_avoid_tellurics=Δv_to_avoid_tellurics, v_center_to_avoid_tellurics=v_center_to_avoid_tellurics )
 
       order_info = get_order_info(all_spectra, orders_to_use=orders_to_use)
       #println("# order_info contains: ", names(order_info))
       #println("# line_list_df contains: ", names(line_list_df))
       line_list_df = RvSpectML.assign_lines_to_orders(line_list_df, order_info)
-
+      =#
+      
       if eltype(all_spectra) <: EchelleInstruments.AnyEXPRES
          RvSpectMLBase.discard_pixel_mask(all_spectra)
          RvSpectMLBase.discard_excalibur_mask(all_spectra)
@@ -62,10 +65,10 @@ function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{Spe
     end
 
     if need_to(pipeline,:calc_line_list_snr_weights) || recalc
-      order_info = get_order_info(all_spectra, orders_to_use=orders_to_use)
+      #order_info = get_order_info(all_spectra, orders_to_use=orders_to_use)
       #println("# order_info contains: ", names(order_info))
       #println("# line_list_df contains: ", names(line_list_df))
-      line_list_df = RvSpectML.assign_lines_to_orders(line_list_df, order_info)
+      #line_list_df = RvSpectML.assign_lines_to_orders(line_list_df, order_info)
       if verbose   println("# line_list extrema(λ) = ", extrema(line_list_df.lambda)) end #, "   post-assign-to-orders" )   end
       RvSpectML.calc_snr_weights_for_lines!(line_list_df, all_spectra)
       set_cache!(pipeline,:calc_line_list_snr_weights,line_list_df)

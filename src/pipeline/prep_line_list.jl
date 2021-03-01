@@ -1,8 +1,10 @@
 
-""" prepare_line_list( linelist_fn, spectra, pipeline; Δv_to_avoid_tellurics, v_center_to_avoid_tellurics )
+""" prepare_line_list( linelist_fn, all_spectra, pipeline; recalc, convert_air_to_vacuum, orders_to_use, Δv_to_avoid_tellurics, v_center_to_avoid_tellurics )
 linelist_fn is the full path to the line list file
+linelist_fn is loaded as a VALD mask if it contains substring "VALD", and linelist_fn is loaded as an ESPRESSO mask if it contains the substring "espresso.mas".
+convert_air_to_vacuum is a boolean (defualt value true) that determines whether to convert to vaccum wavelengths when loading VALD and ESPRESSO masks.
 """
-function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{SpecT}, pipeline::PipelinePlan; recalc::Bool = false, airToVac::Bool = true,
+function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{SpecT}, pipeline::PipelinePlan; recalc::Bool = false, convert_air_to_vacuum::Bool = true,
          orders_to_use = RvSpectML.orders_to_use_default(first(all_spectra).inst),
          Δv_to_avoid_tellurics::Real = EchelleInstruments.default_Δv_to_avoid_tellurics, v_center_to_avoid_tellurics::Real = 0.0, verbose::Bool = false ) where { SpecT <: AbstractSpectra }
    @assert length(linelist_fn) >= 1
@@ -12,9 +14,9 @@ function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{Spe
       lambda_range_with_good_data = get_λ_range(all_spectra)
       if verbose println("# Reading line list for CCF: ", linelist_fn, ".")  end
       if occursin(r"espresso\.mas$", linelist_fn)
-         line_list_df = EchelleCCFs.read_linelist_espresso(linelist_fn, airToVac=airToVac)
+         line_list_df = EchelleCCFs.read_linelist_espresso(linelist_fn, convert_air_to_vacuum=convert_air_to_vacuum)
       elseif occursin(r"VALD", linelist_fn)
-         line_list_df = EchelleCCFs.read_linelist_vald(linelist_fn, airToVac=airToVac)
+         line_list_df = EchelleCCFs.read_linelist_vald(linelist_fn, convert_air_to_vacuum=convert_air_to_vacuum)
       else
          line_list_df = EchelleCCFs.read_linelist_rvspectml(linelist_fn)
       end

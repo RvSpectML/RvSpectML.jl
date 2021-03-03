@@ -88,6 +88,12 @@ end
 
 " Utility function for `line_model`.  Don't assume will remain unchanged in future versions."
 function pack(; a::T1, b::T2, λc::T3, depth::T4, σ²::T5) where { T1<:Real, T2<:Real, T3<:Real, T4<:Real, T5<:Real  }
+  if !(depth>0)
+    println("a = ", a, " λ = ", λc, " depth = ", depth, " σ² = ", σ², " b = ", b)
+  end
+  if !(σ²>0)
+    println("a = ", a, " λ = ", λc, " depth = ", depth, " σ² = ", σ², " b = ", b)
+  end
   return [a, λc-6500, log(depth), log(σ²), b]
 end
 
@@ -107,19 +113,33 @@ function line_model(λ::Union{T1,AbstractVector{T1} }, θ::AbstractVector{T2}) w
 end
 
 
-function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::AbstractArray{T3,1}, idx::UnitRange; line_width_guess::Real = 5000, show_trace::Bool = false) where { T1<:Real, T2<:Real, T3<:Real }
+function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::AbstractArray{T3,1}, idx::UnitRange; λc_guess::Real = 0, line_width_guess::Real = 5000, depth_guess::Real=0.5, show_trace::Bool = false) where { T1<:Real, T2<:Real, T3<:Real }
   @assert length(λ) == length(flux) == length(var)
-    λc0 = λ[idx[argmin(flux[idx])]]
+  idxcentral = max(1,floor(Int64,length(idx)//4)):ceil(Int64,length(idx)*3//4)
+  idx_min_flux_central = argmin(flux[idx[idxcentral]])
+  min_flux_central = flux[idx[idxcentral[idx_min_flux_central]]]
+  λc0 = λ[idx[idxcentral[idx_min_flux_central]]]
+  λc0 = λc_guess != 0 ? λc_guess : λc0
   continuum0 = maximum(flux[idx])
-  depth0 = 1-minimum(flux[idx])/continuum0
+  #depth0 = (continuum0-minimum(min_flux_central))/continuum0
+  depth0 = depth_guess
   #width0 = 0.05^2   # might need to make more general to deal with different v sin i's
-  width0 = (λc0 * (0.5*line_width_guess / RvSpectMLBase.speed_of_light_mps))^2   # might need to make more general to deal with different v sin i's
-  λ_fit_min = λc0 * (1 - line_width_guess / RvSpectMLBase.speed_of_light_mps)
-  λ_fit_max = λc0 * (1 + line_width_guess / RvSpectMLBase.speed_of_light_mps)
+  width0 = (λc0 * (0.42462*line_width_guess / RvSpectMLBase.speed_of_light_mps))^2   # might need to make more general to deal with different v sin i's
+  #width0 = ( (0.42462*line_width_guess / RvSpectMLBase.speed_of_light_mps))^2   # might need to make more general to deal with different v sin i's
+  λ_fit_max = λc0 * (1 + 0.21*line_width_guess / RvSpectMLBase.speed_of_light_mps)
+  λ_fit_min = λc0 * (1 - 0.21*line_width_guess / RvSpectMLBase.speed_of_light_mps)
   slope0 = 0.0
-  θ0 = pack(a=continuum0,b=slope0,λc=λc0,depth=depth0,σ²=width0*2)
-  lower_bound = pack(a=0.0, b=-1.0, λc=λ_fit_min, depth=0.0, σ²=width0/16)
-  upper_bound = pack(a=2.0, b= 1.0, λc=λ_fit_max, depth=0.999, σ²=width0*4)
+  θ0 = pack(a=continuum0,b=slope0,λc=λc0,depth=depth0,σ²=width0)
+  if depth0 < 0.7
+    max_width_scale = 4
+  elseif depth0 < 0.85
+    max_width_scale = 4
+  else
+    max_width_scale = 8
+  end
+
+  lower_bound = pack(a=0.25, b=-0.7, λc=λ_fit_min, depth=0.001, σ²=width0/4)
+  upper_bound = pack(a=4.0, b= 0.7, λc=λ_fit_max, depth=1.0, σ²=width0*max_width_scale)
   #upper_bound = pack(a=2.0, b= 1.0, λc=maximum(λ[idx]), depth=1.0, σ²=0.1)
   try
     res = curve_fit(line_model, λ[idx], flux[idx], 1.0 ./(var[idx]), θ0, lower=lower_bound, upper=upper_bound, show_trace=show_trace, autodiff=:forwarddiff)
@@ -151,20 +171,33 @@ Fits a basic Gaussian absorption line times a line (variable slope) to data.
 Returns a tuple of (param, χ²_per_dof, is_converged)
 Warning:  Has some hardcoded parameters that likely need to be generalized for different instruments.
 """
-function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::AbstractArray{T3,1}; line_width_guess::Real = 5000 ) where { T1<:Real, T2<:Real, T3<:Real }
+function fit_line(λ::AbstractArray{T1,1}, flux::AbstractArray{T2,1}, var::AbstractArray{T3,1}; λc_guess::Real = 0, line_width_guess::Real = 5000, depth_guess::Real=0.5 ) where { T1<:Real, T2<:Real, T3<:Real }
   @assert length(λ) == length(flux) == length(var)
   @warn "Need to check why this results in fits not converging!"
-  λc0 = λ[argmin(flux)]
-  continuum0 = maximum(flux)
-  depth0 = 1-minimum(flux)/continuum0
+  idxcentral = max(1,floor(Int64,length(idx)//4)):ceil(Int64,length(idx)*3//4)
+  idx_min_flux_central = argmin(flux[idx[idxcentral]])
+  min_flux_central = flux[idx[idxcentral[idx_min_flux_central]]]
+  λc0 = λ[idx[idxcentral[idx_min_flux_central]]]
+  λc0 = λc_guess != 0 ? λc_guess : λc0
+  continuum0 = maximum(flux[idx])
+  #depth0 = (continuum0-minimum(min_flux_central))/continuum0
+  depth0 = depth_guess
   #width0 = 0.05^2   # might need to make more general to deal with different v sin i's
-  width0 = (λc0 * (0.5*line_width_guess / RvSpectMLBase.speed_of_light_mps))^2   # might need to make more general to deal with different v sin i's
-  λ_fit_min = λc0 * (1 - line_width_guess / RvSpectMLBase.speed_of_light_mps)
-  λ_fit_max = λc0 * (1 + line_width_guess / RvSpectMLBase.speed_of_light_mps)
+  width0 = (λc0 * (0.75*line_width_guess / RvSpectMLBase.speed_of_light_mps))^2   # might need to make more general to deal with different v sin i's
+  #width0 = ( (0.42462*line_width_guess / RvSpectMLBase.speed_of_light_mps))^2   # might need to make more general to deal with different v sin i's
+  λ_fit_min = λc0 * (1 - 0.25*line_width_guess / RvSpectMLBase.speed_of_light_mps)
+  λ_fit_max = λc0 * (1 + 0.25*line_width_guess / RvSpectMLBase.speed_of_light_mps)
   slope0 = 0.0
-  θ0 = pack(a=continuum0,b=slope0,λc=λc0,depth=depth0,σ²=width0*2)
-  lower_bound = pack(a=0.0, b=-1.0, λc=λ_fit_min, depth=0.01, σ²=width0/16)
-  upper_bound = pack(a=2.0, b= 1.0, λc=λ_fit_max, depth=0.999, σ²=width0*4)
+  θ0 = pack(a=continuum0,b=slope0,λc=λc0,depth=depth0,σ²=width0)
+  if depth0 < 0.7
+     max_width_scale = 4
+  elseif depth0 < 0.85
+     max_width_scale = 4
+  else
+     max_width_scale = 8
+  end
+  lower_bound = pack(a=0.25, b=-0.7, λc=λ_fit_min, depth=0.001, σ²=width0/4)
+  upper_bound = pack(a=4.0, b= 0.7, λc=λ_fit_max, depth=1.0, σ²=width0*max_width_scale)
   try
     #res = curve_fit(line_model, λ, flux, 1.0 ./(var), θ0, lower=lower_bound, upper=upper_bound, show_trace=false, autodiff=:forwarddiff)
     λtmp = copy(λ)
@@ -248,9 +281,11 @@ function find_lines_in_chunk(chunk::AbstractChunkOfSpectrum; plan::LineFinderPla
     line_candidates = line_candidates |> @filter(minimum(_.pixels)>1) |> @filter(maximum(_.pixels)<length(flux)) |> #DataFrame
     #line_candidates = line_candidates |>
         @filter(_.fit_converged) |>
+        @filter(_.fit_depth > 0.1 ) |>
         #@filter( 0.5* plan.line_width <= sqrt.(_.fit_σ²) ./ _.fit_λc .* RvSpectMLBase.speed_of_light_mps <= 2* plan.line_width ) |>
         #@filter(_.fit_σ²<0.018) |>
-        @filter(-0.5 <_.fit_b <0.5) |> @filter(_.fit_a < 1.8) |>
+        @filter(-0.7 <_.fit_b <0.7) |>
+        @filter(0.25 < _.fit_a < 4.0) |>
         DataFrame
   end
 
@@ -305,10 +340,11 @@ end
 
 global fit_line_in_chunklist_timeseries_count_msgs = 0
 
-""" `fit_line_in_chunklist_timeseries( chunk_list_timeseries, λmin, λmax, chunk_index)`
+""" `fit_line_in_chunklist_timeseries( chunk_list_timeseries, λc, min, λmax, chunk_index)`
 Return DataFrame with results of fits to each line in a given chunk of chunk_list_timeseries (including each observation time)
 Inputs:
 - chunk_list_timeseries: Data to fit
+- λc
 - λmin
 - λmax
 - chunk_index:  Restricts fitting to specified chunk
@@ -325,7 +361,7 @@ Outputs a DataFrame with keys:
 - chunk_id: index of chunk in chunk_list_timeseries
 - pixels: range of pixels that was fit
 """
-function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmin::Real, λmax::Real, chid::Integer; line_width_guess::Real = 5000, show_trace::Bool = false)
+function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λc::Real, λmin::Real, λmax::Real, chid::Integer; line_width_guess::Real = 5000, depth_guess::Real = 0.5, rvs::AbstractArray{T1,1} = zeros(length(clt)), show_trace::Bool = false) where { T1<:Real }
   df = DataFrame()
   nobs = length(clt.chunk_list)
   ParamT = NamedTuple{(:a, :λc, :depth, :σ², :b),NTuple{5,Float64}}  # maybe generalize by making part of plan?
@@ -342,10 +378,11 @@ function fit_line_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, λmi
   global count_msgs
   for t in 1:nobs
     pixels[t] = RvSpectMLBase.find_pixels_for_line_in_chunklist(clt.chunk_list[t], λmin, λmax, chid).pixels
-    mean_flux = mean(clt.chunk_list[t][chid].flux[pixels[t]])
-    flux = clt.chunk_list[t][chid].flux ./ mean_flux
-    var = clt.chunk_list[t][chid].var ./ mean_flux^2
-    (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, flux, var, pixels[t]; line_width_guess=line_width_guess, show_trace=show_trace )
+    ref_flux = quantile(clt.chunk_list[t][chid].flux[pixels[t]],0.8)
+    flux = clt.chunk_list[t][chid].flux ./ ref_flux
+    var = clt.chunk_list[t][chid].var ./ ref_flux^2
+    λ_t_guess = λc   # TODO: * or / (1+rvs[t]/speed_of_light_mps)
+    (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, flux, var, pixels[t]; λc_guess=λ_t_guess, depth_guess=depth_guess, line_width_guess=line_width_guess, show_trace=show_trace )
     #=
     if fit_line_in_chunklist_timeseries_count_msgs<5
       (param_tmp, fit_covar[t], gof[t], fit_converged[t] ) = fit_line(clt.chunk_list[t][chid].λ, flux, var, pixels[t], show_trace=true )
@@ -395,19 +432,23 @@ Outputs a DataFrame with keys:
 - chunk_id: index of chunk in chunk_list_timeseries
 - pixels: range of pixels that was fit
 """
-function fit_all_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, lines::DataFrame ; plan::LineFinderPlan = LineFinderPlan(), show_trace::Bool = false )
+function fit_all_lines_in_chunklist_timeseries(clt::AbstractChunkListTimeseries, lines::DataFrame ; plan::LineFinderPlan = LineFinderPlan(), rvs::AbstractArray{T1,1} = zeros(length(clt)), show_trace::Bool = false ) where { T1<:Real }
   @assert size(lines,1) >= 2
   line_idx::Int64 = 1
+  λc = lines[line_idx,:fit_λc]
   λmin = lines[line_idx,:fit_min_λ]
   λmax = lines[line_idx,:fit_max_λ]
+  depth0 = lines[line_idx,:fit_depth]
   chid = lines[line_idx,:chunk_id]
-  df = fit_line_in_chunklist_timeseries(clt, λmin, λmax, chid; line_width_guess=plan.line_width, show_trace=show_trace)
+  df = fit_line_in_chunklist_timeseries(clt, λc, λmin, λmax, chid; line_width_guess=plan.line_width, depth_guess=depth0, rvs=rvs, show_trace=show_trace)
   df[!,:line_id] .= line_idx
   for line_idx in 2:size(lines,1)
+    λc = lines[line_idx,:fit_λc]
     λmin = lines[line_idx,:fit_min_λ]
     λmax = lines[line_idx,:fit_max_λ]
+    depth0 = lines[line_idx,:fit_depth]
     chid = lines[line_idx,:chunk_id]
-    df_tmp = fit_line_in_chunklist_timeseries(clt, λmin, λmax, chid; line_width_guess=plan.line_width)
+    df_tmp = fit_line_in_chunklist_timeseries(clt, λc, λmin, λmax, chid; line_width_guess=plan.line_width, depth_guess=depth0, rvs=rvs )
     df_tmp[!,:line_id] .= line_idx
     append!(df,df_tmp)
   end

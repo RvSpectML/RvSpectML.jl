@@ -92,7 +92,6 @@ end
 
 function make_bin_indices_for_binning_max_Δt(times::AT; Δt_threshold::Real = 0.5)  where { T<:Real, AT<:AbstractVector{T} }
     @assert length(times) >= 1
-    Δt_threshold = 0.5
     n = length(times)
     bin_indices = ones(Int,n)
     bin = 1

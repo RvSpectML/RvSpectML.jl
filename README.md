@@ -19,9 +19,10 @@ To support that goal, it will also include tools to deal with intrinsic stellar 
   - read a line list or cross-correlation function (CCF) mask file based on ESPRESSO or VALD,
 - Call [EchelleCCFs.jl](https://github.com/RvSpectML/EchelleCCFs.jl):
   - compute cross-correlation function (CCF) of spectra relative to multiple CCF mask shapes efficiently,
-  - measure RVs based on either the CCF or a direct Taylor expansion of the flux,
+  - measure RVs based on either the CCF
 - interpolate spectra to a new set of wavelengths using linear, sinc, or Gaussian process regression algorithms,
 - combine many files into a template spectra, interpolating them to a common wavelength grid and applying Doppler shift by estimated RV,
+- measure RVs based on a Taylor expansion of the flux,
 - perform Doppler-constrained PCA analysis.
 - Call [RvSpectMLPlots.jl](https://github.com/RvSpectML/RvSpectMLPlots.jl) to:
    - make some common plots
@@ -43,6 +44,7 @@ Once it is reasonably mature, then please contact Eric to discuss whether to mer
 - [EchelleInstruments.jl](https://github.com/RvSpectML/EchelleInstruments.jl): Code specific to each instrument
 - [EchelleCCFs.jl](https://github.com/RvSpectML/EchelleCCFs.jl):  Computes CCFs with an anlytic mask
 - RVSpectML (this package) holds larger algorithms and code that interconnects the component packages.  (Any plotting should be outside of src and not in the Project.toml.)
-- [RvSpectMLPlots.jl](https://github.com/RvSpectML/RvSpectMLPlots.jl):  Plotting functions/scripts/notebooks, so other packages don't get bogged down by Plots.jl
 - [Scalpels.jl](https://github.com/RvSpectML/Scalpels.jl):  Provides Scalpels algorithm for analyzing an ensemble of CCFs and estimating RVs and contamination from stellar variability.  
+- [NeidArchive.jl](https://github.com/RvSpectML/NeidArchive.jl):  Julia wrapper for API to query/download data from Neid archives. 
 - [GPLinearODEMaker](https://github.com/christiangil/GPLinearODEMaker.jl):  Implements a multi-variate GP time-series likelihood and optimization functions.
+- [RvSpectMLPlots.jl](https://github.com/RvSpectML/RvSpectMLPlots.jl):  Plotting functions/scripts/notebooks, so other packages don't get bogged down by Plots.jl

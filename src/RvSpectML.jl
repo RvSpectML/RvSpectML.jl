@@ -90,7 +90,10 @@ export clean_rvs_dcpca, calc_sigma_pca_scores
 
 include("util/spectra.jl")
 export calc_depth_and_expected_rv_precission, calc_formal_rv_precission
+include("util/earth_mover_distance.jl")
+export earth_mover_distance
 include("util/sun.jl")
 export calc_solar_alt
+
 
 end

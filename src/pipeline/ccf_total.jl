@@ -1,7 +1,7 @@
 function ccf_total(order_list_timeseries::AbstractChunkListTimeseries, line_list_df::DataFrame, pipeline::PipelinePlan; recalc::Bool = false,
                   output_fn_suffix::String = "", range_no_mask_change::Real=RvSpectMLBase.max_bc, ccf_mid_velocity::Real=0.0, v_step::Real=250.0,
-                  v_max=RvSpectMLBase.max_bc, mask_scale_factor::Real=1, ccf_var_scale::Real=1.0, mask_type::Symbol = :tophat,
-                  calc_ccf_var::Bool = false, calc_ccf_covar::Bool = false, allow_nans::Bool = false, verbose::Bool = false )
+                  v_max=RvSpectMLBase.max_bc, mask_scale_factor::Real=1, ccf_var_scale::Real=1.0, mask_type::Symbol = :tophat, Δfwhm::AbstractVector{T} = zeros(0),
+                  calc_ccf_var::Bool = false, calc_ccf_covar::Bool = false, allow_nans::Bool = false, verbose::Bool = false ) where { T<:Real }
     if need_to(pipeline,:ccf_total) || recalc
       if verbose println("# Computing CCF.")  end
       @assert !need_to(pipeline,:extract_orders)
@@ -23,7 +23,7 @@ function ccf_total(order_list_timeseries::AbstractChunkListTimeseries, line_list
       ccf_plan = CCFs.BasicCCFPlan(mask_shape = mask_shape, line_list=line_list, midpoint=ccf_mid_velocity, range_no_mask_change=range_no_mask_change, step=v_step, max=v_max, allow_nans=allow_nans)
       v_grid = calc_ccf_v_grid(ccf_plan)
 
-      ccfs = calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan, ccf_var_scale=ccf_var_scale, calc_ccf_var=calc_ccf_var, calc_ccf_covar=calc_ccf_covar, verbose=verbose)
+      ccfs = calc_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan, ccf_var_scale=ccf_var_scale, calc_ccf_var=calc_ccf_var, calc_ccf_covar=calc_ccf_covar, Δfwhm=Δfwhm, verbose=verbose)
       if save_data(pipeline, :ccf_total)
          CSV.write(joinpath(output_dir,target_subdir * "_ccfs" * output_fn_suffix * ".csv"),Tables.table(ccfs',header=Symbol.(v_grid)))
          #CSV.write(joinpath(output_dir,target_subdir * "_ccfs_expr.csv"),Tables.table(ccfs_expr',header=Symbol.(v_grid)))

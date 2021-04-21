@@ -1,7 +1,7 @@
 name = "RvSpectML"
 uuid = "1f61ac2c-3a1c-440a-925a-2707197041c8"
 authors = ["Eric B. Ford, Christian Gilbertson, Joe Ninan, Michael L. Palumbo III, Alex Wise, and contributors"]
-version = "0.1.10"
+version = "0.1.11"
 
 [deps]
 AstroLib = "c7932e45-9af1-51e7-9da9-f004cd3a462b"

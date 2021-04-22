@@ -35,7 +35,8 @@ export Scalpels
 using LinearAlgebra, Statistics
 using DataFrames, Query
 using Dates
-using AstroLib  # For solar position
+#using AstroLib  # For solar position
+include("astrolib/astrolib.jl")
 # Packages that are being used and likely can be shared
 # using Distributions, Interpolations, MultivariateStats, PDMats
 # Packages we might use soon

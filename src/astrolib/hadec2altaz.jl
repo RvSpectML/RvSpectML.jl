@@ -63,11 +63,6 @@ Arcturus is observed at an apparent hour angle of 336.6829 and a declination of
 19.1825 while at the latitude of +43° 4' 42''.  What are the local altitude and
 azimuth of this object?
 
-```jldoctest
-julia> alt, az = hadec2altaz(336.6829, 19.1825, ten(43, 4, 42))
-(59.08617155005685, 133.3080693440254)
-```
-
 ### Notes ###
 
 `altaz2hadec` converts Horizon (Alt-Az) coordinates to Hour Angle and

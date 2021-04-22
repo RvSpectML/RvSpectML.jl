@@ -27,19 +27,6 @@ Number of Julian days, as a floating point.
 
 Find the Julian days number at 2016 August 23, 03:39:06.
 
-```jldoctest
-julia> using Dates
-
-julia> jdcnv(DateTime(2016, 08, 23, 03, 39, 06))
-2.4576236521527776e6
-
-julia> jdcnv(2016, 08, 23, 03, 39, 06)
-2.4576236521527776e6
-
-julia> jdcnv("2016-08-23T03:39:06")
-2.4576236521527776e6
-```
-
 ### Notes ###
 
 This is the inverse of `daycnv`.

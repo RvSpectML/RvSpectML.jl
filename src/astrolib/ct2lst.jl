@@ -55,19 +55,6 @@ constants used.
 Find the Greenwich mean sidereal time (GMST) on 2008-07-30 at 15:53 in
 Baltimore, Maryland (longitude=-76.72 degrees).  The timezone is EDT or tz=-4
 
-```jldoctest
-julia> using Dates
-
-julia> lst = ct2lst(-76.72, -4, DateTime(2008, 7, 30, 15, 53))
-11.356505172312609
-
-julia> sixty(lst)
-3-element StaticArrays.SArray{Tuple{3},Float64,1,3} with indices SOneTo(3):
- 11.0
- 21.0
- 23.418620325392112
-```
-
 Find the Greenwich mean sidereal time (GMST) on 2015-11-24 at 13:21 in
 Heidelberg, Germany (longitude=08° 43' E).  The timezone is CET or tz=1.
 Provide `ct2lst` only with the longitude of the place and the number of

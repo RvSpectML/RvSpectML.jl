@@ -29,8 +29,8 @@ function calc_solar_alt(time::Real; obs::Symbol)
   lat =  31.958092
   alt =  2091.0
 	=#
-  (ra_sun, dec_sun, ) = sunpos(time)
-  lst = ct2lst(loc["lon"],time)
-  (alt, az) = hadec2altaz(lst-ra_sun/360*24, dec_sun,loc["lat"])
+  (ra_sun, dec_sun, ) = AstroLib.sunpos(time)
+  lst = AstroLib.ct2lst(loc["lon"],time)
+  (alt, az) = AstroLib.hadec2altaz(lst-ra_sun/360*24, dec_sun,loc["lat"])
   return alt
 end

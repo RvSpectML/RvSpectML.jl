@@ -15,7 +15,7 @@ function wasserstein_distance(u_values::AbstractVector{T1}, v_values::AbstractVe
   elseif p==2
       return sqrt(sum((u_cdf.-v_cdf).^2 .* deltas))
   else
-      return pow(sum(abs.(u_cdf.-v_cdf).^p .* deltas),1/p)
+      return (sum(abs.(u_cdf.-v_cdf).^p .* deltas))^(1/p)
   end
 end
 
@@ -42,7 +42,7 @@ function wasserstein_distance(u_values::AbstractVector{T1}, v_values::AbstractVe
     elseif p==2
       return sqrt(sum((u_cdf.-v_cdf).^2 .* deltas))
     else
-      return pow(sum(abs.(u_cdf.-v_cdf).^p .* deltas),1/p)
+      return (sum(abs.(u_cdf.-v_cdf).^p .* deltas))^(1/p)
     end
 end
 
@@ -69,7 +69,7 @@ function wasserstein_distance_presorted(u_values::AbstractVector{T1}, v_values::
     elseif p==2
       return sqrt(sum((u_cdf.-v_cdf).^2 .* deltas))
     else
-      return pow(sum(abs.(u_cdf.-v_cdf).^p .* deltas),1/p)
+      return (sum(abs.(u_cdf.-v_cdf).^p .* deltas))^(1/p)
     end
 end
 
@@ -91,7 +91,7 @@ function wasserstein_distance_presorted(u_values::AbstractVector{T1}, v_values::
   v_cdf_max = v_sorted_weights[end]
   u_cdf = u_sorted_weights[u_cdf_indices] / u_cdf_max
   v_cdf = v_sorted_weights[v_cdf_indices] / v_cdf_max
-  map(p->pow(sum(abs.(u_cdf.-v_cdf).^p .* deltas),1/p), p_list)
+  map(p->(sum(abs.(u_cdf.-v_cdf).^p .* deltas))^(1/p), p_list)
 end
 
 function wasserstein_distance_presorted_common_x(u_values::AbstractVector{T1}, #v_values::AbstractVector{T2},
@@ -121,7 +121,7 @@ function wasserstein_distance_presorted_common_x(u_values::AbstractVector{T1}, #
     elseif p==2
       return sqrt(sum((u_cdf.-v_cdf).^2 .* deltas))
     else
-      return pow(sum(abs.(u_cdf.-v_cdf).^p .* deltas),1/p)
+      return sum(abs.(u_cdf.-v_cdf).^p .* deltas)^(1/p)
     end
 end
 
@@ -147,7 +147,7 @@ function wasserstein_distance_presorted_common_x(u_values::AbstractVector{T1}, #
   v_cdf_max = v_sorted_weights[end]
   u_cdf = u_sorted_weights[u_cdf_indices] / u_cdf_max
   v_cdf = v_sorted_weights[u_cdf_indices] / v_cdf_max
-  map(p->pow(sum(abs.(u_cdf.-v_cdf).^p .* deltas),1/p), p_list)
+  map(p->(sum(abs.(u_cdf.-v_cdf).^p .* deltas))^(1/p), p_list)
 end
 
 #earth_mover_distance(u_values::AbstractVector{T1}, v_values::AbstractVector{T2}) where { T1<:Real, T2<:Real} = wasserstein_distance(u_values,v_values,1)

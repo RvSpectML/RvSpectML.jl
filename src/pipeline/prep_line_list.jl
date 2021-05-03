@@ -13,7 +13,7 @@ function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{Spe
    if need_to(pipeline,:read_line_list) || recalc
       lambda_range_with_good_data = get_λ_range(all_spectra)
       if verbose println("# Reading line list for CCF: ", linelist_fn, ".")  end
-      if occursin(r"espresso\.mas$", linelist_fn)
+      if occursin(r"espresso.*\.mas$", linelist_fn)
          line_list_df = EchelleCCFs.read_linelist_espresso(linelist_fn, convert_air_to_vacuum=convert_air_to_vacuum)
       elseif occursin(r"VALD", linelist_fn)
          line_list_df = EchelleCCFs.read_linelist_vald(linelist_fn, convert_air_to_vacuum=convert_air_to_vacuum)

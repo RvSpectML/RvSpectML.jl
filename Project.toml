@@ -38,7 +38,7 @@ ThreadedIterables = "11d239b0-c0b9-11e8-1935-d5cfa53abb03"
 [compat]
 CSV = "0.7, 0.8"
 DSP = "0.5, 0.6"
-DataFrames = "0.20, 0.21, 0.22"
+DataFrames = "0.20, 0.21, 0.22, 1.1"
 Distributions = "0.23, 0.24"
 EchelleCCFs = "0.2"
 EchelleInstruments = "0.2"

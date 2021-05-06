@@ -1,7 +1,9 @@
 function ccf_orders(order_list_timeseries::AbstractChunkListTimeseries,  line_list_df::DataFrame, pipeline::PipelinePlan; verbose::Bool = false, calc_ccf_var::Bool = false, recalc::Bool = false,
    orders_to_use = RvSpectMLBase.orders_to_use_default(order_list_timeseries.inst),
    range_no_mask_change::Real=RvSpectMLBase.max_bc, ccf_mid_velocity::Real=0.0,
-    v_step::Real=250.0, v_max=RvSpectMLBase.max_bc, mask_scale_factor::Real=1, mask_type::Symbol = :tophat, allow_nans::Bool = false )
+    v_step::Real=250.0, v_max=RvSpectMLBase.max_bc, mask_scale_factor::Real=1,
+    mask_type::Symbol = :tophat, Δfwhm::AbstractVector{T} = zeros(0),
+    allow_nans::Bool = false ) where { T<:Real }
 
    if need_to(pipeline, :ccf_orders)  || recalc # Compute order CCF's & measure RVs
       if mask_type == :tophat
@@ -23,10 +25,10 @@ function ccf_orders(order_list_timeseries::AbstractChunkListTimeseries,  line_li
       tstart = now()    # Compute CCFs for each order
 
       if calc_ccf_var
-         (order_ccfs, order_ccf_vars ) = EchelleCCFs.calc_order_ccf_and_var_chunklist_timeseries(order_list_timeseries, ccf_plan)
+         (order_ccfs, order_ccf_vars ) = EchelleCCFs.calc_order_ccf_and_var_chunklist_timeseries(order_list_timeseries, ccf_plan, Δfwhm=Δfwhm)
          set_cache!(pipeline,:ccf_orders, (order_ccfs = order_ccfs, order_ccf_vars = order_ccf_vars, v_grid=v_grid) )
       else
-         order_ccfs = EchelleCCFs.calc_order_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan)
+         order_ccfs = EchelleCCFs.calc_order_ccf_chunklist_timeseries(order_list_timeseries, ccf_plan, Δfwhm=Δfwhm)
          set_cache!(pipeline,:ccf_orders, (order_ccfs = order_ccfs, v_grid=v_grid) )
       end
       if verbose   println("# Order CCFs runtime: ", now()-tstart)  end

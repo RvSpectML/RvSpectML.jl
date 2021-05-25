@@ -82,12 +82,14 @@ function bin_times_and_rvs_max_Δt(;times::AT1, rvs::AT2, Δt_threshold::Real = 
     local bin_labels = unique(bin_idx)
     local binned_times = zeros(length(bin_labels))
     local binned_rvs = zeros(length(bin_labels))
+    local num_obs_in_bin = zeros(length(bin_labels))
     for (i,label) in enumerate(bin_labels)
         local idx = findall(isequal(label),bin_idx)
         binned_times[i] = mean(times[idx])
         binned_rvs[i] = mean(rvs[idx])
+        num_obs_in_bin[i] = length(idx)
     end
-    return (times=binned_times, rvs=binned_rvs)
+    return (times=binned_times, rvs=binned_rvs, num_obs_in_bin=num_obs_in_bin)
 end
 
 function make_bin_indices_for_binning_max_Δt(times::AT; Δt_threshold::Real = 0.5)  where { T<:Real, AT<:AbstractVector{T} }

@@ -38,7 +38,7 @@ function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{Spe
       #println("# line_list_df contains: ", names(line_list_df))
       line_list_df = RvSpectML.assign_lines_to_orders(line_list_df, order_info)
       =#
-      
+
       if eltype(all_spectra) <: EchelleInstruments.AnyEXPRES
          RvSpectMLBase.discard_pixel_mask(all_spectra)
          RvSpectMLBase.discard_excalibur_mask(all_spectra)
@@ -67,10 +67,12 @@ function prepare_line_list( linelist_fn::String, all_spectra::AbstractVector{Spe
     end
 
     if need_to(pipeline,:calc_line_list_snr_weights) || recalc
-      #order_info = get_order_info(all_spectra, orders_to_use=orders_to_use)
-      #println("# order_info contains: ", names(order_info))
-      #println("# line_list_df contains: ", names(line_list_df))
-      #line_list_df = RvSpectML.assign_lines_to_orders(line_list_df, order_info)
+      if !hasproperty(line_list_df,:order)
+         order_info = get_order_info(all_spectra, orders_to_use=orders_to_use)
+         println("# order_info contains: ", names(order_info))
+         println("# line_list_df contains: ", names(line_list_df))
+         line_list_df = RvSpectML.assign_lines_to_orders(line_list_df, order_info)
+      end
       if verbose   println("# line_list extrema(λ) = ", extrema(line_list_df.lambda)) end #, "   post-assign-to-orders" )   end
       RvSpectML.calc_snr_weights_for_lines!(line_list_df, all_spectra)
       set_cache!(pipeline,:calc_line_list_snr_weights,line_list_df)

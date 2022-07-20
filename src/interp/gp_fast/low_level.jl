@@ -10,8 +10,8 @@ Optional Inputs:
 function construct_gp_prior(; smooth_factor::Real = 1, σ²::Real = 0.5, l::Real = 5.8e-5)
 	σ² *= smooth_factor
 	l *= smooth_factor
-	k = σ² * stretch(Matern52(), 1 / l)
-	f_naive = GP(k, GPC())
+	k = σ² * transform(Matern52Kernel(), 1 / l)
+	f_naive = GP(k)
 	#f = to_sde(f_naive)   # if develop issues with StaticArrays could revert to this
 	f = to_sde(f_naive, SArrayStorage(Float64))
 end
@@ -28,8 +28,8 @@ Optional Inputs:
 function construct_gp_prior(; smooth_factor_σ²::Real = 1, smooth_factor_l::Real = 1, smooth_factor::Real = 1, σ²::Real = 0.5, l::Real = 5.8e-5)
 	σ² *= smooth_factor_σ² * smooth_factor
 	l *= smooth_factor_l * smooth_factor
-	k = σ² * stretch(Matern52(), 1 / l)
-	f_naive = GP(k, GPC())
+	k = σ² * transform(Matern52Kernel(), 1 / l)
+	f_naive = GP(k)
 	#f = to_sde(f_naive)   # if develop issues with StaticArrays could revert to this
 	f = to_sde(f_naive, SArrayStorage(Float64))
 end
@@ -38,8 +38,8 @@ end
 #=
 function construct_gp_prior_kernel_param_as_vector(gp_param = [0.5, 5.8e-5 ])
 	σ², l = gp_param
-	k = σ² * stretch(Matern52(), 1 / l)
-	f_naive = GP(k, GPC())
+	k = σ² * transform(Matern52Kernel(), 1 / l)
+	f_naive = GP(k)
 	#f = to_sde(f_naive)   # if develop issues with StaticArrays could revert to this
 	f = to_sde(f_naive, SArrayStorage(Float64))
 end

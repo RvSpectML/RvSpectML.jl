@@ -12,7 +12,7 @@ module TemporalGPInterpolation
 using LinearAlgebra
 using PDMats
 using StaticArrays
-using Stheno, TemporalGPs
+using TemporalGPs, KernelFunctions
 using Dates
 using RvSpectMLBase
 
@@ -20,7 +20,11 @@ using RvSpectMLBase
 export gp_marginal
 export predict_mean, predict_deriv, predict_deriv2, predict_mean_and_deriv, predict_mean_and_derivs
 
-import Stheno: AbstractGP
+# import Stheno: AbstractGP
+# instead of Stheno, import temporal GPs functions to replace Stheno functions
+import TemporalGPs: GP as AbstractGP
+import TemporalGPs: marginals
+import TemporalGPs: GP
 import Distributions: AbstractMvNormal
 
 using Distributions

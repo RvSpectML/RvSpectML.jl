@@ -1,6 +1,8 @@
 function ccf_total(order_list_timeseries::AbstractChunkListTimeseries, line_list_df::DataFrame, pipeline::PipelinePlan; recalc::Bool = false,
-                  output_fn_suffix::String = "", range_no_mask_change::Real=RvSpectMLBase.max_bc, ccf_mid_velocity::Real=0.0, v_step::Real=250.0,
-                  v_max=RvSpectMLBase.max_bc, mask_scale_factor::Real=1, ccf_var_scale::Real=1.0, mask_type::Symbol = :tophat, Δfwhm::AbstractVector{T} = zeros(0),
+                  output_fn_suffix::String = "",
+                  range_no_mask_change::Real=RvSpectMLBase.max_bc, ccf_mid_velocity::Real=0.0,
+                  v_step::Real=250.0, v_max=RvSpectMLBase.max_bc, mask_scale_factor::Real=1,
+                  ccf_var_scale::Real=1.0, mask_type::Symbol = :tophat, Δfwhm::AbstractVector{T} = zeros(0),
                   calc_ccf_var::Bool = false, calc_ccf_covar::Bool = false, allow_nans::Bool = false, verbose::Bool = false ) where { T<:Real }
     if need_to(pipeline,:ccf_total) || recalc
       if verbose println("# Computing CCF.")  end

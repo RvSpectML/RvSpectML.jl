@@ -57,23 +57,23 @@ function find_line_candidates_in_chunk(chunk::AbstractChunkOfSpectrum, deriv2::A
   idx_d2_gt_0 = findall(d2->isless(zero(d2),d2), deriv2)
   line_candidates = UnitRange[]
   if length(idx_d2_gt_0) > 0 #make sure we have at least one line candidate pixel
-     first_idx_in_line = last_idx_in_line = first(idx_d2_gt_0)
-       for i in idx_d2_gt_0[2:end]
-        if i-last_idx_in_line > 1   # No longer in last set of contiguous indices, process last line candidate
+   first_idx_in_line = last_idx_in_line = first(idx_d2_gt_0)
+      for i in idx_d2_gt_0[2:end]
+         if i-last_idx_in_line > 1   # No longer in last set of contiguous indices, process last line candidate
          if last_idx_in_line - first_idx_in_line + 1 < plan.min_pixels_in_line
             # noop continue
          elseif maximum(deriv2[first_idx_in_line:last_idx_in_line]) < plan.min_deriv2 #* norm_in_chunk
-           # noop continue
-          else  # Add last range of pixels as line candidate
+            # noop continue
+         else  # Add last range of pixels as line candidate
             push!(line_candidates,first_idx_in_line:last_idx_in_line)
          end
          first_idx_in_line = i
          last_idx_in_line = i
-       else # ! i-last_idx_in_line>1   # Still in same line
+         else # ! i-last_idx_in_line>1   # Still in same line
          last_idx_in_line = i
-       end
-     end # for i in idx_d2_gt_0
-   end # if length(idx_d2_gt_0) > 0
+         end
+      end # for i in idx_d2_gt_0
+   end #if length(idx_d2_gt_0) > 0
     # See if we were in the middle of a line candidate at the end of the chunk
     if last_idx_in_line - first_idx_in_line + 1 < plan.min_pixels_in_line
       # noop continue

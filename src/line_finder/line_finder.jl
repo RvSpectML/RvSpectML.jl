@@ -56,7 +56,7 @@ Convenience function to find links in one chunk of spectrum.
 function find_line_candidates_in_chunk(chunk::AbstractChunkOfSpectrum, deriv2::AbstractVector{T}; plan::LineFinderPlan = LineFinderPlan() ) where { T<:Real }
   idx_d2_gt_0 = findall(d2->isless(zero(d2),d2), deriv2)
   line_candidates = UnitRange[]
-  if length(idx_d2_gt_0 > 0)
+  if length(idx_d2_gt_0) > 0
    first_idx_in_line = last_idx_in_line = first(idx_d2_gt_0)
     for i in idx_d2_gt_0[2:end]
       if i-last_idx_in_line > 1   # No longer in last set of contiguous indices, process last line candidate

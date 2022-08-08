@@ -2,5 +2,7 @@ using RvSpectML
 using Test
 
 @testset "RvSpectML.jl" begin
-    # Add tests here
+
+    include("linefinder.jl")
+
 end

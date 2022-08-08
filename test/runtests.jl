@@ -3,6 +3,6 @@ using Test
 
 @testset "RvSpectML.jl" begin
 
-    include("linefinder.jl")
+    include("line_finder.jl")
 
 end

@@ -1,7 +1,7 @@
 name = "RvSpectML"
 uuid = "1f61ac2c-3a1c-440a-925a-2707197041c8"
 authors = ["Eric B. Ford, Christian Gilbertson, Joe Ninan, Michael L. Palumbo III, Alex Wise, and contributors"]
-version = "0.2.4"
+version = "0.2.5"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -49,7 +49,7 @@ Interpolations = "0.12, 0.13, 0.14"
 JLD2 = "0.2, 0.3, 0.4"
 KernelFunctions = "0.9.7"
 LsqFit = "0.11, 0.12, 0.13"
-MultivariateStats = "0.7, 0.8, 0.9"
+MultivariateStats = "0.7, 0.8, 0.9, 0.10"
 NaNMath = "0.3, 1"
 Optim = "1"
 PDMats = "0.10, 0.11"

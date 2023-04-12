@@ -63,7 +63,7 @@ SpecialFunctions = "1.0, 1.1, 2"
 StaticArrays = "1"
 StatsBase = "0.33"
 Stheno = "0.6, 0.7, 0.8"
-TemporalGPs = "0.3, 0.4, 0.5"
+TemporalGPs = "0.3, 0.4, 0.5, 0.6"
 ThreadedIterables = "0.2"
 julia = "1.5, 1.6, 1.7, 1.8"
 

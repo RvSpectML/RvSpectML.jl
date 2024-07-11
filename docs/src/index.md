@@ -39,7 +39,7 @@ include("examples/calc_rvs_ccf_std.jl")
 - [EchelleInstruments](https://rvspectml.github.io/EchelleInstruments.jl/stable/)
 - [EchelleCCFs](https://rvspectml.github.io/EchelleCCFs.jl/stable)
 - [Scalpels](https://rvspectml.github.io/Scalpels.jl/stable/)
-- [RvSpectMLPlots](https://rvspectml.github.io/RvSpectMLPlots.jl/stable/)^[unreg]
+- [RvSpectMLPlots](https://rvspectml.github.io/RvSpectMLPlots.jl/stable/)*
 
 
- [^unreg]: This package is not yet registerd in Julia's general registry yet.
+* = This package is not yet registerd in Julia's general registry yet.

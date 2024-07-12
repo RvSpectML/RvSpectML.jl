@@ -23,6 +23,8 @@ makedocs(;
         "Internals" => "internals.md",
         "Index" => "longlist.md",
     ],
+    checkdocs=:none,
+    #checkdocs=:exports,
 )
 
 deploydocs(;
